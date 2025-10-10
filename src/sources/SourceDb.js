@@ -1,4 +1,4 @@
-const { safeExec } = require('./utils')
+const { safeExec } = require('../utils/utils')
 const Db = require('./Db')
 
 class SourceDb {

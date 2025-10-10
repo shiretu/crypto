@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events')
-const SourceDb = require('./SourceDb')
-const Candles = require('./candles')
+const SourceDb = require('../sources/SourceDb')
+const Candles = require('../instruments/Candles')
 
 const events = new EventEmitter()
 

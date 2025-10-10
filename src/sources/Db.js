@@ -1,5 +1,5 @@
 const { createClient } = require('@clickhouse/client')
-const { safeExec } = require('./utils')
+const { safeExec } = require('../utils/utils')
 
 class Db {
     constructor (config) {
