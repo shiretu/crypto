@@ -1,0 +1,21 @@
+{
+  "name": "fancy-strategy",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "get": "node src/get.js",
+    "test": "node src/test.js"
+  },
+  "dependencies": {
+    "unzipper": "^0.12.3",
+    "@clickhouse/client": "^1.12.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "standard": "^17.0.0"
+  }
+}
