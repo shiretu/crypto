@@ -27,12 +27,28 @@ class SourceDb {
 
     async start (symbol, start, end) {
         const qr = await this.db.query({
-            query: 'SELECT toUnixTimestamp64Micro(ts) AS ts_us, * FROM market.trades ORDER BY (symbol, ts, id)',
+            query: `SELECT    fromUnixTimestamp64Micro(ts, 'UTC') AS ts_human, *
+            FROM market.trades
+            ORDER BY (symbol, ts, id)
+            `,
             clickhouse_settings: { optimize_read_in_order: 1 },
             format: 'JSONEachRow'
         })
         if (!qr) throw new Error('Unable to execute fetching query')
-        for await (const rows of qr.stream()) { rows.forEach((row) => this.events.emit('tick', row.json())) }
+        const toBigInt = (s) => {
+            const ints = s.split('.')
+            return BigInt(ints[0]) * 100000000n + BigInt(ints[1])
+        }
+        for await (const rows of qr.stream()) {
+            rows.forEach((row) => {
+                const j = row.json()
+                j.qty = toBigInt(j.qty)
+                j.price = toBigInt(j.price)
+                j.quote_qty = toBigInt(j.quote_qty)
+                this.events.emit('tick', j)
+            }
+            )
+        }
     }
 }
 module.exports = SourceDb

@@ -1,12 +1,14 @@
 const { EventEmitter } = require('events')
 const SourceDb = require('../sources/SourceDb')
 const Candles = require('../instruments/Candles')
+const RideTheWave = require('../strategies/RideTheWave')
+const Wallet = require('../utils/Wallet')
 
 const events = new EventEmitter()
 
-// events.on('candleOpen', (candle) => console.log('candleOpen', candle.info))
-// events.on('candleUpdate', (candle) => console.log('candleUpdate', candle.info))
-events.on('candleClose', (candle) => console.log('candleClose', candle.info))
+// events.on('candleOpen', (evt) => console.log('candleOpen', evt.candle.info))
+// events.on('candleUpdate', (evt) => console.log('candleUpdate', evt.candle.info))
+// events.on('candleClose', (evt) => console.log('candleClose', evt.candle.info))
 
 async function main () {
     const sourceDb = await SourceDb.create(events, {
@@ -15,6 +17,8 @@ async function main () {
         password: '' // you can leave blank if not set
     })
     const candles = new Candles(events, 1000000 * 60)
+    const strategy = new RideTheWave(events)
+    const wallet = new Wallet(events)
     await sourceDb.start()
     sourceDb.close()
 }

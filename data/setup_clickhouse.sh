@@ -3,7 +3,7 @@
 set -e
 
 root_dir=$(dirname $(realpath "$0"))
-ch_dir="${root_dir}/ch"
+ch_dir="/Users/shiretu/work/crypto_data"
 
 mkdir -p "${ch_dir}"/{bin,data,logs,tmp,config}
 
@@ -30,6 +30,10 @@ if [ ! -f "${ch_dir}"/config/config.xml ]; then
     <listen_host>127.0.0.1</listen_host>
     <http_port>8123</http_port>
     <tcp_port>9000</tcp_port>
+
+    <!-- limits -->
+    <max_table_size_to_drop>0</max_table_size_to_drop>
+    <max_partition_size_to_drop>0</max_partition_size_to_drop>
 
     <!-- minimal profiles/quotas to satisfy the references in <users> -->
     <profiles>
@@ -108,14 +112,13 @@ CREATE TABLE IF NOT EXISTS market.trades
 (
     symbol         LowCardinality(String),
     id             UInt64,
-    price          Decimal(20,8),
-    qty            Decimal(38,18),
-    quote_qty      Decimal(38,18),
-    ts             DateTime64(3, 'UTC'),
+    price          String,
+    qty            String,
+    quote_qty      String,
+    ts             UInt64,
     is_buyer_maker UInt8,
     is_best_match  UInt8
 )
 ENGINE = MergeTree
-PARTITION BY toYYYYMM(ts)
 ORDER BY (symbol, ts, id);
 "
