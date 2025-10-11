@@ -27,7 +27,17 @@ class SourceDb {
 
     async start (symbol, start, end) {
         const qr = await this.db.query({
-            query: `SELECT    fromUnixTimestamp64Micro(ts, 'UTC') AS ts_human, *
+            query: `SELECT
+                symbol,
+                id,
+                ts,
+                fromUnixTimestamp64Micro(ts, 'UTC') AS tsHr,
+                intDiv(ts, 60000000) as tsAsMinute,
+                price,
+                qty,
+                quote_qty as quoteQty,
+                is_buyer_maker as isBuyerMaker,
+                is_best_match as isBestMatch
             FROM market.trades
             ORDER BY (symbol, ts, id)
             `,
@@ -35,20 +45,7 @@ class SourceDb {
             format: 'JSONEachRow'
         })
         if (!qr) throw new Error('Unable to execute fetching query')
-        const toBigInt = (s) => {
-            const ints = s.split('.')
-            return BigInt(ints[0]) * 100000000n + BigInt(ints[1])
-        }
-        for await (const rows of qr.stream()) {
-            rows.forEach((row) => {
-                const j = row.json()
-                j.qty = toBigInt(j.qty)
-                j.price = toBigInt(j.price)
-                j.quote_qty = toBigInt(j.quote_qty)
-                this.events.emit('tick', j)
-            }
-            )
-        }
+        for await (const rows of qr.stream()) { rows.forEach((row) => { this.events.emit('tick', row.json()) }) }
     }
 }
 module.exports = SourceDb

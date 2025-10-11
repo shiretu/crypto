@@ -21,9 +21,9 @@ SELECT
     toUInt8(lower(isBestMatch)  = 'true') AS is_best_match
 FROM input(
     'id UInt64,
-    price String,
-    qty String,
-    quoteQty String,
+    price Decimal(38,18),
+    qty Decimal(38,18),
+    quoteQty Decimal(38,18),
     time_ms String,
     isBuyerMaker String,
     isBestMatch String'

@@ -112,9 +112,9 @@ CREATE TABLE IF NOT EXISTS market.trades
 (
     symbol         LowCardinality(String),
     id             UInt64,
-    price          String,
-    qty            String,
-    quote_qty      String,
+    price          Decimal(38,18),
+    qty            Decimal(38,18),
+    quote_qty      Decimal(38,18),
     ts             UInt64,
     is_buyer_maker UInt8,
     is_best_match  UInt8
