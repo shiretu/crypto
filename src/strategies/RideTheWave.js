@@ -28,7 +28,7 @@ class RideTheWave {
 
     #reset (reason) {
         if (!reason) { throw new Error('No reason given') }
-        // console.log(reason)
+        // console.log('reason', reason)
         this.firstIncrease = []
         this.decrease = []
         this.secondIncrease = []
@@ -66,7 +66,7 @@ class RideTheWave {
         }
         if (this.secondIncrease.length === 0) {
             if (this.decrease.length >= RideTheWave.SETUP.pattern.decreaseCountLimit) {
-                this.#reset()
+                this.#reset('Too many decreases')
                 return
             }
             this.decrease.push(evt.candle.clone())
@@ -131,8 +131,9 @@ class RideTheWave {
         if (this.decrease.length === 0) { return }
 
         // are we below or equal last high?
-        const buyAt = this.decrease.map(candle => candle.high.price).sort((a, b) => b - a)[0]
-        if (buyAt >= evt.tick.price) { return }
+        const lastHigh = this.decrease.map(candle => candle.high.price).sort((a, b) => b - a)[0]
+        if (lastHigh >= evt.tick.price) { return }
+        const buyAt = lastHigh
 
         // establish the protection sell
         const sellAtLow = this.decrease.map(candle => candle.low.price).sort().at(0)
@@ -155,7 +156,8 @@ class RideTheWave {
                 buyTsHr: evt.tick.tsHr,
                 firstIncrease: this.firstIncrease,
                 decrease: this.decrease,
-                secondIncrease: this.secondIncrease
+                secondIncrease: this.secondIncrease,
+                triggeringCandle: evt.candle
             }
         }
         this.events.emit('orderOpen', openEvt)

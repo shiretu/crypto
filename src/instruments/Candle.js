@@ -31,6 +31,7 @@ class Candle {
                 bottomWickPercent = (this.open.price - low.price) / height
             }
         }
+        const totalWickPercent = topWickPercent + bottomWickPercent
         this.cachedInfo = {
             ts: this.open.tsAsMinute * 60000000,
             intervalInMinutes: this.intervalInMinutes,
@@ -46,7 +47,8 @@ class Candle {
             direction,
             height,
             topWickPercent,
-            bottomWickPercent
+            bottomWickPercent,
+            totalWickPercent
         }
         return this.cachedInfo
     }

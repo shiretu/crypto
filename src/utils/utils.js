@@ -14,7 +14,7 @@ module.exports = {
         const inc1 = order?.metadata?.firstIncrease ?? []
         const dec = order?.metadata?.decrease ?? []
         const inc2 = order?.metadata?.secondIncrease ?? []
-        const allCandles = [...inc1, ...dec, ...inc2]
+        const allCandles = [...inc1, ...dec, ...inc2, order.metadata.triggeringCandle]
 
         // Tiny placeholder if no data
         if (allCandles.length === 0) {
