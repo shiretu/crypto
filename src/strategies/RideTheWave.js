@@ -131,7 +131,7 @@ class RideTheWave {
         if (this.candlesDip.length === 0) { return }
 
         // are we below or equal last high?
-        const buyAt = this.candlesDip.map(candle => candle.high.price).sort()[0]
+        const buyAt = this.candlesDip.map(candle => candle.high.price).sort((a, b) => b - a)[0]
         if (buyAt >= evt.tick.price) { return }
 
         // establish the protection sell
@@ -151,6 +151,8 @@ class RideTheWave {
             },
             metadata: {
                 tick: evt.tick,
+                startTsHr: this.candlesFirstIncrease[0].open.tsHr,
+                buyTsHr: evt.tick.tsHr,
                 firstIncrease: this.candlesFirstIncrease,
                 dip: this.candlesDip,
                 secondIncrease: this.secondIncrease
