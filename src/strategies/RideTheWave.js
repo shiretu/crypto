@@ -48,20 +48,20 @@ class RideTheWave {
             return
         }
         if (this.firstIncrease.length === 0) {
-            this.firstIncrease.push(evt.candle.clone())
+            this.firstIncrease.push(evt.candle)
             return
         }
         if (this.decrease.length === 0) {
-            this.firstIncrease.push(evt.candle.clone())
+            this.firstIncrease.push(evt.candle)
         } else {
-            this.secondIncrease.push(evt.candle.clone())
+            this.secondIncrease.push(evt.candle)
         }
     }
 
     #onCandleCloseZero (evt) {
         if (this.firstIncrease.length === 0) { return }
         if (this.decrease.length === 0) {
-            this.firstIncrease.push(evt.candle.clone())
+            this.firstIncrease.push(evt.candle)
             return
         }
         if (this.secondIncrease.length === 0) {
@@ -69,10 +69,10 @@ class RideTheWave {
                 this.#reset('Too many decreases')
                 return
             }
-            this.decrease.push(evt.candle.clone())
+            this.decrease.push(evt.candle)
             return
         }
-        this.secondIncrease.push(evt.candle.clone())
+        this.secondIncrease.push(evt.candle)
     }
 
     #onCandleCloseRed (evt) {
@@ -92,13 +92,13 @@ class RideTheWave {
 
         // is this the first decrease? if so, we store it and we are done
         if (this.decrease.length === 0) {
-            this.decrease.push(evt.candle.clone())
+            this.decrease.push(evt.candle)
             return
         }
 
         // did we already started to add to second increase?
         if (this.secondIncrease.length !== 0) {
-            this.#reset()
+            this.#reset('We have already started the second increase, and it now failed')
             return
         }
 
@@ -109,7 +109,7 @@ class RideTheWave {
         }
 
         // add it
-        this.decrease.push(evt.candle.clone())
+        this.decrease.push(evt.candle)
     }
 
     #onCandleOpen (evt) {

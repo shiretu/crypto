@@ -10,7 +10,7 @@
             "runtimeArgs": [
                 "run-script",
                 "test",
-                "ETHUSDC"
+                "XRPUSDC"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [

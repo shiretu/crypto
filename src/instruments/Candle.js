@@ -10,6 +10,8 @@ class Candle {
     get direction () { return Math.sign(this.close.price - this.open.price) }
     get high () { return this.ticks.reduce((acc, curr) => acc.price < curr.price ? curr : acc, this.ticks[0]) }
     get low () { return this.ticks.reduce((acc, curr) => acc.price > curr.price ? curr : acc, this.ticks[0]) }
+    get tsHr () { return this.open.tsHr }
+    get tradesCount () { return this.ticks.length }
 
     get info () {
         if (this.cachedInfo) {
@@ -43,7 +45,7 @@ class Candle {
             quoteVolume: this.ticks.reduce((acc, curr) => acc + curr.quoteQty, 0),
             takerBuyBaseVolume: takers.reduce((acc, curr) => acc + curr.baseQty, 0),
             takerBuyQuoteVolume: takers.reduce((acc, curr) => acc + curr.quoteQty, 0),
-            tradesCount: this.ticks.length,
+            tradesCount: this.tradesCount,
             direction,
             height,
             topWickPercent,
@@ -56,13 +58,6 @@ class Candle {
     update (tick) {
         this.ticks.push(tick)
         this.cachedInfo = null
-    }
-
-    clone () {
-        const result = Object.create(Candle.prototype)
-        result.intervalInMinutes = this.intervalInMinutes
-        result.ticks = structuredClone(this.ticks)
-        return result
     }
 }
 
