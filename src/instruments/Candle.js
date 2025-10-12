@@ -2,6 +2,7 @@ class Candle {
     constructor (intervalInMinutes, tick) {
         this.intervalInMinutes = intervalInMinutes
         this.ticks = [tick]
+        this.cachedInfo = null
     }
 
     get open () { return this.ticks[0] }
@@ -10,8 +11,11 @@ class Candle {
     get low () { return this.ticks.reduce((acc, curr) => acc.price > curr.price ? curr : acc, this.ticks[0]) }
 
     get info () {
+        if (this.cachedInfo) {
+            return this.cachedInfo
+        }
         const takers = this.ticks.filter(tick => !tick.isBuyerMaker)
-        return {
+        this.cachedInfo = {
             ts: this.open.tsAsMinute * 60000000,
             intervalInMinutes: this.intervalInMinutes,
             open: this.open.price,
@@ -26,9 +30,14 @@ class Candle {
             direction: Math.sign(this.close.price - this.open.price),
             height: Math.abs(this.open.price - this.close.price)
         }
+        return this.cachedInfo
     }
 
-    update (tick) { this.ticks.push(tick) }
+    update (tick) {
+        this.ticks.push(tick)
+        this.cachedInfo = null
+    }
+
     clone () {
         const result = Object.create(Candle.prototype)
         result.intervalInMinutes = this.intervalInMinutes

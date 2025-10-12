@@ -23,7 +23,7 @@ async function main () {
     const strategy = new RideTheWave(events)
     const wallet = new Wallet(events)
     await sourceDb.start()
-    sourceDb.close()
+    // sourceDb.close()
 }
 
 main()

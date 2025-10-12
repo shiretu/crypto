@@ -1,8 +1,8 @@
 class Wallet {
     constructor (events) {
         this.events = events
-        this.btc = 0n
-        this.usdt = 10000000000n
+        this.btc = 0
+        this.usdt = 100
         this.events.on('orderOpen', evt => this.#onOrderOpen(evt))
         this.events.on('tick', evt => this.#onTick(evt))
         this.buyOrders = []
@@ -14,19 +14,26 @@ class Wallet {
 
     #onOrderOpenBuy (evt) {
         evt.trade.qty = evt.trade.quoteQty / evt.trade.at
+        evt.trade.spentQuote = evt.trade.quoteQty * 1.001
         this.btc += evt.trade.qty
-        this.usdt -= (evt.trade.quoteQty * 1001n) / 1000n
+        this.usdt -= evt.trade.spentQuote
         this.buyOrders.push(evt.trade)
-        console.log(`B: ${this.btc}/${this.usdt} - ${evt.trade.at}`)
+        console.log(`B: ${evt.metadata.tick.tsHr} - ${evt.trade.low.toFixed(8)} - ${evt.trade.at.toFixed(8)} - ${evt.trade.high.toFixed(8)} - ${evt.trade.spentQuote.toFixed(8)}`)
     }
 
     #onTick (tick) {
         const doSell = (order, good) => {
-            this.btc -= order.qty
             const usdt = order.qty * tick.price
-            this.usdt += usdt * 999n / 1000n
+            order.receivedQuote = usdt * 0.999
+            this.btc -= order.qty
+            this.usdt += order.receivedQuote
             this.events.emit('orderClosed')
-            console.log(`S: ${this.btc}/${this.usdt} - ${tick.price} - ${good ? 'U' : 'D'}`)
+            const gain = order.receivedQuote - order.spentQuote
+            const red = '\x1b[31m%s\x1b[0m'
+            const green = '\x1b[32m%s\x1b[0m'
+            const yellow = '\x1b[33m%s\x1b[0m'
+            console.log(gain > 0 ? green : (good ? yellow : red), `S: ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuote.toFixed(8)} - ${order.receivedQuote.toFixed(8)} - ${gain.toFixed(8)}`)
+            console.log('---')
         }
         const kept = []
         for (const order of this.buyOrders) {

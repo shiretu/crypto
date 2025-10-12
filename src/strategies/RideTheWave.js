@@ -1,10 +1,10 @@
 class RideTheWave {
     static SETUP = {
         firstIncreaseCandlesCount: 3,
-        allowDipLimitRatio: 2n,
+        allowDipLimit: 0.7,
         dipCountLimit: 3,
-        leverage: 110n,
-        quoteQty: 2500000000n,
+        leverage: 2,
+        quoteQty: 25,
         timeLimit: 3600 * 1000000
     }
 
@@ -20,18 +20,20 @@ class RideTheWave {
         this.enabled = true
     }
 
-    #reset () {
+    #reset (reason) {
+        if (!reason) { throw new Error('No reason given') }
+        // console.log(reason)
         this.candlesFirstIncrease = []
         this.candlesDip = []
         this.candlesSecondIncrease = []
     }
 
     #onCandleClose (evt) {
-        if (!this.enabled) return
         // dispatch
-        if (evt.candle.direction > 0) { return this.#onCandleCloseGreen(evt) }
-        if (evt.candle.direction === 0) { return this.#onCandleCloseZero(evt) }
-        if (evt.candle.direction < 0) { return this.#onCandleCloseRed(evt) }
+        if (!this.enabled) return
+        if (evt.candle.info.direction > 0) { return this.#onCandleCloseGreen(evt) }
+        if (evt.candle.info.direction === 0) { return this.#onCandleCloseZero(evt) }
+        if (evt.candle.info.direction < 0) { return this.#onCandleCloseRed(evt) }
     }
 
     #onCandleCloseGreen (evt) {
@@ -66,15 +68,15 @@ class RideTheWave {
     #onCandleCloseRed (evt) {
         // if we get the red too soon, we bail out
         if (this.candlesFirstIncrease.length < RideTheWave.SETUP.firstIncreaseCandlesCount) {
-            this.#reset()
+            this.#reset('First increase is not having enough green candles')
             return
         }
 
         // see if we dip too much
         const totalHeight = this.candlesFirstIncrease.at(-1).close.price - this.candlesFirstIncrease[0].open.price
-        const dipLimit = this.candlesFirstIncrease[0].open.price + totalHeight / RideTheWave.SETUP.allowDipLimitRatio
+        const dipLimit = this.candlesFirstIncrease[0].open.price + totalHeight * RideTheWave.SETUP.allowDipLimit
         if (evt.candle.close.price <= dipLimit) {
-            this.#reset()
+            this.#reset('The dip went too far')
             return
         }
 
@@ -92,7 +94,7 @@ class RideTheWave {
 
         // do we have more then 3 dips?
         if (this.candlesDip.length >= RideTheWave.SETUP.dipCountLimit) {
-            this.#reset()
+            this.#reset('We have too many dips')
             return
         }
 
@@ -101,17 +103,17 @@ class RideTheWave {
     }
 
     #onCandleOpen (evt) {
-        if (!this.enabled) return
         // dispatch
+        if (!this.enabled) return
         this.#onCandleUpdate(evt)
     }
 
     #onCandleUpdate (evt) {
-        if (!this.enabled) return
         // dispatch
-        if (evt.candle.direction > 0) { return this.#onCandleUpdateGreen(evt) }
-        if (evt.candle.direction === 0) { return this.#onCandleUpdateZero(evt) }
-        if (evt.candle.direction < 0) { return this.#onCandleUpdateRed(evt) }
+        if (!this.enabled) return
+        if (evt.candle.info.direction > 0) { return this.#onCandleUpdateGreen(evt) }
+        if (evt.candle.info.direction === 0) { return this.#onCandleUpdateZero(evt) }
+        if (evt.candle.info.direction < 0) { return this.#onCandleUpdateRed(evt) }
     }
 
     #onCandleUpdateGreen (evt) {
@@ -124,7 +126,7 @@ class RideTheWave {
 
         // establish the protection sell
         const sellAtLow = this.candlesDip.map(candle => candle.low.price).sort().at(0)
-        const sellAtHigh = buyAt + (buyAt - sellAtLow) * RideTheWave.SETUP.leverage / 100n
+        const sellAtHigh = buyAt + (buyAt - sellAtLow) * RideTheWave.SETUP.leverage
 
         // trigger the buy
         this.events.emit('orderOpen', {
@@ -143,7 +145,7 @@ class RideTheWave {
                 secondIncrease: this.secondIncrease
             }
         })
-        this.#reset()
+        this.#reset('Order opened')
         this.enabled = false
     }
 
@@ -151,7 +153,7 @@ class RideTheWave {
 
     #onCandleUpdateRed (evt) {
         if (this.candlesSecondIncrease.length !== 0) {
-            this.#reset()
+            this.#reset('We have received a red candle on the second increase')
         }
     }
 }
