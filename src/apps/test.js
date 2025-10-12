@@ -22,7 +22,7 @@ async function main () {
     const candles = new Candles(events, 1)
     const strategy = new RideTheWave(events)
     const wallet = new Wallet(events)
-    await sourceDb.start()
+    await sourceDb.start('ETHUSDC')
     // sourceDb.close()
 }
 

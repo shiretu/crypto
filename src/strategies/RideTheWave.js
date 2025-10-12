@@ -8,8 +8,8 @@ class RideTheWave {
         },
         order: {
             transactionFeesPercent: 0.001, // 0.10%
-            gainsPercent: 0.004,
-            investedQuoteQty: 1000,
+            gainsPercent: 0.001,
+            investedQuoteQty: 25,
             timeLimit: 3600 * 1000000 // 1H
         }
     }

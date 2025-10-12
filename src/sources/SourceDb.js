@@ -39,6 +39,7 @@ class SourceDb {
                 is_buyer_maker as isBuyerMaker,
                 is_best_match as isBestMatch
             FROM market.trades
+            WHERE symbol == '${symbol}'
             ORDER BY (symbol, ts, id)
             `,
             clickhouse_settings: { optimize_read_in_order: 1 },
