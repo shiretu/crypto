@@ -1,11 +1,16 @@
 class RideTheWave {
     static SETUP = {
-        firstIncreaseCandlesCount: 3,
-        allowDipLimit: 0.7,
-        dipCountLimit: 3,
-        leverage: 2,
-        quoteQty: 25,
-        timeLimit: 3600 * 1000000
+        pattern: {
+            firstIncreaseCandlesCount: 3,
+            allowDipLimit: 0.7,
+            dipCountLimit: 3
+        },
+        order: {
+            transactionFeesPercent: 0.001, // 0.10%
+            gainsPercent: 0.002,
+            investedQuoteQty: 25,
+            timeLimit: 3600 * 1000000 // 1H
+        }
     }
 
     constructor (events) {
@@ -55,7 +60,7 @@ class RideTheWave {
             return
         }
         if (this.candlesSecondIncrease.length === 0) {
-            if (this.candlesDip.length >= RideTheWave.SETUP.dipCountLimit) {
+            if (this.candlesDip.length >= RideTheWave.SETUP.pattern.dipCountLimit) {
                 this.#reset()
                 return
             }
@@ -67,14 +72,14 @@ class RideTheWave {
 
     #onCandleCloseRed (evt) {
         // if we get the red too soon, we bail out
-        if (this.candlesFirstIncrease.length < RideTheWave.SETUP.firstIncreaseCandlesCount) {
+        if (this.candlesFirstIncrease.length < RideTheWave.SETUP.pattern.firstIncreaseCandlesCount) {
             this.#reset('First increase is not having enough green candles')
             return
         }
 
         // see if we dip too much
         const totalHeight = this.candlesFirstIncrease.at(-1).close.price - this.candlesFirstIncrease[0].open.price
-        const dipLimit = this.candlesFirstIncrease[0].open.price + totalHeight * RideTheWave.SETUP.allowDipLimit
+        const dipLimit = this.candlesFirstIncrease[0].open.price + totalHeight * RideTheWave.SETUP.pattern.allowDipLimit
         if (evt.candle.close.price <= dipLimit) {
             this.#reset('The dip went too far')
             return
@@ -93,7 +98,7 @@ class RideTheWave {
         }
 
         // do we have more then 3 dips?
-        if (this.candlesDip.length >= RideTheWave.SETUP.dipCountLimit) {
+        if (this.candlesDip.length >= RideTheWave.SETUP.pattern.dipCountLimit) {
             this.#reset('We have too many dips')
             return
         }
@@ -126,7 +131,8 @@ class RideTheWave {
 
         // establish the protection sell
         const sellAtLow = this.candlesDip.map(candle => candle.low.price).sort().at(0)
-        const sellAtHigh = buyAt + (buyAt - sellAtLow) * RideTheWave.SETUP.leverage
+        const sellAtHigh = buyAt * (1 + RideTheWave.SETUP.order.transactionFeesPercent) * (1 + RideTheWave.SETUP.order.gainsPercent) / (1 - RideTheWave.SETUP.order.transactionFeesPercent)
+        // console.log(((sellAtHigh - buyAt) / buyAt * 100).toFixed(2))
 
         // trigger the buy
         this.events.emit('orderOpen', {
@@ -135,8 +141,8 @@ class RideTheWave {
                 at: buyAt,
                 low: sellAtLow,
                 high: sellAtHigh,
-                quoteQty: RideTheWave.SETUP.quoteQty,
-                timeLimit: RideTheWave.SETUP.timeLimit
+                quoteQty: RideTheWave.SETUP.order.investedQuoteQty,
+                timeLimit: RideTheWave.SETUP.order.timeLimit
             },
             metadata: {
                 tick: evt.tick,
