@@ -3,12 +3,13 @@ class RideTheWave {
         pattern: {
             firstIncreaseCandlesCount: 3,
             allowDipLimit: 0.7,
-            dipCountLimit: 3
+            dipCountLimit: 3,
+            greenTransactionsCount: 200
         },
         order: {
             transactionFeesPercent: 0.001, // 0.10%
-            gainsPercent: 0.002,
-            investedQuoteQty: 25,
+            gainsPercent: 0.004,
+            investedQuoteQty: 1000,
             timeLimit: 3600 * 1000000 // 1H
         }
     }
@@ -42,6 +43,10 @@ class RideTheWave {
     }
 
     #onCandleCloseGreen (evt) {
+        if (evt.candle.info.tradesCount < RideTheWave.SETUP.pattern.greenTransactionsCount) {
+            this.#reset('Green candle almost yellow: too few trades')
+            return
+        }
         if (this.candlesFirstIncrease.length === 0) {
             this.candlesFirstIncrease.push(evt.candle.clone())
             return
