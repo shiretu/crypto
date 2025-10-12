@@ -1,6 +1,10 @@
+const { generatePng } = require('./utils')
+const path = require('path')
+
 class SymbolWallet {
-    constructor (events, symbol) {
+    constructor (events, symbol, pathForImages) {
         this.symbol = symbol
+        this.pathForImages = pathForImages
         this.events = events
         this.baseQty = 0
         this.quoteQty = 100
@@ -17,6 +21,7 @@ class SymbolWallet {
         evt.trade.baseQty = evt.trade.quoteQty / evt.trade.at
         evt.trade.spentQuoteQty = evt.trade.quoteQty * 1.001
         evt.trade.buyTick = evt.metadata.tick
+        evt.trade.metadata = evt.metadata
         this.baseQty += evt.trade.baseQty
         this.quoteQty -= evt.trade.spentQuoteQty
         this.buyOrders.push(evt.trade)
@@ -30,11 +35,12 @@ class SymbolWallet {
             this.baseQty -= order.baseQty
             this.quoteQty += order.receivedQuoteQty
             this.events.emit('orderClosed')
-            const profitQty = order.receivedQuoteQty - order.spentQuoteQty
+            order.profitQty = order.receivedQuoteQty - order.spentQuoteQty
             const red = '\x1b[31m%s\x1b[0m'
             const green = '\x1b[32m%s\x1b[0m'
             const yellow = '\x1b[33m%s\x1b[0m'
-            console.log(profitQty > 0 ? green : (good ? yellow : red), `${this.symbol}: ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${profitQty.toFixed(8)}`)
+            console.log(order.profitQty > 0 ? green : (good ? yellow : red), `${this.symbol}: ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${order.profitQty.toFixed(8)}`)
+            generatePng(order, path.join(this.pathForImages, this.symbol, `${order.metadata.startTsHr}.png`))
             // console.log('---')
         }
         const kept = []
