@@ -10,19 +10,19 @@ INSERT INTO market.trades
 SELECT
     '${sym}' AS symbol,
     id,
-    price AS price,
-    qty AS qty,
-    quoteQty AS quote_qty,
+    price,
+    baseQty,
+    quoteQty,
     if(length(time_ms) > 13,
         toUInt64(time_ms),
         toUInt64(time_ms) * 1000
     ) AS ts,
-    toUInt8(lower(isBuyerMaker) = 'true') AS is_buyer_maker,
-    toUInt8(lower(isBestMatch)  = 'true') AS is_best_match
+    toUInt8(lower(isBuyerMaker) = 'true') AS isBuyerMaker,
+    toUInt8(lower(isBestMatch)  = 'true') AS isBestMatch
 FROM input(
     'id UInt64,
     price Decimal(38,18),
-    qty Decimal(38,18),
+    baseQty Decimal(38,18),
     quoteQty Decimal(38,18),
     time_ms String,
     isBuyerMaker String,

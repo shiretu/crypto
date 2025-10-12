@@ -6,14 +6,21 @@ class Candles {
         this.events = events
         this.events.on('tick', (tick) => this.#onTick(tick))
         this.candle = null
+        this.totalTicks = 0
+        this.totalCandles = 0
     }
 
     #onTick (tick) {
+        this.totalTicks++
         if (!this.candle) {
+            this.totalCandles++
             this.candle = new Candle(this.intervalInMinutes, tick)
             this.events.emit('candleOpen', { candle: this.candle, tick })
             return
         }
+        // if ((this.candle.close.tsAsHour !== tick.tsAsHour)) {
+        //     console.log(tick.tsHr, this.totalTicks, this.totalCandles)
+        // }
         if (this.candle.close.tsAsMinute !== tick.tsAsMinute) {
             this.events.emit('candleClose', { candle: this.candle, tick })
             this.candle = null
