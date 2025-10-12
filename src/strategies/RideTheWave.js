@@ -37,13 +37,13 @@ class RideTheWave {
     #onCandleClose (evt) {
         // dispatch
         if (!this.enabled) return
-        if (evt.candle.info.direction > 0) { return this.#onCandleCloseGreen(evt) }
-        if (evt.candle.info.direction === 0) { return this.#onCandleCloseZero(evt) }
-        if (evt.candle.info.direction < 0) { return this.#onCandleCloseRed(evt) }
+        if (evt.candle.direction > 0) { return this.#onCandleCloseGreen(evt) }
+        if (evt.candle.direction === 0) { return this.#onCandleCloseZero(evt) }
+        if (evt.candle.direction < 0) { return this.#onCandleCloseRed(evt) }
     }
 
     #onCandleCloseGreen (evt) {
-        if (evt.candle.info.tradesCount < RideTheWave.SETUP.pattern.greenTransactionsCount) {
+        if (evt.candle.tradesCount < RideTheWave.SETUP.pattern.greenTransactionsCount) {
             this.#reset('Green candle almost yellow: too few trades')
             return
         }
@@ -121,9 +121,9 @@ class RideTheWave {
     #onCandleUpdate (evt) {
         // dispatch
         if (!this.enabled) return
-        if (evt.candle.info.direction > 0) { return this.#onCandleUpdateGreen(evt) }
-        if (evt.candle.info.direction === 0) { return this.#onCandleUpdateZero(evt) }
-        if (evt.candle.info.direction < 0) { return this.#onCandleUpdateRed(evt) }
+        if (evt.candle.direction > 0) { return this.#onCandleUpdateGreen(evt) }
+        if (evt.candle.direction === 0) { return this.#onCandleUpdateZero(evt) }
+        if (evt.candle.direction < 0) { return this.#onCandleUpdateRed(evt) }
     }
 
     #onCandleUpdateGreen (evt) {
@@ -140,7 +140,7 @@ class RideTheWave {
         // console.log(((sellAtHigh - buyAt) / buyAt * 100).toFixed(2))
 
         // trigger the buy
-        this.events.emit('orderOpen', {
+        const openEvt = {
             trade: {
                 type: 'buy',
                 at: buyAt,
@@ -157,7 +157,8 @@ class RideTheWave {
                 decrease: this.decrease,
                 secondIncrease: this.secondIncrease
             }
-        })
+        }
+        this.events.emit('orderOpen', openEvt)
         this.#reset('Order opened')
         this.enabled = false
     }
