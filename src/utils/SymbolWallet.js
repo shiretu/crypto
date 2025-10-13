@@ -39,7 +39,7 @@ class SymbolWallet {
             const red = '\x1b[31m%s\x1b[0m'
             const green = '\x1b[32m%s\x1b[0m'
             const yellow = '\x1b[33m%s\x1b[0m'
-            console.log(order.profitQty > 0 ? green : (good ? yellow : red), `${this.symbol}: ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${order.profitQty.toFixed(8)}`)
+            console.log(order.profitQty > 0 ? green : (good ? yellow : red), `${this.symbol}: ${order.metadata.startTsHr} ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${order.profitQty.toFixed(8)}`)
             generatePng(order, path.join(this.pathForImages, this.symbol, `${order.metadata.startTsHr}.png`))
             // console.log('---')
         }

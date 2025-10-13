@@ -119,14 +119,9 @@ class RideTheWave {
     }
 
     #onCandleUpdate (evt) {
-        // dispatch
+        // are we enabled?
         if (!this.enabled) return
-        if (evt.candle.direction > 0) { return this.#onCandleUpdateGreen(evt) }
-        if (evt.candle.direction === 0) { return this.#onCandleUpdateZero(evt) }
-        if (evt.candle.direction < 0) { return this.#onCandleUpdateRed(evt) }
-    }
 
-    #onCandleUpdateGreen (evt) {
         // did we get the decrease?
         if (this.decrease.length === 0) { return }
 
@@ -163,14 +158,6 @@ class RideTheWave {
         this.events.emit('orderOpen', openEvt)
         this.#reset('Order opened')
         this.enabled = false
-    }
-
-    #onCandleUpdateZero (evt) {}
-
-    #onCandleUpdateRed (evt) {
-        if (this.secondIncrease.length !== 0) {
-            this.#reset('We have received a red candle on the second increase')
-        }
     }
 }
 module.exports = RideTheWave
