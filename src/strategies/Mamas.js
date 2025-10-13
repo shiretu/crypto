@@ -49,28 +49,7 @@ class Mamas {
                 (this.previous.maVolume !== 0)
             )) return
 
-            const crossedUp = (this.previous.maPriceShort < this.previous.maPriceLong) &&
-            (this.current.maPriceShort.value > this.current.maPriceLong.value)
-
-            const priceAbove = evt.candle.close.price > this.current.maPriceLong.value
-            const volConfirm = evt.candle.info.quoteVolume >= 1.2 * this.current.maVolume.value
-            const green = evt.candle.direction > 0
-            const slope = this.current.maPriceLong.value - this.previous.maPriceLong
-            const trendUp = slope > 0
-
-            if (!crossedUp) return
-
-            const potentialBuy = priceAbove && volConfirm && green && trendUp
-            console.color(potentialBuy ? console.GREEN : console.RED, evt.candle.symbol, evt.candle.tsHr, JSON.stringify({
-                priceAbove,
-                volConfirm,
-                green,
-                trendUp,
-                potentialBuy,
-                ma30: this.current.maPriceLong.value.toFixed(8),
-                ma5: this.current.maPriceShort.value.toFixed(8),
-                candleClose: evt.candle.close.price.toFixed(8)
-            }))
+            console.log('Stuff')
         } finally {
             this.previous.maPriceShort = this.current.maPriceShort.value
             this.previous.maPriceLong = this.current.maPriceLong.value
