@@ -1,16 +1,16 @@
-# 📈 MA(5) / MA(30) BUY-Only Strategy
+# 📈 maPriceClose5 / maPriceClose30 BUY-Only Strategy
 
 This document defines a simple **moving average crossover strategy** designed for **BUY-only (long)** trading.
 
-The strategy uses **MA(5)** as a *fast* (short-term) signal line and **MA(30)** as a *slow* (trend) confirmation line.
+The strategy uses **maPriceClose5** as a *fast* (short-term) signal line and **maPriceClose30** as a *slow* (trend) confirmation line.
 
 ---
 
 ## 🧠 Concept
 
-- **MA(5)** reacts quickly to recent price changes.
-- **MA(30)** reflects the broader trend.
-- When **MA(5)** crosses above **MA(30)**, short-term momentum turns bullish within a larger upward trend.
+- **maPriceClose5** reacts quickly to recent price changes.
+- **maPriceClose30** reflects the broader trend.
+- When **maPriceClose5** crosses above **maPriceClose30**, short-term momentum turns bullish within a larger upward trend.
 
 The system only takes **BUY** trades — never shorts — and exits when the short-term trend weakens.
 
@@ -18,12 +18,12 @@ The system only takes **BUY** trades — never shorts — and exits when the sho
 
 ## ⚙️ Indicators Used
 
-| Indicator | Description | Purpose |
-|------------|--------------|----------|
-| `MA(5)` | Simple Moving Average of the last 5 closes | Fast (momentum) |
-| `MA(30)` | Simple Moving Average of the last 30 closes | Slow (trend) |
-| `volume` | Current candle volume | Confirmation of strength |
-| `avg_volume(20)` | Average of last 20 volumes | Baseline for comparison |
+| Indicator        | Description                                 | Purpose                  |
+| ---------------- | ------------------------------------------- | ------------------------ |
+| `maPriceClose5`  | Simple Moving Average of the last 5 closes  | Fast (momentum)          |
+| `maPriceClose30` | Simple Moving Average of the last 30 closes | Slow (trend)             |
+| `volume`         | Current candle volume                       | Confirmation of strength |
+| `maVolume20`     | Average of last 20 volumes                  | Baseline for comparison  |
 
 ---
 
@@ -34,17 +34,17 @@ Enter a **long (BUY)** when **all** of the following are true:
 ```js
 BUY =
 (
-    (MA5_prev < MA30_prev)            // 1. Bullish crossover trigger
- && (MA5_now  > MA30_now)             //    Fast MA crosses above slow MA
- && (price_now > MA30_now)            // 2. Price confirmed above slow MA
- && (volume_now > avg_volume)         // 3. High volume confirms strength
- && (close_now > open_now)            // 4. Candle closed green
+    (maPriceClose5Prev < maPriceClose30Prev) // 1. Bullish crossover trigger
+ && (maPriceClose5Now  > maPriceClose30Now)  // 2. Fast MA crosses above slow MA
+ && (priceNow > maPriceClose30Now)           // 3. Price confirmed above slow MA
+ && (volumeNow > maVolume20)                 // 4. High volume confirms strength
+ && (priceCloseNow > priceOpenNow)           // 5. Candle closed green
 )
 ```
 
 ### Notes
 - Wait for candle **close** before confirming the crossover.
-- Optional: require MA(5) to stay above MA(30) for 1–2 candles to avoid false crosses.
+- Optional: require maPriceClose5 to stay above maPriceClose30 for 1–2 candles to avoid false crosses.
 
 ---
 
@@ -55,8 +55,8 @@ Exit the position (or stop BUYs) when **any** of these is true:
 ```js
 SELL =
 (
-    (MA5_now < MA30_now)              // 1. Bearish crossover
- || (price_now < MA30_now)            // 2. Price fell below slow MA
+    (maPriceClose5Now < maPriceClose30Now) // 1. Bearish crossover
+ || (priceNow < maPriceClose30Now)         // 2. Price fell below slow MA
 )
 ```
 
@@ -71,8 +71,8 @@ Maintain an open BUY position as long as the trend remains valid:
 ```js
 HOLD =
 (
-    (MA5_now > MA30_now)
- && (price_now >= MA30_now)
+    (maPriceClose5Now > maPriceClose30Now)
+ && (priceNow >= maPriceClose30Now)
 )
 ```
 
@@ -85,10 +85,10 @@ In practice, you continue holding as long as both moving averages show an aligne
 These improve accuracy and reduce false signals.
 
 ### ✅ Trend confirmation
-Avoid buying in flat or weak markets by requiring an upward slope on MA(30):
+Avoid buying in flat or weak markets by requiring an upward slope on maPriceClose30:
 
 ```js
-slope30 = MA30_now - MA30_prev;
+slope30 = maPriceClose30Now - maPriceClose30Prev;
 BUY = BUY && (slope30 > 0);
 ```
 
@@ -97,7 +97,7 @@ This ensures the broader trend is rising.
 ---
 
 ### ✅ Crossover persistence
-Require MA(5) to remain above MA(30) for at least 2 candles before entering:
+Require maPriceClose5 to remain above maPriceClose30 for at least 2 candles before entering:
 
 ```js
 BUY = BUY && MA5_above_MA30_for_at_least(2_candles);
@@ -112,7 +112,7 @@ Optionally, you can normalize volume conditions:
 
 ```js
 avg_volume_longer = average(volume over last 50 candles);
-BUY = BUY && (volume_now > 1.2 * avg_volume_longer);
+BUY = BUY && (volumeNow > 1.2 * avg_volume_longer);
 ```
 
 This ensures that breakouts are supported by sustained participation.
@@ -121,27 +121,27 @@ This ensures that breakouts are supported by sustained participation.
 
 ## 📊 Typical Parameters
 
-| Parameter | Value | Description |
-|------------|--------|-------------|
-| Fast MA | 5 | Short-term momentum |
-| Slow MA | 30 | Trend direction |
+| Parameter       | Value             | Description                |
+| --------------- | ----------------- | -------------------------- |
+| Fast MA         | 5                 | Short-term momentum        |
+| Slow MA         | 30                | Trend direction            |
 | Volume baseline | 20-candle average | Volume confirmation window |
 
 ---
 
 ## 🧠 Trading Psychology
 
-- **Golden Cross** → MA(5) rises above MA(30): momentum shifts up → BUY.
-- **Death Cross** → MA(5) falls below MA(30): trend weakening → EXIT.
-- Always trade **with the trend** (price above MA(30)).
+- **Golden Cross** → maPriceClose5 rises above maPriceClose30: momentum shifts up → BUY.
+- **Death Cross** → maPriceClose5 falls below maPriceClose30: trend weakening → EXIT.
+- Always trade **with the trend** (price above maPriceClose30).
 
 ---
 
 ## ⚠️ Notes
 
 - Works best in **trending markets**, not sideways ranges.
-- Avoid entries during low volume or flat MA(30).
-- Combine with proper **risk management** and **stop-loss** (e.g., below MA(30) or previous swing low).
+- Avoid entries during low volume or flat maPriceClose30.
+- Combine with proper **risk management** and **stop-loss** (e.g., below maPriceClose30 or previous swing low).
 
 ---
 
@@ -151,29 +151,29 @@ This ensures that breakouts are supported by sustained participation.
 // BUY rule
 BUY =
 (
-    (MA5_prev < MA30_prev)
- && (MA5_now  > MA30_now)
- && (price_now > MA30_now)
- && (volume_now > avg_volume)
- && (close_now > open_now)
+    (maPriceClose5Prev < maPriceClose30Prev)
+ && (maPriceClose5Now  > maPriceClose30Now)
+ && (priceNow > maPriceClose30Now)
+ && (volumeNow > maVolume20)
+ && (priceCloseNow > priceOpenNow)
 );
 
 // SELL rule
 SELL =
 (
-    (MA5_now < MA30_now)
- || (price_now < MA30_now)
+    (maPriceClose5Now < maPriceClose30Now)
+ || (priceNow < maPriceClose30Now)
 );
 
 // HOLD rule
 HOLD =
 (
-    (MA5_now > MA30_now)
- && (price_now >= MA30_now)
+    (maPriceClose5Now > maPriceClose30Now)
+ && (priceNow >= maPriceClose30Now)
 );
 
 // Optional filters
-slope30 = MA30_now - MA30_prev;
+slope30 = maPriceClose30Now - maPriceClose30Prev;
 BUY = BUY && (slope30 > 0);
 BUY = BUY && MA5_above_MA30_for_at_least(2_candles);
 ```
@@ -182,14 +182,14 @@ BUY = BUY && MA5_above_MA30_for_at_least(2_candles);
 
 ## 🏁 Summary Table
 
-| Condition | Meaning | Action |
-|------------|----------|--------|
-| MA(5) crosses **above** MA(30), price above MA(30), volume high, green candle | Start long position | ✅ BUY |
-| MA(5) crosses **below** MA(30) OR price < MA(30) | Trend reversal | 🔴 SELL |
-| MA(5) > MA(30) and price ≥ MA(30) | Trend intact | ⚪ HOLD |
+| Condition                                                                                             | Meaning             | Action |
+| ----------------------------------------------------------------------------------------------------- | ------------------- | ------ |
+| maPriceClose5 crosses **above** maPriceClose30, price above maPriceClose30, volume high, green candle | Start long position | ✅ BUY  |
+| maPriceClose5 crosses **below** maPriceClose30 OR price < maPriceClose30                              | Trend reversal      | 🔴 SELL |
+| maPriceClose5 > maPriceClose30 and price ≥ maPriceClose30                                             | Trend intact        | ⚪ HOLD |
 
 ---
 
-**Author:** Based on MA(5)/MA(30) crossover principles  
+**Author:** Based on maPriceClose5/maPriceClose30 crossover principles  
 **Recommended timeframe:** 1m to 1h depending on volatility  
 **Applies to:** Binance / TradingView / Custom bot backtesting
