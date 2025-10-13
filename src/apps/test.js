@@ -2,6 +2,7 @@ const { EventEmitter } = require('events')
 const SourceDb = require('../sources/SourceDb')
 const Candles = require('../instruments/Candles')
 const RideTheWave = require('../strategies/RideTheWave')
+const Mamas = require('../strategies/Mamas')
 const SymbolWallet = require('../utils/SymbolWallet')
 const path = require('path')
 
@@ -23,7 +24,8 @@ async function main () {
         password: '' // you can leave blank if not set
     })
     const candles = new Candles(events, 1)
-    const strategy = new RideTheWave(events)
+    // const strategy = new RideTheWave(events)
+    const strategy = new Mamas(events)
     const symbolWallet = new SymbolWallet(events, symbol, path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
     await sourceDb.start(symbol)
     sourceDb.close()
