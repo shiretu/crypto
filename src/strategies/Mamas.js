@@ -1,5 +1,7 @@
-const Ma = require('../utils/Ma')
 const console = require('../utils/coloredConsole')
+
+const Ma = require('../instruments/Ma')
+const MacdLine = require('../instruments/MacdLine')
 
 class Mamas {
     static #SETUP = {
@@ -19,7 +21,8 @@ class Mamas {
         this.current = {
             maPriceShort: new Ma(Mamas.#SETUP.window.price.short, maPriceEvaluator),
             maPriceLong: new Ma(Mamas.#SETUP.window.price.long, maPriceEvaluator),
-            maVolume: new Ma(Mamas.#SETUP.window.volume, maVolumeEvaluator)
+            maVolume: new Ma(Mamas.#SETUP.window.volume, maVolumeEvaluator),
+            macdPrice: new MacdLine(12, 26, maPriceEvaluator)
         }
         this.previous = {
             maPriceShort: 0,
@@ -40,6 +43,7 @@ class Mamas {
         this.current.maPriceShort.push(evt.candle)
         this.current.maPriceLong.push(evt.candle)
         this.current.maVolume.push(evt.candle)
+        this.current.macdPrice.push(evt.candle)
         try {
             if (!(this.current.maPriceShort.isReady &&
                 this.current.maPriceLong.isReady &&
@@ -49,7 +53,8 @@ class Mamas {
                 (this.previous.maVolume !== 0)
             )) return
 
-            console.log(evt.candle.tsHr, this.current.maPriceShort.value)
+            // console.log(evt.candle.symbol, evt.candle.tsHr, this.current.maPriceShort.value, this.current.maPriceLong.value, this.current.macdPrice.value)
+            console.log(evt.candle.symbol, evt.candle.tsHr)
         } finally {
             this.previous.maPriceShort = this.current.maPriceShort.value
             this.previous.maPriceLong = this.current.maPriceLong.value

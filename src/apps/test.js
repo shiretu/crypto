@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events')
 const SourceDb = require('../sources/SourceDb')
-const Candles = require('../instruments/Candles')
+const Candles = require('../core/Candles')
 const RideTheWave = require('../strategies/RideTheWave')
 const Mamas = require('../strategies/Mamas')
 const SymbolWallet = require('../utils/SymbolWallet')
