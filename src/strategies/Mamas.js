@@ -49,7 +49,7 @@ class Mamas {
                 (this.previous.maVolume !== 0)
             )) return
 
-            console.log('Stuff')
+            console.log(evt.candle.tsHr, this.current.maPriceShort.value)
         } finally {
             this.previous.maPriceShort = this.current.maPriceShort.value
             this.previous.maPriceLong = this.current.maPriceLong.value
