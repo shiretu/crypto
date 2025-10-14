@@ -14,12 +14,10 @@ class Mamas {
     }
 
     constructor (events) {
-        const priceEvaluator = (candle) => candle.close.price
-        const volumeEvaluator = (candle) => candle.info.quoteVolume
         this.events = events
         this.current = {
-            emaVolume: new Ema(Mamas.#SETUP.volume, volumeEvaluator),
-            macdSignal: new MacdSignal(Mamas.#SETUP.macd.short, Mamas.#SETUP.macd.long, Mamas.#SETUP.macd.signal, priceEvaluator)
+            emaVolume: new Ema(Mamas.#SETUP.volume),
+            macdSignal: new MacdSignal(Mamas.#SETUP.macd.short, Mamas.#SETUP.macd.long, Mamas.#SETUP.macd.signal)
         }
         this.previous = {
             emaVolume: 0,
@@ -36,8 +34,8 @@ class Mamas {
     }
 
     #onCandleClose (evt) {
-        this.current.emaVolume.push(evt.candle)
-        this.current.macdSignal.push(evt.candle)
+        this.current.emaVolume.push(evt.candle.info.volume)
+        this.current.macdSignal.push(evt.candle.close.price)
         try {
             if (!(this.current.emaVolume.isReady &&
                 this.current.macdSignal.isReady &&

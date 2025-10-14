@@ -1,13 +1,12 @@
 const Ema = require('./Ema')
 
 class MacdLine {
-    constructor (shortPeriod, longPeriod, evaluatorFnc) {
+    constructor (shortPeriod, longPeriod) {
         if (!(shortPeriod > 0 && longPeriod > 0) || (shortPeriod >= longPeriod)) {
             throw new Error('MacdLine: require 0 < shortPeriod < longPeriod')
         }
-        this.evaluatorFnc = evaluatorFnc
-        this.short = new Ema(shortPeriod, evaluatorFnc)
-        this.long = new Ema(longPeriod, evaluatorFnc)
+        this.short = new Ema(shortPeriod)
+        this.long = new Ema(longPeriod)
         this.currentValue = null
         this.activeFunction = () => {
             if (!(this.short.isReady && this.long.isReady)) { return null }
@@ -22,16 +21,16 @@ class MacdLine {
     get value () { return this.currentValue }
     get isReady () { return this.currentValue != null }
 
-    push (obj, evaluatorFnc = null) {
-        this.short.push(obj, evaluatorFnc)
-        this.long.push(obj, evaluatorFnc)
+    push (value) {
+        this.short.push(value)
+        this.long.push(value)
         return this.activeFunction()
     }
 
-    pretend (obj, evaluatorFnc = null) {
-        const l = this.long.pretend(obj, evaluatorFnc)
+    pretend (value) {
+        const l = this.long.pretend(value)
         if (l == null) { return null }
-        return this.short.pretend(obj, evaluatorFnc) - l
+        return this.short.pretend(value) - l
     }
 }
 

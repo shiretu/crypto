@@ -1,7 +1,6 @@
 class Ema {
-    constructor (capacity, evaluatorFnc) {
+    constructor (capacity) {
         this.capacity = capacity
-        this.evaluatorFnc = evaluatorFnc
         this.alpha = 2 / (this.capacity + 1)
         this.currentValue = null
         this.firstSum = 0
@@ -12,16 +11,12 @@ class Ema {
     get value () { return this.currentValue }
     get isReady () { return this.currentValue != null }
 
-    push (obj, evaluatorFnc = null) {
-        return (this.currentValue = this.activeFunction(this.#getValue(obj, evaluatorFnc)))
-    }
+    push (value) { return (this.currentValue = this.activeFunction(value)) }
 
-    pretend (obj, evaluatorFnc = null) {
+    pretend (value) {
         if (!this.isReady) return null
-        return this.#computeNormal(this.#getValue(obj, evaluatorFnc))
+        return this.#computeNormal(value)
     }
-
-    #getValue (obj, evaluatorFnc) { return (evaluatorFnc || this.evaluatorFnc)(obj) }
 
     #computeInitial (value) {
         if (this.firstElementsCount < this.capacity) {

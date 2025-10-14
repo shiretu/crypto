@@ -2,17 +2,16 @@ const Ema = require('./Ema')
 const MacdLine = require('./MacdLine')
 
 class MacdSignal {
-    constructor (shortPeriod, longPeriod, signalPeriod, evaluatorFnc) {
-        this.evaluatorFnc = evaluatorFnc
-        this.macdLine = new MacdLine(shortPeriod, longPeriod, evaluatorFnc)
+    constructor (shortPeriod, longPeriod, signalPeriod) {
+        this.macdLine = new MacdLine(shortPeriod, longPeriod)
         this.signalEma = new Ema(signalPeriod, v => v)
         this.value = null
     }
 
     get isReady () { return this.signalEma.isReady }
 
-    push (obj, evaluatorFnc = null) {
-        const macd = this.macdLine.push(obj, evaluatorFnc)
+    push (value) {
+        const macd = this.macdLine.push(value)
         if (macd == null) { return null }
         const signal = this.signalEma.push(macd)
         if (signal == null) { return null }
@@ -20,8 +19,8 @@ class MacdSignal {
         return this.value
     }
 
-    pretend (obj, evaluatorFnc = null) {
-        const macd = this.macdLine.pretend(obj, evaluatorFnc)
+    pretend (value) {
+        const macd = this.macdLine.pretend(value)
         if (macd == null) return null
         const signal = this.signalEma.pretend(macd)
         if (signal == null) return null

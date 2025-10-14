@@ -1,7 +1,6 @@
-class Ma {
-    constructor (capacity, evaluatorFnc) {
+class Sma {
+    constructor (capacity) {
         this.capacity = capacity
-        this.evaluatorFnc = evaluatorFnc
         this.objects = []
         this.currentSum = 0
         this.currentCount = 0
@@ -11,12 +10,11 @@ class Ma {
     get value () { return this.currentValue }
     get isReady () { return this.objects.length === this.capacity }
 
-    push (obj, evaluatorFnc = null) {
-        const value = (evaluatorFnc || this.evaluatorFnc)(obj)
+    push (value) {
         this.currentSum += value
-        this.objects.push({ value, obj })
+        this.objects.push(value)
         if (this.objects.length > this.capacity) {
-            this.currentSum -= this.objects[0].value
+            this.currentSum -= this.objects[0]
             this.objects.shift()
         } else {
             this.currentCount = this.objects.length
@@ -24,11 +22,10 @@ class Ma {
         return (this.currentValue = this.currentSum / this.currentCount)
     }
 
-    pretend (obj, evaluatorFnc = null) {
-        const value = (evaluatorFnc || this.evaluatorFnc)(obj)
-        return (this.currentSum + value - (this.isReady ? this.objects[0].value : 0)) /
+    pretend (value) {
+        return (this.currentSum + value - (this.isReady ? this.objects[0] : 0)) /
            (this.currentCount + (this.isReady ? 0 : 1))
     }
 }
 
-module.exports = Ma
+module.exports = Sma
