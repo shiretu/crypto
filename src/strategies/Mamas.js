@@ -1,15 +1,11 @@
 const console = require('../utils/coloredConsole')
 
 const Ema = require('../instruments/Ema')
-const MacdSignal = require('../instruments/MacdSignal')
+const MacdImpulse = require('../instruments/MacdImpulse')
 
 class Mamas {
     static #SETUP = {
-        macd: {
-            short: 12,
-            long: 26,
-            signal: 9
-        },
+        macd: MacdImpulse.DefaultsConfig,
         volume: 20
     }
 
@@ -17,11 +13,11 @@ class Mamas {
         this.events = events
         this.current = {
             emaVolume: new Ema(Mamas.#SETUP.volume),
-            macdSignal: new MacdSignal(Mamas.#SETUP.macd.short, Mamas.#SETUP.macd.long, Mamas.#SETUP.macd.signal)
+            macdImpulse: MacdImpulse.create(Mamas.#SETUP.macd)
         }
         this.previous = {
             emaVolume: 0,
-            macdSignal: null
+            macdImpulse: null
         }
         this.enabled = true
         this.events.on('candleUpdate', (evt) => this.#onCandleUpdate(evt))
@@ -35,18 +31,18 @@ class Mamas {
 
     #onCandleClose (evt) {
         this.current.emaVolume.push(evt.candle.info.volume)
-        this.current.macdSignal.push(evt.candle.close.price)
+        this.current.macdImpulse.push(evt.candle.close.price)
         try {
             if (!(this.current.emaVolume.isReady &&
-                this.current.macdSignal.isReady &&
-                (this.previous.macdSignal !== null) &&
+                this.current.macdImpulse.isReady &&
+                (this.previous.macdImpulse !== null) &&
                 (this.previous.emaVolume !== null)
             )) return
 
-            console.log(evt.candle.symbol, evt.candle.tsHr, JSON.stringify(this.current.macdSignal.value))
+            console.log(evt.candle.symbol, evt.candle.tsHr, JSON.stringify(this.current.macdImpulse.value))
         } finally {
             this.previous.emaVolume = this.current.emaVolume.value
-            this.previous.macdSignal = this.current.macdSignal.value
+            this.previous.macdImpulse = this.current.macdImpulse.value
         }
     }
 }

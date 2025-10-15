@@ -4,7 +4,7 @@ const MacdLine = require('./MacdLine')
 class MacdSignal {
     constructor (shortPeriod, longPeriod, signalPeriod) {
         this.macdLine = new MacdLine(shortPeriod, longPeriod)
-        this.signalEma = new Ema(signalPeriod, v => v)
+        this.signalEma = new Ema(signalPeriod)
         this.value = null
     }
 
