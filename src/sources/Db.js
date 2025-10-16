@@ -7,14 +7,6 @@ class Db {
         this.client = null
     }
 
-    static databaseName (exchangeName) {
-        return 'market'
-    }
-
-    static tableName (exchangeName, symbolName) {
-        return `${Db.databaseName(exchangeName)}.trades_${symbolName}`
-    }
-
     static async create (config) {
         const result = new Db(config)
         try {

@@ -1,11 +1,10 @@
 const { EventEmitter } = require('events')
-const SourceDb = require('../sources/SourceDb')
+const BinanceDb = require('../sources/BinanceDb')
 const Candles = require('../core/Candles')
 const RideTheWave = require('../strategies/RideTheWave')
 const Mamas = require('../strategies/Mamas')
 const SymbolWallet = require('../utils/SymbolWallet')
 const path = require('path')
-const { ensureData } = require('../utils/dataimporters/binance')
 
 const events = new EventEmitter()
 
@@ -24,14 +23,13 @@ async function main () {
         user: 'default',
         password: '' // you can leave blank if not set
     }
-    await ensureData(dbConf, symbolName, 1)
-    const sourceDb = await SourceDb.create(events, dbConf)
+    const binanceDb = await BinanceDb.create(events, dbConf, symbolName, 5)
     const candles = new Candles(events, 1)
     // const strategy = new RideTheWave(events)
     const strategy = new Mamas(events)
     const symbolWallet = new SymbolWallet(events, symbolName, path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
-    await sourceDb.start('binance', symbolName)
-    sourceDb.close()
+    await binanceDb.start()
+    binanceDb.close()
     console.log('Done')
 }
 
