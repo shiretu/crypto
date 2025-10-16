@@ -1,0 +1,19 @@
+{
+    "assets": [
+        "BTC",
+        "ETH",
+        "USDC"
+    ],
+    "symbols": [
+        [
+            "BTC",
+            "USDC",
+            "BTCUSDC"
+        ],
+        [
+            "ETH",
+            "USDC",
+            "ETHUSDC"
+        ]
+    ]
+}
