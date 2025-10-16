@@ -103,22 +103,3 @@ fi
 
 echo "Starting ClickHouse server..."
 "${ch_dir}"/bin/ch_start
-
-echo "Creating database and table..."
-"${ch_dir}"/bin/ch_cl --query "
-CREATE DATABASE IF NOT EXISTS market;
-
-CREATE TABLE IF NOT EXISTS market.trades
-(
-    symbol       LowCardinality(String),
-    id           UInt64,
-    price        Decimal(38,18),
-    baseQty      Decimal(38,18),
-    quoteQty     Decimal(38,18),
-    ts           UInt64,
-    isBuyerMaker UInt8,
-    isBestMatch  UInt8
-)
-ENGINE = MergeTree
-ORDER BY (symbol, ts, id);
-"

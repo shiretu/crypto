@@ -26,6 +26,7 @@ class Db {
     }
 
     async query (q) { return (await this.client.query(q)) }
+    async insert (q) { return (await this.client.insert(q)) }
 
     async #init () {
         const client = createClient(this.config)

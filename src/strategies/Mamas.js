@@ -39,7 +39,7 @@ class Mamas {
                 (this.previous.emaVolume !== null)
             )) return
 
-            console.log(evt.candle.symbol, evt.candle.tsHr, JSON.stringify(this.current.macdImpulse.value))
+            console.log(evt.candle.symbolName, evt.candle.tsHr, JSON.stringify(this.current.macdImpulse.value))
         } finally {
             this.previous.emaVolume = this.current.emaVolume.value
             this.previous.macdImpulse = this.current.macdImpulse.value

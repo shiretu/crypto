@@ -1,3 +1,4 @@
+const { tableName } = require('../utils/db')
 const { safeExec } = require('../utils/utils')
 const Db = require('./Db')
 
@@ -25,17 +26,17 @@ class SourceDb {
         this.db = db
     }
 
-    async start (symbol, start, end) {
+    async start (exchangeName, symbolName, start, end) {
         const qr = await this.db.query({
             query: `SELECT
                 *, 
+                '${symbolName}' as symbolName,
                 fromUnixTimestamp64Micro(ts, 'UTC') AS tsHr,
                 intDiv(ts, 60000000)   as tsAsMinute,
                 intDiv(ts, 600000000)  AS tsAs10Minutes,
                 intDiv(ts, 3600000000) AS tsAsHour
-            FROM market.trades
-            WHERE symbol == '${symbol}'
-            ORDER BY symbol, ts, id
+            FROM ${tableName(exchangeName, symbolName)}
+            ORDER BY ts, id
             `,
             compression: { response: true },
             clickhouse_settings: {
