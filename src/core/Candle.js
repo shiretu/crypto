@@ -12,7 +12,7 @@ class Candle {
     get low () { return this.ticks.reduce((acc, curr) => acc.price > curr.price ? curr : acc, this.ticks[0]) }
     get tsHr () { return this.open.tsHr }
     get tradesCount () { return this.ticks.length }
-    get symbolName () { return this.open.symbolName }
+    get symbolName () { return this.open.symbol.name() }
 
     get info () {
         if (this.cachedInfo) {

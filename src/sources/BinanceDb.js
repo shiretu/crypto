@@ -3,11 +3,12 @@ const Db = require('./Db')
 const https = require('https')
 const http = require('http')
 const unzipper = require('unzipper')
+const Symbol = require('../core/Symbol')
 
 class SourceDb {
-    constructor (events, dbConfig, symbolName, historyInDays) {
+    constructor (events, dbConfig, symbol, historyInDays) {
         this.exchangeName = 'binance'
-        this.symbolName = symbolName
+        this.symbol = symbol
         this.historyInDays = historyInDays
         this.columns = [
             ['id', 'UInt64'],
@@ -24,7 +25,9 @@ class SourceDb {
     }
 
     static async create (events, config, symbolName, historyInDays) {
-        const result = new SourceDb(events, config, symbolName, historyInDays)
+        const symbol = Symbol.find(symbolName)
+        if (!symbol) throw new Error(`Symbol ${symbolName} not found`)
+        const result = new SourceDb(events, config, symbol, historyInDays)
         try {
             await result.#init()
             return result
@@ -44,8 +47,7 @@ class SourceDb {
     async start () {
         const qr = await this.db.query({
             query: `SELECT
-                *, 
-                '${this.symbolName}' as symbolName,
+                *,
                 fromUnixTimestamp64Micro(ts, 'UTC') AS tsHr,
                 intDiv(ts, 60000000)   as tsAsMinute,
                 intDiv(ts, 600000000)  AS tsAs10Minutes,
@@ -64,7 +66,7 @@ class SourceDb {
         if (!qr) throw new Error('Unable to execute fetching query')
         for await (const rows of qr.stream()) {
             rows.forEach((row) => {
-                this.events.emit('tick', row.json())
+                this.events.emit('tick', { symbol: this.symbol, ...row.json() })
             })
         }
     }
@@ -78,7 +80,7 @@ class SourceDb {
 
     databaseName () { return this.exchangeName }
 
-    tableName () { return `${this.databaseName()}.trades_${this.symbolName}` }
+    tableName () { return `${this.databaseName()}.trades_${this.symbol.name('', false)}` }
 
     async #createTable () {
         await this.db.query({ query: `CREATE DATABASE IF NOT EXISTS ${this.databaseName()};` })
@@ -119,7 +121,8 @@ class SourceDb {
             const historyStartMs = Math.max(yesterdayMs - this.historyInDays * dayDurationMs, latestAvailableDataMs)
             for (let dayMs = historyStartMs + dayDurationMs; dayMs <= yesterdayMs; dayMs += dayDurationMs) {
                 const dateTimeStr = new Date(dayMs).toISOString().split('T')[0]
-                const zipUrl = `https://data.binance.vision/data/spot/daily/trades/${this.symbolName}/${this.symbolName}-trades-${dateTimeStr}.zip`
+                const exchangeSymbolName = this.symbol.name('', true)
+                const zipUrl = `https://data.binance.vision/data/spot/daily/trades/${exchangeSymbolName}/${exchangeSymbolName}-trades-${dateTimeStr}.zip`
                 await this.db.insert({
                     table: this.tableName(),
                     columns: this.columns.map(c => c[0]),

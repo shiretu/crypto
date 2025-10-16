@@ -1,10 +1,16 @@
 class Symbol {
     constructor (baseAssetName, quoteAssetName) {
-        this.baseAssetName = baseAssetName
-        this.quoteAssetName = quoteAssetName
+        this._baseAssetName = baseAssetName
+        this._quoteAssetName = quoteAssetName
     }
 
-    get name () { return `${this.baseAssetName}-${this.quoteAssetName}` }
+    name (separator = '', uppercase = true) {
+        const result = `${this.baseAssetName}${separator}${this.quoteAssetName}`
+        return uppercase ? result.toLocaleUpperCase() : result.toLocaleLowerCase()
+    }
+
+    get baseAssetName () { return this._baseAssetName }
+    get quoteAssetName () { return this._quoteAssetName }
 
     static find (alias) { return symbolsByAliases.get(alias) }
 }
