@@ -24,7 +24,7 @@ async function main () {
         user: 'default',
         password: '' // you can leave blank if not set
     }
-    await ensureData(dbConf, symbolName, 5)
+    await ensureData(dbConf, symbolName, 1)
     const sourceDb = await SourceDb.create(events, dbConf)
     const candles = new Candles(events, 1)
     // const strategy = new RideTheWave(events)

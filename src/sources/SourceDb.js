@@ -1,4 +1,3 @@
-const { tableName } = require('../utils/db')
 const { safeExec } = require('../utils/utils')
 const Db = require('./Db')
 
@@ -35,7 +34,7 @@ class SourceDb {
                 intDiv(ts, 60000000)   as tsAsMinute,
                 intDiv(ts, 600000000)  AS tsAs10Minutes,
                 intDiv(ts, 3600000000) AS tsAsHour
-            FROM ${tableName(exchangeName, symbolName)}
+            FROM ${Db.tableName(exchangeName, symbolName)}
             ORDER BY ts, id
             `,
             compression: { response: true },
