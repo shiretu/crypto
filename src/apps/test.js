@@ -5,6 +5,7 @@ const RideTheWave = require('../strategies/RideTheWave')
 const Mamas = require('../strategies/Mamas')
 const SymbolWallet = require('../utils/SymbolWallet')
 const path = require('path')
+const Symbol = require('../core/Symbol')
 
 const events = new EventEmitter()
 
@@ -27,7 +28,7 @@ async function main () {
     const candles = new Candles(events, 1)
     // const strategy = new RideTheWave(events)
     const strategy = new Mamas(events)
-    const symbolWallet = new SymbolWallet(events, symbolName, path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
+    const symbolWallet = new SymbolWallet(events, Symbol.find(symbolName), path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
     await binanceDb.start()
     binanceDb.close()
     console.log('Done')

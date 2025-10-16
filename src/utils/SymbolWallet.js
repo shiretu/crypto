@@ -2,8 +2,8 @@ const { generatePng } = require('./utils')
 const path = require('path')
 
 class SymbolWallet {
-    constructor (events, symbolName, pathForImages) {
-        this.symbolName = symbolName
+    constructor (events, symbol, pathForImages) {
+        this.symbol = symbol
         this.pathForImages = pathForImages
         this.events = events
         this.baseQty = 0
@@ -39,8 +39,8 @@ class SymbolWallet {
             const red = '\x1b[31m%s\x1b[0m'
             const green = '\x1b[32m%s\x1b[0m'
             const yellow = '\x1b[33m%s\x1b[0m'
-            console.log(order.profitQty > 0 ? green : (good ? yellow : red), `${this.symbolName}: ${order.metadata.startTsHr} ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${order.profitQty.toFixed(8)}`)
-            generatePng(order, path.join(this.pathForImages, this.symbolName, `${order.metadata.startTsHr}.png`))
+            console.log(order.profitQty > 0 ? green : (good ? yellow : red), `${this.symbol.name()}: ${order.metadata.startTsHr} ${order.buyTick.tsHr} ${tick.tsHr} - ${order.low.toFixed(8)} - ${order.at.toFixed(8)} - ${order.high.toFixed(8)} - ${order.spentQuoteQty.toFixed(8)} - ${order.receivedQuoteQty.toFixed(8)} - ${order.profitQty.toFixed(8)}`)
+            generatePng(order, path.join(this.pathForImages, this.symbol.name(), `${order.metadata.startTsHr}.png`))
             // console.log('---')
         }
         const kept = []
