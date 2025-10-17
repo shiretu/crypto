@@ -46,15 +46,7 @@ class SourceDb {
 
     async start () {
         const qr = await this.db.query({
-            query: `SELECT
-                *,
-                fromUnixTimestamp64Micro(ts, 'UTC') AS tsHr,
-                intDiv(ts, 60000000)   as tsAsMinute,
-                intDiv(ts, 600000000)  AS tsAs10Minutes,
-                intDiv(ts, 3600000000) AS tsAsHour
-            FROM ${this.tableName()}
-            ORDER BY ts, id
-            `,
+            query: `SELECT *, fromUnixTimestamp64Micro(ts, 'UTC') AS tsHr FROM ${this.tableName()} ORDER BY ts, id`,
             compression: { response: true },
             clickhouse_settings: {
                 optimize_read_in_order: 1,
