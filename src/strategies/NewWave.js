@@ -1,4 +1,6 @@
 const console = require('../utils/coloredConsole')
+const path = require('path')
+const { generatePng } = require('../utils/utils')
 
 class NewWave {
     constructor (events) {
@@ -21,6 +23,7 @@ class NewWave {
     #onCandleOpen (candle, tick) { }
     #onCandleUpdate (candle, tick) {}
     #onCandleClose (candleCurrent, tick) {
+        // on a grey candle, we give up; they do not happen too often anyways. This simplifies things
         if (candleCurrent.direction === 0) {
             this.#reset(candleCurrent.tsHr, 'Grey candle')
             return
@@ -50,22 +53,12 @@ class NewWave {
     }
 
     #makeDecision (tick) {
-        this.#reset(this.initLeg[0].tsHr, `Evaluate ${this.initLeg[0].open.symbol.name()} ${this.signalLeg.at(-1).close.tsHr}`)
-    }
-
-    #switching (candleCurrent, tick) {
-        const opposite = candleCurrent.direction > 0 ? this.reds : this.greens
-        const current = candleCurrent.direction > 0 ? this.greens : this.reds
-        if (opposite.length === 0) { throw new Error('We should not be here: how is this a switch with opposite having 0 length!?') }
-        if (opposite.length < 2) {
-            this.#reset(candleCurrent.tsHr, 'Switching too soon')
-            return
-        }
-        if (current.length > 2) {
-            this.#reset(candleCurrent.tsHr, 'The signal leg is too big')
-            return
-        }
-        throw new Error('Switching')
+        const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name(), `${this.initLeg[0].tsHr}.png`))
+        generatePng(imagePath, [...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
+        console.log(`${this.initLeg[0].open.symbol.name()} ${this.initLeg[0].tsHr} ${this.signalLeg.at(-1).close.tsHr} ${this.initLeg.length} ${this.signalLeg.length} ${this.decisionLeg.length}`)
+        this.initLeg = this.signalLeg
+        this.signalLeg = this.decisionLeg
+        this.decisionLeg = []
     }
 }
 
