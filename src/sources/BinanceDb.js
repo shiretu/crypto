@@ -101,6 +101,10 @@ class SourceDb {
             const u = new URL(url)
             const client = u.protocol === 'https:' ? https : http
             const req = client.get(u, (res) => {
+                if (res.statusCode === 404) {
+                    resolve(null)
+                    return
+                }
                 if (res.statusCode !== 200) {
                     reject(new Error(`GET ${url} -> ${res.statusCode}`))
                     return
@@ -123,11 +127,16 @@ class SourceDb {
                 const dateTimeStr = new Date(dayMs).toISOString().split('T')[0]
                 const exchangeSymbolName = this.symbol.name('', true)
                 const zipUrl = `https://data.binance.vision/data/spot/daily/trades/${exchangeSymbolName}/${exchangeSymbolName}-trades-${dateTimeStr}.zip`
+                const stream = await this.httpGetStream(zipUrl)
+                if (!stream) {
+                    console.log(`Skip missing ${zipUrl}`)
+                    continue
+                }
                 await this.db.insert({
                     table: this.tableName(),
                     columns: this.columns.map(c => c[0]),
                     format: 'CSV',
-                    values: (await this.httpGetStream(zipUrl)).pipe(unzipper.ParseOne())
+                    values: stream.pipe(unzipper.ParseOne())
                 })
                 console.log(`Inserted ${zipUrl}`)
             }

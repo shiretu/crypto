@@ -24,10 +24,10 @@ async function main () {
         user: 'default',
         password: '' // you can leave blank if not set
     }
-    const binanceDb = await BinanceDb.create(events, dbConf, symbolName, 5)
+    const binanceDb = await BinanceDb.create(events, dbConf, symbolName, 60)
     const candles = new Candles(events, 1)
-    // const strategy = new RideTheWave(events)
-    const strategy = new Mamas(events)
+    const strategy = new RideTheWave(events)
+    // const strategy = new Mamas(events)
     const symbolWallet = new SymbolWallet(events, Symbol.find(symbolName), path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
     await binanceDb.start()
     binanceDb.close()
