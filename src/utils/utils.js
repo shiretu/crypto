@@ -2,6 +2,12 @@ const { createCanvas } = require('canvas')
 const fs = require('fs/promises')
 const path = require('path')
 
+const dayDurationMs = 24 * 3600 * 1000
+
+const dayStart = (tsMs) => {
+    return Math.floor(tsMs / dayDurationMs) * dayDurationMs
+}
+
 module.exports = {
     computeBuyProfit: (buyPrice, sellPrice, buyQuoteQty, buyFeePer = 0.001, sellFeePer = 0.001) => {
         const buyBaseQty = buyQuoteQty / buyPrice
@@ -24,6 +30,8 @@ module.exports = {
             console.error(e)
         }
     },
+    dayStart,
+    dayDurationMs,
     generatePng: async (order, fullPath) => {
         const inc1 = order?.metadata?.firstIncrease ?? []
         const dec = order?.metadata?.decrease ?? []

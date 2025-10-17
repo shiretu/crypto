@@ -6,6 +6,7 @@ const Mamas = require('../strategies/Mamas')
 const SymbolWallet = require('../utils/SymbolWallet')
 const path = require('path')
 const Symbol = require('../core/Symbol')
+const { dayStart, dayDurationMs } = require('../utils/utils')
 
 const events = new EventEmitter()
 
@@ -29,7 +30,7 @@ async function main () {
     const strategy = new RideTheWave(events)
     // const strategy = new Mamas(events)
     const symbolWallet = new SymbolWallet(events, Symbol.find(symbolName), path.resolve(path.join(path.resolve(__dirname), '..', '..', 'trades')))
-    await binanceDb.start()
+    await binanceDb.start(dayStart(Date.now()) - 3 * dayDurationMs)
     binanceDb.close()
     console.log('Done')
 }
