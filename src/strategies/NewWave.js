@@ -1,6 +1,7 @@
 const console = require('../utils/coloredConsole')
 const path = require('path')
 const { generatePng } = require('../utils/utils')
+const { generateAndSavePng } = require('../utils/CandlesPrinter')
 
 class NewWave {
     constructor (events) {
@@ -54,7 +55,7 @@ class NewWave {
 
     #cycle (reason) {
         const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
-        generatePng(imagePath, [...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
+        generateAndSavePng(imagePath, [...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
         this.initLeg = this.signalLeg
         this.signalLeg = this.decisionLeg
         this.decisionLeg = []
