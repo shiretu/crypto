@@ -10,12 +10,11 @@ class NewWave {
         this.initLeg = []
         this.signalLeg = []
         this.decisionLeg = []
-        this.enabled = true
-        this.events.on('orderClosed', () => { this.enabled = true })
+        this.order = null
+        this.events.on('orderClosed', (order) => { if (order.id === this.order.id) this.order = null })
     }
 
     #reset (tsHr, reason) {
-        console.log(tsHr, reason, `${this.initLeg.length} ${this.signalLeg.length} ${this.decisionLeg.length}`)
         this.initLeg = []
         this.signalLeg = []
         this.decisionLeg = []
@@ -23,7 +22,7 @@ class NewWave {
 
     #onCandleClose (candleCurrent, tick) {
         // don't do anything if we are disabled
-        if (!this.enabled) return
+        if (this.order !== null) return
 
         // on a grey candle, we give up; they do not happen too often anyways. This simplifies things
         if (candleCurrent.direction === 0) {
@@ -61,16 +60,14 @@ class NewWave {
     }
 
     #cycle (reason) {
-        const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
-        generateAndSavePng(imagePath, [...this.initLeg.map(c => c.info), ...this.signalLeg.map(c => c.info), ...this.decisionLeg.map(c => c.info)])
+        // const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
+        // generateAndSavePng(imagePath, [...this.initLeg.map(c => c.info), ...this.signalLeg.map(c => c.info), ...this.decisionLeg.map(c => c.info)])
         this.initLeg = this.signalLeg
         this.signalLeg = this.decisionLeg
         this.decisionLeg = []
     }
 
     #makeDecision (tick) {
-        console.log(`${this.initLeg[0].open.symbol.name()} ${this.initLeg[0].tsHr} ${this.signalLeg.at(-1).close.tsHr} ${this.initLeg.length} ${this.signalLeg.length} ${this.decisionLeg.length}`)
-
         // the first leg must be long enough
         if (this.initLeg.length < 2) {
             this.#cycle('initLegTooShort')
@@ -127,8 +124,15 @@ class NewWave {
         }
 
         // alright, time to do the damage
-        this.enabled = false
-        this.events.emit('openOrder', Order.create(this.decisionLeg[0].direction > 0 ? Order.Buy : Order.Sell, tick.symbol, tick.price, 25))
+        this.order = Order.create(
+            this.decisionLeg[0].direction > 0 ? Order.Buy : Order.Sell,
+            tick.symbol,
+            25,
+            tick.price,
+            0,
+            0
+        )
+        this.events.emit('openOrder', this.order)
         this.#cycle('good')
     }
 }

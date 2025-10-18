@@ -2,6 +2,14 @@ class Symbol {
     constructor (baseAssetName, quoteAssetName) {
         this._baseAssetName = baseAssetName
         this._quoteAssetName = quoteAssetName
+        this._id = null
+    }
+
+    get id () {
+        if (this._id === null) {
+            this._id = this.name('', true)
+        }
+        return this._id
     }
 
     name (separator = '', uppercase = true) {
