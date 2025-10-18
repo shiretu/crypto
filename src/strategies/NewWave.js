@@ -108,6 +108,10 @@ class NewWave {
         }
 
         // check and see if the signal leg has decreasing volumes
+        if (this.initLeg.at(-1).info.quoteVolume <= this.signalLeg[0].info.quoteVolume) {
+            this.#cycle('signalLegStartedWithWrongVolume')
+            return
+        }
         for (let i = 1; i < this.signalLeg.length; i++) {
             if (this.signalLeg[i - 1].info.quoteVolume <= this.signalLeg[i].info.quoteVolume) {
                 this.#cycle('signalLegWithWrongVolumes')
