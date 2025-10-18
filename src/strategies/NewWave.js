@@ -70,6 +70,12 @@ class NewWave {
             return
         }
 
+        // the first leg must not be too long
+        if (this.initLeg.length > 3) {
+            this.#cycle('initLegTooLong')
+            return
+        }
+
         // the second (signal) leg must not bee too long
         if (this.signalLeg.length >= 3) {
             this.#cycle('signalLegTooBig')
@@ -95,10 +101,18 @@ class NewWave {
             }
         }
 
-        // check and see if the first leg has increasing volumes
+        // check and see if the init leg has increasing volumes
         if (this.initLeg.at(-2).info.quoteVolume >= this.initLeg.at(-1).info.quoteVolume) {
             this.#cycle('initLegWithWrongVolumes')
             return
+        }
+
+        // check and see if the signal leg has decreasing volumes
+        for (let i = 1; i < this.signalLeg.length; i++) {
+            if (this.signalLeg[i - 1].info.quoteVolume <= this.signalLeg[i].info.quoteVolume) {
+                this.#cycle('signalLegWithWrongVolumes')
+                return
+            }
         }
 
         this.#cycle('good')
