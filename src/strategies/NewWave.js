@@ -1,16 +1,17 @@
 const console = require('../utils/coloredConsole')
 const path = require('path')
 const { generateAndSavePng } = require('../utils/CandlesPrinter')
+const Order = require('../core/Order')
 
 class NewWave {
     constructor (events) {
         this.events = events
-        // this.events.on('candleOpen', ({ candle, tick }) => this.#onCandleOpen(candle, tick))
-        // this.events.on('candleUpdate', ({ candle, tick }) => this.#onCandleUpdate(candle, tick))
         this.events.on('candleClose', ({ candle, tick }) => this.#onCandleClose(candle, tick))
         this.initLeg = []
         this.signalLeg = []
         this.decisionLeg = []
+        this.enabled = true
+        this.events.on('orderClosed', () => { this.enabled = true })
     }
 
     #reset (tsHr, reason) {
@@ -20,9 +21,10 @@ class NewWave {
         this.decisionLeg = []
     }
 
-    // #onCandleOpen (candle, tick) { }
-    // #onCandleUpdate (candle, tick) {}
     #onCandleClose (candleCurrent, tick) {
+        // don't do anything if we are disabled
+        if (!this.enabled) return
+
         // on a grey candle, we give up; they do not happen too often anyways. This simplifies things
         if (candleCurrent.direction === 0) {
             this.#reset(candleCurrent.tsHr, 'Grey candle')
@@ -124,6 +126,9 @@ class NewWave {
             }
         }
 
+        // alright, time to do the damage
+        this.enabled = false
+        this.events.emit('openOrder', Order.create(this.decisionLeg[0].direction > 0 ? Order.Buy : Order.Sell, tick.symbol, tick.price, 25))
         this.#cycle('good')
     }
 }
