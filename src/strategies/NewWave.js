@@ -1,13 +1,12 @@
 const console = require('../utils/coloredConsole')
 const path = require('path')
-const { generatePng } = require('../utils/utils')
 const { generateAndSavePng } = require('../utils/CandlesPrinter')
 
 class NewWave {
     constructor (events) {
         this.events = events
-        this.events.on('candleOpen', ({ candle, tick }) => this.#onCandleOpen(candle, tick))
-        this.events.on('candleUpdate', ({ candle, tick }) => this.#onCandleUpdate(candle, tick))
+        // this.events.on('candleOpen', ({ candle, tick }) => this.#onCandleOpen(candle, tick))
+        // this.events.on('candleUpdate', ({ candle, tick }) => this.#onCandleUpdate(candle, tick))
         this.events.on('candleClose', ({ candle, tick }) => this.#onCandleClose(candle, tick))
         this.initLeg = []
         this.signalLeg = []
@@ -21,19 +20,22 @@ class NewWave {
         this.decisionLeg = []
     }
 
-    #onCandleOpen (candle, tick) { }
-    #onCandleUpdate (candle, tick) {}
+    // #onCandleOpen (candle, tick) { }
+    // #onCandleUpdate (candle, tick) {}
     #onCandleClose (candleCurrent, tick) {
         // on a grey candle, we give up; they do not happen too often anyways. This simplifies things
         if (candleCurrent.direction === 0) {
             this.#reset(candleCurrent.tsHr, 'Grey candle')
             return
         }
+
+        // start the first leg when empty
         if (this.initLeg.length === 0) {
             this.initLeg = [candleCurrent]
             return
         }
 
+        // contribute to first leg or start the signal leg
         if (this.signalLeg.length === 0) {
             if (this.initLeg.at(-1).direction === candleCurrent.direction) {
                 this.initLeg.push(candleCurrent)
@@ -43,13 +45,16 @@ class NewWave {
             return
         }
 
+        // continue to push to signal leg
         if (this.signalLeg.at(-1).direction === candleCurrent.direction) {
             this.signalLeg.push(candleCurrent)
             return
         }
 
+        // decision leg started
         this.decisionLeg.push(candleCurrent)
 
+        // make the decision
         this.#makeDecision(tick)
     }
 
@@ -124,6 +129,3 @@ class NewWave {
 }
 
 module.exports = NewWave
-
-//  ETHUSDC 2025-10-16 21:11:01.252353 3852.503 --> 3852.017
-//  ETHUSDC 2025-10-16 21:21:00.968035 3863.060 --> 3863.627
