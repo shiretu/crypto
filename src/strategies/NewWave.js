@@ -55,7 +55,7 @@ class NewWave {
 
     #cycle (reason) {
         const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
-        generateAndSavePng(imagePath, [...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
+        generateAndSavePng(imagePath, [...this.initLeg.map(c => c.info), ...this.signalLeg.map(c => c.info), ...this.decisionLeg.map(c => c.info)])
         this.initLeg = this.signalLeg
         this.signalLeg = this.decisionLeg
         this.decisionLeg = []

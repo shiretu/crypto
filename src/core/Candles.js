@@ -2,7 +2,7 @@ const Candle = require('./Candle')
 
 class Candles {
     constructor (events, intervalInMinutes) {
-        this.period = intervalInMinutes * 60000000
+        this.periodUs = intervalInMinutes * 60000000
         this.events = events
         this.events.on('tick', (tick) => this.#onTick(tick))
         this.candle = null
@@ -12,10 +12,10 @@ class Candles {
 
     #onTick (tick) {
         this.totalTicks++
-        tick.periodTs = Math.floor(tick.ts / this.period)
+        tick.periodTs = Math.floor(tick.ts / this.periodUs)
         if (!this.candle) {
             this.totalCandles++
-            this.candle = new Candle(this.intervalInMinutes, tick)
+            this.candle = new Candle(this.periodUs, tick)
             this.events.emit('candleOpen', { candle: this.candle, tick })
             return
         }

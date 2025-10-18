@@ -1,6 +1,6 @@
 class Candle {
-    constructor (intervalInMinutes, tick) {
-        this.intervalInMinutes = intervalInMinutes
+    constructor (durationUs, tick) {
+        this.durationUs = durationUs
         this.ticks = [tick]
         this.cachedInfo = null
     }
@@ -36,8 +36,8 @@ class Candle {
         }
         const totalWickPercent = topWickPercent + bottomWickPercent
         this.cachedInfo = {
-            ts: this.open.tsAsMinute * 60000000,
-            intervalInMinutes: this.intervalInMinutes,
+            ts: Math.floor(this.open.ts / this.durationUs) * this.durationUs,
+            durationUs: this.durationUs,
             open: this.open.price,
             close: this.close.price,
             high: high.price,

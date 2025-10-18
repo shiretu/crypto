@@ -112,20 +112,20 @@ const _draw = (shapes) => {
 
 const _generateCandles = (candles, lowestLow) => {
     const shapes = candles.reduce((result, candle, index) => {
-        const bottomEdge = Math.min(candle.info.open, candle.info.close)
-        const topEdge = Math.max(candle.info.open, candle.info.close)
+        const bottomEdge = Math.min(candle.open, candle.close)
+        const topEdge = Math.max(candle.open, candle.close)
         const rectangle = {
             t: 'r',
             x: index,
             y: bottomEdge - lowestLow,
             w: 1,
-            h: Math.abs(candle.info.open - candle.info.close),
+            h: Math.abs(candle.open - candle.close),
             f: candle.direction > 0 ? '#2ecc71' : '#e74c3c',
             e: '#000000'
         }
         result.push(rectangle)
 
-        const bottomWickLength = bottomEdge - candle.info.low
+        const bottomWickLength = bottomEdge - candle.low
         if (bottomWickLength > 0) {
             result.push({
                 t: 'l',
@@ -137,7 +137,7 @@ const _generateCandles = (candles, lowestLow) => {
             })
         }
 
-        const topWickLength = candle.info.high - topEdge
+        const topWickLength = candle.high - topEdge
         if (topWickLength > 0) {
             result.push({
                 t: 'l',
@@ -168,7 +168,7 @@ const _generateVolumes = (candles) => {
             x: index,
             y: 0,
             w: 1,
-            h: candle.info.baseVolume,
+            h: candle.baseVolume,
             f: candle.direction > 0 ? '#2ecc71' : '#e74c3c'
         })
         return result
@@ -176,9 +176,9 @@ const _generateVolumes = (candles) => {
 }
 
 const _generatePng = (candles) => {
-    const lowestLow = Math.min(...candles.map(c => c.info.low))
-    const highestHigh = Math.max(...candles.map(c => c.info.high))
-    const maxVolume = Math.max(...candles.map(c => c.info.baseVolume))
+    const lowestLow = Math.min(...candles.map(c => c.low))
+    const highestHigh = Math.max(...candles.map(c => c.high))
+    const maxVolume = Math.max(...candles.map(c => c.baseVolume))
 
     const totalWidth = Math.min(candles.length * 16, 2000)
     const unitW = totalWidth / candles.length
