@@ -52,13 +52,55 @@ class NewWave {
         this.#makeDecision(tick)
     }
 
-    #makeDecision (tick) {
-        const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name(), `${this.initLeg[0].tsHr}.png`))
+    #cycle (reason) {
+        const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
         generatePng(imagePath, [...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
-        console.log(`${this.initLeg[0].open.symbol.name()} ${this.initLeg[0].tsHr} ${this.signalLeg.at(-1).close.tsHr} ${this.initLeg.length} ${this.signalLeg.length} ${this.decisionLeg.length}`)
         this.initLeg = this.signalLeg
         this.signalLeg = this.decisionLeg
         this.decisionLeg = []
+    }
+
+    #makeDecision (tick) {
+        console.log(`${this.initLeg[0].open.symbol.name()} ${this.initLeg[0].tsHr} ${this.signalLeg.at(-1).close.tsHr} ${this.initLeg.length} ${this.signalLeg.length} ${this.decisionLeg.length}`)
+
+        // the first leg must be long enough
+        if (this.initLeg.length < 2) {
+            this.#cycle('initLegTooShort')
+            return
+        }
+
+        // the second (signal) leg must not bee too long
+        if (this.signalLeg.length >= 3) {
+            this.#cycle('signalLegTooBig')
+            return
+        }
+
+        // find the half of the first leg
+        const lowestLow = Math.min(...this.initLeg.map(candle => candle.info.low))
+        const heighestHigh = Math.max(...this.initLeg.map(candle => candle.info.high))
+        const initLegHeight = heighestHigh - lowestLow
+        const initLegLimit = initLegHeight / 2 + lowestLow
+        if (this.initLeg[0].direction > 0) {
+            const signalLegLowestLow = Math.min(...this.signalLeg.map(candle => candle.info.low))
+            if (signalLegLowestLow < initLegLimit) {
+                this.#cycle('signalLegTooFar')
+                return
+            }
+        } else {
+            const signalLegHeighestHigh = Math.max(...this.signalLeg.map(candle => candle.info.high))
+            if (signalLegHeighestHigh > initLegLimit) {
+                this.#cycle('signalLegTooFar')
+                return
+            }
+        }
+
+        // check and see if the first leg has increasing volumes
+        if (this.initLeg.at(-2).info.quoteVolume >= this.initLeg.at(-1).info.quoteVolume) {
+            this.#cycle('initLegWithWrongVolumes')
+            return
+        }
+
+        this.#cycle('good')
     }
 }
 
