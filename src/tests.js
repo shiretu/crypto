@@ -5,7 +5,9 @@ const { Candle } = require('./core/Candle')
 
 const work = async () => {
     const events = new EventEmitter()
-    events.on('candleClosed', (/** @type {Candle} */ e) => { console.log(e.id) })
+    events.on('candleClosed', (/** @type {Candle} */ e) => {
+        console.log(e.id)
+    })
     const source = await getSource(events, 'binance', 'btcusdc')
     source.createCandlesGenerator(1)
     // createWallet(events)

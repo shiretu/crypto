@@ -10,7 +10,7 @@ class Candle {
     #symbol /** @type {Symbol} */
     #id /** @type {number} */
     #periodUs /** @type {number} */
-    #candles /** @type {Trade[]} */
+    #trades /** @type {Trade[]} */
     #open /** @type {Trade} */
     #close /** @type {Trade} */
     #high /** @type {Trade} */
@@ -30,7 +30,7 @@ class Candle {
         this.#symbol = symbol
         this.#id = id
         this.#periodUs = periodUs
-        this.#candles = [trade]
+        this.#trades = [trade]
         this.#open = trade
         this.#close = trade
         this.#high = trade
@@ -140,7 +140,7 @@ class Candle {
      * @param {Trade} trade
      */
     update (trade) {
-        this.#candles.push(trade)
+        this.#trades.push(trade)
         this.#close = trade
         const price = trade.price
         this.#high = (price > this.#high.price) ? trade : this.#high
