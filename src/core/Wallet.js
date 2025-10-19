@@ -18,22 +18,23 @@ class WalletSlot {
         this._quoteQty = 0
     }
 
-    openOrder (/** @type {Order} */ order) {
+    openOrder (/** @type {Order} */ order, tsHr) {
         if (this._orders.has(order.id)) throw new Error('Order already opened')
-        this.actions.open[order.type](order)
+        this.actions.open[order.type](order, tsHr)
     }
 
     tick (tick, events) {
         this._orders.entries().forEach(([id, trade]) => this.actions.close[trade.order.type](tick, trade, events))
     }
 
-    openSell (/** @type {Order} */ order) {
+    openSell (/** @type {Order} */ order, tsHr) {
         // here we say we wanna transact with the base asset worth of quote asset, because is easier to think in quote asset
         // so, we need to compute the base asset we will sell
         const baseQty = order.entryQuoteQty / order.entryPrice
         const trade = {
             order,
             open: {
+                tsHr,
                 quoteQty: order.entryQuoteQty,
                 feeQuoteQty: order.entryQuoteQty * order.feePercent
             }
@@ -44,10 +45,11 @@ class WalletSlot {
         this._orders.set(order.id, trade)
     }
 
-    openBuy (/** @type {Order} */ order) {
+    openBuy (/** @type {Order} */ order, tsHr) {
         const trade = {
             order,
             open: {
+                tsHr,
                 baseQty: order.entryQuoteQty / order.entryPrice,
                 feeQuoteQty: order.entryQuoteQty * order.feePercent
             }
@@ -67,7 +69,7 @@ class WalletSlot {
         this._quoteQty -= trade.open.quoteQty
         this._quoteQty -= trade.open.quoteQty * order.feePercent
         this._orders.delete(order.id)
-        console.log(this._quoteQty.toFixed(3), this._baseQty.toFixed(10), (this._quoteQty + this._baseQty * tick.price).toFixed(3))
+        console.log(this._quoteQty.toFixed(3), this._baseQty.toFixed(10), (this._quoteQty + this._baseQty * tick.price).toFixed(3), trade.open.tsHr, tick.tsHr)
         events.emit('orderClosed', order)
     }
 
@@ -80,7 +82,7 @@ class WalletSlot {
         this._quoteQty += quoteQty
         this._quoteQty -= quoteQty * order.feePercent
         this._orders.delete(order.id)
-        console.log(this._quoteQty.toFixed(3), this._baseQty.toFixed(10), (this._quoteQty + this._baseQty * tick.price).toFixed(3))
+        console.log(this._quoteQty.toFixed(3), this._baseQty.toFixed(10), (this._quoteQty + this._baseQty * tick.price).toFixed(3), trade.open.tsHr, tick.tsHr)
         events.emit('orderClosed', order)
     }
 }
@@ -93,8 +95,8 @@ class Wallet {
         this._slots = new Map()
     }
 
-    #onOpenOrder (/** @type {Order} */ order) {
-        this.#getSlot(order.symbol).openOrder(order)
+    #onOpenOrder ({ tsHr, /** @type {Order} */ order }) {
+        this.#getSlot(order.symbol).openOrder(order, tsHr)
     }
 
     #onTick (tick) {

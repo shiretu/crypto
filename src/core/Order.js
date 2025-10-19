@@ -18,8 +18,8 @@ class Order {
         this.#_symbol = symbol
         this.#_entryQuoteQty = entryQuoteQty
         this.#_entryPrice = entryPrice
-        this.#_stopLossPrice = stopLossPrice || (type === 'buy' ? entryPrice * 0.990 : entryPrice * 1.010)
-        this.#_takeProfitPrice = takeProfitPrice || (type === 'buy' ? entryPrice * 1.01 : entryPrice * 0.990)
+        this.#_stopLossPrice = stopLossPrice || (type === 'buy' ? entryPrice * 0.996 : entryPrice * 1.010)
+        this.#_takeProfitPrice = takeProfitPrice || (type === 'buy' ? entryPrice * 1.004 : entryPrice * 0.990)
     }
 
     get id () { return this.#_id }

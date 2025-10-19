@@ -27,7 +27,7 @@ async function main () {
         user: 'default',
         password: '' // you can leave blank if not set
     }
-    const binanceDb = await BinanceDb.create(events, dbConf, symbolName, 60)
+    const binanceDb = await BinanceDb.create(events, dbConf, symbolName, 10)
     const candles = new Candles(events, 1)
     // const strategy = new RideTheWave(events)
     const strategy = new NewWave(events)

@@ -2,6 +2,7 @@ const console = require('../utils/coloredConsole')
 const path = require('path')
 const { generateAndSavePng } = require('../utils/CandlesPrinter')
 const Order = require('../core/Order')
+const { Printer } = require('../utils/Printer')
 
 class NewWave {
     constructor (events) {
@@ -60,6 +61,9 @@ class NewWave {
     }
 
     #cycle (reason) {
+        const p = new Printer()
+        p.addCandles([...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
+        p.print(path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`))
         // const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
         // generateAndSavePng(imagePath, [...this.initLeg.map(c => c.info), ...this.signalLeg.map(c => c.info), ...this.decisionLeg.map(c => c.info)])
         this.initLeg = this.signalLeg
@@ -124,15 +128,15 @@ class NewWave {
         }
 
         // alright, time to do the damage
-        this.order = Order.create(
-            this.decisionLeg[0].direction > 0 ? Order.Buy : Order.Sell,
-            tick.symbol,
-            25,
-            tick.price,
-            0,
-            0
-        )
-        this.events.emit('openOrder', this.order)
+        // this.order = Order.create(
+        //     this.decisionLeg[0].direction > 0 ? Order.Buy : Order.Sell,
+        //     tick.symbol,
+        //     25,
+        //     tick.price,
+        //     0,
+        //     0
+        // )
+        // this.events.emit('openOrder', { tsHr: tick.tsHr, order: this.order })
         this.#cycle('good')
     }
 }

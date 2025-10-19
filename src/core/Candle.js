@@ -51,7 +51,20 @@ class Candle {
             height,
             topWickPercent,
             bottomWickPercent,
-            totalWickPercent
+            totalWickPercent,
+            ts_: {
+                candle: Math.floor(this.open.ts / this.durationUs) * this.durationUs,
+                open: this.open.ts,
+                close: this.close.ts,
+                high: this.high.ts,
+                low: this.low.ts
+            },
+            price: {
+                open: this.open.price,
+                close: this.close.price,
+                high: high.price,
+                low: low.price
+            }
         }
         return this.cachedInfo
     }
