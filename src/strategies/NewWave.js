@@ -2,7 +2,7 @@ const console = require('../utils/coloredConsole')
 const path = require('path')
 const { generateAndSavePng } = require('../utils/CandlesPrinter')
 const Order = require('../core/Order')
-const { Printer } = require('../utils/Printer')
+const Printer = require('../utils/Printer')
 
 class NewWave {
     constructor (events) {
@@ -63,7 +63,7 @@ class NewWave {
     #cycle (reason) {
         const p = new Printer()
         p.addCandles([...this.initLeg, ...this.signalLeg, ...this.decisionLeg])
-        p.print(path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`))
+        p.print(path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`), this.initLeg[0].symbolName)
         // const imagePath = path.resolve(path.join(__dirname, '..', '..', 'trades', this.initLeg[0].open.symbol.name()), reason, `${this.initLeg[0].tsHr}.png`)
         // generateAndSavePng(imagePath, [...this.initLeg.map(c => c.info), ...this.signalLeg.map(c => c.info), ...this.decisionLeg.map(c => c.info)])
         this.initLeg = this.signalLeg

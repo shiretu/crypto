@@ -16,8 +16,8 @@ class Box {
     get y2 () { return this.y + this.h }
 
     boundingBox (otherBox) {
-        if (!otherBox) { return Box.createFromCorners(this.x1, this.y1, this.x2, this.y2) }
-        return Box.createFromCorners(
+        if (!otherBox) { return Box.create(this.x1, this.y1, this.x2, this.y2) }
+        return Box.create(
             Math.min(this.x1, otherBox.x1),
             Math.min(this.y1, otherBox.y1),
             Math.max(this.x2, otherBox.x2),
@@ -48,7 +48,7 @@ class Box {
         }
     }
 
-    static createFromCorners (x1, y1, x2, y2, fc, bc) {
+    static create (x1, y1, x2, y2, fc, bc) {
         const result = new Box()
         result.fc = fc
         result.bc = bc
@@ -78,8 +78,8 @@ class Line {
     c
 
     boundingBox (otherBox) {
-        if (!otherBox) { return Box.createFromCorners(this.x1, this.y1, this.x2, this.y2) }
-        return otherBox.boundingBox(Box.createFromCorners(this.x1, this.y1, this.x2, this.y2))
+        if (!otherBox) { return Box.create(this.x1, this.y1, this.x2, this.y2) }
+        return otherBox.boundingBox(Box.create(this.x1, this.y1, this.x2, this.y2))
     }
 
     transformX (fnc) {
@@ -116,7 +116,7 @@ class Printer {
     #candles = []
     #volumes = []
     addCandleInfo (info) {
-        this.#candles.push(Box.createFromCorners(
+        this.#candles.push(Box.create(
             info.ts_.open,
             info.price.open,
             info.ts_.close,
@@ -132,11 +132,11 @@ class Printer {
         if (bottomEdgePrice > info.price.low) {
             this.#candles.push(Line.create(info.ts_.low, info.price.low, info.ts_.low, bottomEdgePrice, '#000000'))
         }
-        this.#volumes.push(Box.createFromCorners(
+        this.#volumes.push(Box.create(
             info.ts_.open,
             0,
             info.ts_.close,
-            info.baseVolume,
+            info.quoteVolume,
             info.direction > 0 ? '#2ecc71' : '#e74c3c'
         ))
     }
@@ -146,41 +146,40 @@ class Printer {
         candles.forEach(c => this.addCandle(c))
     }
 
-    async print (fullPath, height = 400, candleDurationUs = 60000000, candleWidth = 16) {
-        const boundingBox = this.#boundingBox()
-        const translateToOriginX = (v) => v - boundingBox.x
-        const translateToOriginY = (v) => v - boundingBox.y
-        const scaleX = v => v * candleWidth / candleDurationUs
-        const scaleY = v => v * height / boundingBox.h
-        this.#transformX(v => scaleX(translateToOriginX(v)))
-        this.#transformY(v => scaleY(translateToOriginY(v)))
-        const screenBox = this.#boundingBox()
-        const canvas = createCanvas(screenBox.w, screenBox.h)
-        const ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, screenBox.w, screenBox.h)
-        this.#candles.forEach(s => s.draw(ctx))
+    async print (fullPath, title = '', height = 400, candleDurationUs = 60000000, candleWidth = 16) {
+        const normalize = (shapes, height) => {
+            const boundingBox = shapes.reduce((result, shape) => { return shape.boundingBox(result) }, shapes[0].boundingBox(null))
+            const translateToOriginX = (v) => v - boundingBox.x
+            const translateToOriginY = (v) => v - boundingBox.y
+            const scaleX = v => v * candleWidth / candleDurationUs
+            const scaleY = v => v * height / boundingBox.h
+            shapes.forEach(s => s.transformX(v => scaleX(translateToOriginX(v))))
+            shapes.forEach(s => s.transformY(v => scaleY(translateToOriginY(v))))
+            return shapes.reduce((result, shape) => { return shape.boundingBox(result) }, shapes[0].boundingBox(null))
+        }
+        normalize(this.#candles, height)
+        const gap = 10
+        const volumesBox = normalize(this.#volumes, Math.floor(height / 3))
+        this.#candles.forEach(s => s.transformY(v => v + volumesBox.h + gap))
+        const canvas = Printer.#draw([
+            ...this.#candles,
+            Line.create(0, volumesBox.h + 5, volumesBox.w, volumesBox.h + gap / 2, '#000000'),
+            ...this.#volumes
+        ])
         const folderPath = path.dirname(fullPath)
         await fs.mkdir(folderPath, { recursive: true })
         await fs.writeFile(fullPath, canvas.toBuffer('image/png'))
     }
 
-    #boundingBox () {
-        return this.#candles.reduce((result, shape) => {
-            return shape.boundingBox(result)
-        }, this.#candles[0].boundingBox(null))
-    }
-
-    #transformX (fnc) {
-        this.#candles.forEach(s => s.transformX(fnc))
-    }
-
-    #transformY (fnc) {
-        this.#candles.forEach(s => s.transformY(fnc))
+    static #draw (shapes) {
+        const screenBox = shapes.reduce((result, shape) => { return shape.boundingBox(result) }, shapes[0].boundingBox(null))
+        const canvas = createCanvas(screenBox.w, screenBox.h)
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, screenBox.w, screenBox.h)
+        shapes.forEach(s => s.draw(ctx))
+        return canvas
     }
 }
 
-module.exports = {
-    Printer,
-    Box
-}
+module.exports = Printer
