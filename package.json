@@ -7,7 +7,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "node src/apps/test.js"
+    "test": "node src/tests.js"
   },
   "dependencies": {
     "unzipper": "^0.12.3",
