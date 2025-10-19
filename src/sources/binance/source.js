@@ -4,7 +4,7 @@ const https = require('https')
 const http = require('http')
 const unzipper = require('unzipper')
 const Trade = require('../../core/Trade')
-const { CandlesGenerator } = require('../../core/Candle')
+const CandlesGenerator = require('../../core/CandlesGenerator')
 
 class Binance {
     #events
