@@ -4,11 +4,13 @@ const https = require('https')
 const http = require('http')
 const unzipper = require('unzipper')
 const Trade = require('../../core/Trade')
+const { CandlesGenerator } = require('../../core/Candle')
 
 class Binance {
     #events
     #symbol
-    #databaseName = 'binance'
+    #name = 'binance'
+    #databaseName = this.#name
     #tableName
     #columns = [
         ['id', 'UInt64'],
@@ -53,23 +55,27 @@ class Binance {
             if (!qr) throw new Error('Unable to execute fetching query')
             for await (const rows of qr.stream()) {
                 rows.forEach((row) => {
-                    this.#events.emit('trade',
-                        new Trade(this.#symbol,
-                            null,
-                            row.json().id,
-                            null,
-                            row.json().ts,
-                            row.json().price,
-                            row.json().baseQty,
-                            row.json().quoteQty,
-                            row.json().isBuyerMaker
-                        )
-                    )
+                    this.#events.emit('trade', new Trade(
+                        this.#name,
+                        this.#symbol,
+                        null,
+                        row.json().id,
+                        null,
+                        row.json().ts,
+                        row.json().price,
+                        row.json().baseQty,
+                        row.json().quoteQty,
+                        row.json().isBuyerMaker
+                    ))
                 })
             }
         } finally {
             this.#safeExec(async () => await client.close())
         }
+    }
+
+    createCandlesGenerator (candleDurationMin) {
+        return new CandlesGenerator(this.#events, this.#symbol, this.#name, candleDurationMin)
     }
 
     async #init () {
