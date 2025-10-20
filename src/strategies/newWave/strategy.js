@@ -83,53 +83,57 @@ class NewWave {
         this.#makeDecision()
     }
 
-    #makeDecision (reason) {
+    #makeDecision () {
+        const failReason = this.#decide()
+        if (failReason !== null) {
+            this.#cycle(failReason)
+            return
+        }
+
+        // success path — placeholder for order execution
+        this.#cycle('not yet implemented')
+    }
+
+    #decide () {
         // check leg 1
-        if (this.#leg1.length < 2) {
-            this.#cycle('not enough candles in leg 1')
-            return
-        }
-        if (this.#leg1.length > 3) {
-            this.#cycle('too many candles in leg 1')
-            return
-        }
+        if (this.#leg1.length < 2) { return 'not enough candles in leg 1' }
+        if (this.#leg1.length > 3) { return 'too many candles in leg 1' }
         for (let i = 1; i < this.#leg1.length; i++) {
             if (this.#leg1[i].volumes.quote <= this.#leg1[i - 1].volumes.quote) {
-                this.#cycle('leg 1 volumes not increasing')
-                return
+                return 'leg 1 volumes not increasing'
             }
         }
 
         // check leg 2
-        /*
-        1/φ ≈ 0.618 (61.8%),
-        1 − 1/φ ≈ 0.382 (38.2%).
-        */
+        if (this.#leg2.length < 1) { return 'missing leg 2' }
+        if (this.#leg2.length > 2) { return 'too many candles in leg 2' }
+        if (this.#leg1.at(-1).volumes.quote <= this.#leg2[0].volumes.quote) { return 'leg 1 quote volume not greater than leg 2' }
+
         const ratio = 0.382
-        const leg1Height = this.#leg1.at(-1).prices.close - this.#leg1[0].prices.open
-        const leg2DipLimit = this.#leg1.at(-1).prices.close - (leg1Height * ratio)
-        if (this.#leg2.length > 2) {
-            this.#cycle('too many candles in leg 2')
-            return
-        }
-        if (this.#leg1.at(-1).volumes.quote <= this.#leg2[0].volumes.quote) {
-            this.#cycle('leg 1 quote volume not greater than leg 2')
-            return
-        }
+        const leg1Green = (this.#leg1[0].direction === 1)
+        const leg1Height = leg1Green ? (this.#leg1.at(-1).prices.close - this.#leg1[0].prices.open) : (this.#leg1[0].prices.open - this.#leg1.at(-1).prices.close)
+        const leg2BacktrackLimit = leg1Green ? (this.#leg1.at(-1).prices.close - (leg1Height * ratio)) : (this.#leg1.at(-1).prices.close + (leg1Height * ratio))
+
         for (let i = 0; i < this.#leg2.length; i++) {
-            if (this.#leg2[i].prices.close < leg2DipLimit) {
-                this.#cycle('leg 2 dip too deep')
-                return
+            if (leg1Green) {
+                if (leg2BacktrackLimit > this.#leg2[i].prices.close) { return 'leg 2 dip too deep' }
+            } else {
+                if (leg2BacktrackLimit < this.#leg2[i].prices.close) { return 'leg 2 dip too deep' }
             }
             if (i === 0) continue
-            if (this.#leg2[i - 1].volumes.quote >= this.#leg2[i].volumes.quote) {
-                this.#cycle('leg 2 volumes not decreasing')
-                return
-            }
+            if (this.#leg2[i - 1].volumes.quote >= this.#leg2[i].volumes.quote) { return 'leg 2 volumes not decreasing' }
         }
 
-        // check leg 3
-        this.#cycle('not yet implemented')
+        // check leg 3: must be exactly one candle
+        if (this.#leg3.length !== 1) { return 'invalid leg 3 length' }
+        // leg3 must have bigger volume than every candle in leg2
+        for (let i = 0; i < this.#leg2.length; i++) {
+            const v = this.#leg2[i].volumes.quote
+            if (this.#leg3[0].volumes.quote <= v) { return 'leg 3 volume not greater than leg 2' }
+        }
+
+        // all checks passed — return null (success)
+        return null
     }
 }
 
