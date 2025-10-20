@@ -7,7 +7,7 @@ class Symbol {
 
     get id () {
         if (this._id === null) {
-            this._id = this.name('', true)
+            this._id = this.name('', false)
         }
         return this._id
     }

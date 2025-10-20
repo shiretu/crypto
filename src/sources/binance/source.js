@@ -5,12 +5,14 @@ const http = require('http')
 const unzipper = require('unzipper')
 const Trade = require('../../core/Trade')
 const CandlesGenerator = require('../../core/CandlesGenerator')
+const EventName = require('../../core/EventName')
 
 class Binance {
     #events
     #symbol
     #name = 'binance'
     #databaseName = this.#name
+    #tradesEventName
     #tableName
     #columns = [
         ['id', 'UInt64'],
@@ -29,6 +31,7 @@ class Binance {
         this.#symbol = symbol
         this.#historyInDays = historyInDays ?? 2
         this.#tableName = `${this.#databaseName}.trades_${this.#symbol.name('', false)}`
+        this.#tradesEventName = EventName.ofTrade(EventName.ACTION.EXECUTED, this.#name, symbol.id)
     }
 
     static async create (events, symbolName, historyInDays) {
@@ -55,17 +58,18 @@ class Binance {
             if (!qr) throw new Error('Unable to execute fetching query')
             for await (const rows of qr.stream()) {
                 rows.forEach((row) => {
-                    this.#events.emit('trade', new Trade(
+                    const js = row.json()
+                    this.#events.emit(this.#tradesEventName, new Trade(
                         this.#name,
                         this.#symbol,
                         null,
-                        row.json().id,
+                        js.id,
                         null,
-                        row.json().ts,
-                        row.json().price,
-                        row.json().baseQty,
-                        row.json().quoteQty,
-                        row.json().isBuyerMaker
+                        js.ts,
+                        js.price,
+                        js.baseQty,
+                        js.quoteQty,
+                        js.isBuyerMaker
                     ))
                 })
             }

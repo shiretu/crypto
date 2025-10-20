@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events')
 const Candle = require('./Candle')
 const Symbol = require('./Symbol')
+const EventName = require('./EventName')
 
 /**
  * Generates candle objects from a stream of trades.
@@ -14,6 +15,9 @@ class CandlesGenerator {
     #exchangeName /** @type {string} */
     #candleDurationUs /** @type {number} */
     #candle /** @type {Candle} */
+    #candleOpenedEvent /** @type {string} */
+    #candleUpdatedEvent /** @type {string} */
+    #candleClosedEvent /** @type {string} */
 
     /**
      * Create a CandlesGenerator.
@@ -28,27 +32,29 @@ class CandlesGenerator {
         this.#exchangeName = exchangeName
         this.#candleDurationUs = candleDurationMin * 60000000
         this.#candle = /** @type {Candle} */ (null)
-        this.#events.on('trade', (trade) => { this.#onTrade(trade) })
+        this.#events.on(EventName.ofTrade(EventName.ACTION.EXECUTED, exchangeName, symbol.id), (trade) => { this.#onTrade(trade) })
+        this.#candleOpenedEvent = EventName.ofCandle(EventName.ACTION.OPENED, exchangeName, symbol.id)
+        this.#candleUpdatedEvent = EventName.ofCandle(EventName.ACTION.UPDATED, exchangeName, symbol.id)
+        this.#candleClosedEvent = EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id)
     }
 
     #onTrade (trade) {
-        if ((trade.exchangeName !== this.#exchangeName) || (trade.symbol.id !== this.#symbol.id)) { return }
         const candleId = Math.floor(trade.tsUs / this.#candleDurationUs)
         if (!this.#candle) {
             this.#candle = new Candle(this.#exchangeName, this.#symbol, candleId, this.#candleDurationUs, trade)
-            this.#events.emit('candleOpened', this.#candle)
+            this.#events.emit(this.#candleOpenedEvent, this.#candle)
             return
         }
 
         if (this.#candle.id !== candleId) {
-            this.#events.emit('candleClosed', this.#candle)
+            this.#events.emit(this.#candleClosedEvent, this.#candle)
             this.#candle = new Candle(this.#exchangeName, this.#symbol, candleId, this.#candleDurationUs, trade)
-            this.#events.emit('candleOpened', this.#candle)
+            this.#events.emit(this.#candleOpenedEvent, this.#candle)
             return
         }
 
         this.#candle.update(trade)
-        this.#events.emit('candleUpdated', this.#candle)
+        this.#events.emit(this.#candleUpdatedEvent, this.#candle)
     }
 }
 

@@ -14,7 +14,7 @@ class Symbol {
     constructor (baseAssetName, quoteAssetName) {
         this.#baseAssetName = baseAssetName
         this.#quoteAssetName = quoteAssetName
-        this.#id = this.name('', true)
+        this.#id = this.name('', false)
     }
 
     /**
