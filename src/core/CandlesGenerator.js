@@ -11,8 +11,8 @@ const EventName = require('./EventName')
  */
 class CandlesGenerator {
     #events /** @type {EventEmitter} */
-    #symbol /** @type {Symbol} */
     #exchangeName /** @type {string} */
+    #symbol /** @type {Symbol} */
     #candleDurationUs /** @type {number} */
     #candle /** @type {Candle} */
     #candleOpenedEvent /** @type {string} */
@@ -22,11 +22,11 @@ class CandlesGenerator {
     /**
      * Create a CandlesGenerator.
      * @param {EventEmitter} events - Event emitter to listen for trades on
-     * @param {Symbol} symbol - Symbol instance this generator produces candles for
      * @param {string} exchangeName - Exchange identifier to filter incoming trades
+     * @param {Symbol} symbol - Symbol instance this generator produces candles for
      * @param {number} candleDurationMin - Candle duration in minutes
      */
-    constructor (events, symbol, exchangeName, candleDurationMin) {
+    constructor (events, exchangeName, symbol, candleDurationMin) {
         this.#events = events
         this.#symbol = symbol
         this.#exchangeName = exchangeName

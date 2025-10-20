@@ -34,8 +34,8 @@ class Binance {
         this.#tradesEventName = EventName.ofTrade(EventName.ACTION.EXECUTED, this.#name, symbol.id)
     }
 
-    static async create (events, symbolName, historyInDays) {
-        const result = new Binance(events, Symbol.find(symbolName), historyInDays)
+    static async create (events, symbol, historyInDays) {
+        const result = new Binance(events, symbol, historyInDays)
         await result.#init()
         return result
     }
@@ -76,10 +76,6 @@ class Binance {
         } finally {
             this.#safeExec(async () => await client.close())
         }
-    }
-
-    createCandlesGenerator (candleDurationMin) {
-        return new CandlesGenerator(this.#events, this.#symbol, this.#name, candleDurationMin)
     }
 
     async #init () {
@@ -152,5 +148,5 @@ class Binance {
 }
 
 module.exports = {
-    getSource: (events, symbolName) => Binance.create(events, symbolName)
+    getSource: (events, symbol) => Binance.create(events, symbol)
 }

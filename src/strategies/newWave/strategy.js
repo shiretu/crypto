@@ -84,6 +84,51 @@ class NewWave {
     }
 
     #makeDecision (reason) {
+        // check leg 1
+        if (this.#leg1.length < 2) {
+            this.#cycle('not enough candles in leg 1')
+            return
+        }
+        if (this.#leg1.length > 3) {
+            this.#cycle('too many candles in leg 1')
+            return
+        }
+        for (let i = 1; i < this.#leg1.length; i++) {
+            if (this.#leg1[i].volumes.quote <= this.#leg1[i - 1].volumes.quote) {
+                this.#cycle('leg 1 volumes not increasing')
+                return
+            }
+        }
+
+        // check leg 2
+        /*
+        1/φ ≈ 0.618 (61.8%),
+        1 − 1/φ ≈ 0.382 (38.2%).
+        */
+        const ratio = 0.382
+        const leg1Height = this.#leg1.at(-1).prices.close - this.#leg1[0].prices.open
+        const leg2DipLimit = this.#leg1.at(-1).prices.close - (leg1Height * ratio)
+        if (this.#leg2.length > 2) {
+            this.#cycle('too many candles in leg 2')
+            return
+        }
+        if (this.#leg1.at(-1).volumes.quote <= this.#leg2[0].volumes.quote) {
+            this.#cycle('leg 1 quote volume not greater than leg 2')
+            return
+        }
+        for (let i = 0; i < this.#leg2.length; i++) {
+            if (this.#leg2[i].prices.close < leg2DipLimit) {
+                this.#cycle('leg 2 dip too deep')
+                return
+            }
+            if (i === 0) continue
+            if (this.#leg2[i - 1].volumes.quote >= this.#leg2[i].volumes.quote) {
+                this.#cycle('leg 2 volumes not decreasing')
+                return
+            }
+        }
+
+        // check leg 3
         this.#cycle('not yet implemented')
     }
 }
