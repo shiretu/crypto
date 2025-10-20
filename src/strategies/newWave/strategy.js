@@ -2,6 +2,8 @@ const Candle = require('../../core/Candle')
 const { EventEmitter } = require('events')
 const Symbol = require('../../core/Symbol')
 const EventName = require('../../core/EventName')
+const Printer = require('../../utils/Printer')
+const path = require('path')
 
 class NewWave {
     #events /** @type {EventEmitter} */
@@ -71,15 +73,25 @@ class NewWave {
             // check leg 1
             if (this.#leg1.length < 2) { return 'not enough candles in leg 1' }
             if (this.#leg1.length > 3) { return 'too many candles in leg 1' }
+            const leg1Green = (this.#leg1[0].direction === 1)
             for (let i = 1; i < this.#leg1.length; i++) {
                 if (this.#leg1[i - 1].volumes.quote >= this.#leg1[i].volumes.quote) {
                     return 'leg 1 volumes not increasing'
                 }
-                if (this.#leg1[i - 1].prices.open >= this.#leg1[i].prices.open) {
-                    return 'leg 1 open price not increasing'
-                }
-                if (this.#leg1[i - 1].prices.close >= this.#leg1[i].prices.close) {
-                    return 'leg 1 close price not increasing'
+                if (leg1Green) {
+                    if (this.#leg1[i - 1].prices.open >= this.#leg1[i].prices.open) {
+                        return 'leg 1 open price not increasing'
+                    }
+                    if (this.#leg1[i - 1].prices.close >= this.#leg1[i].prices.close) {
+                        return 'leg 1 close price not increasing'
+                    }
+                } else {
+                    if (this.#leg1[i - 1].prices.open <= this.#leg1[i].prices.open) {
+                        return 'leg 1 open price not decreasing'
+                    }
+                    if (this.#leg1[i - 1].prices.close <= this.#leg1[i].prices.close) {
+                        return 'leg 1 close price not decreasing'
+                    }
                 }
             }
 
@@ -92,7 +104,6 @@ class NewWave {
             }
 
             const ratio = 0.382
-            const leg1Green = (this.#leg1[0].direction === 1)
             const leg1Height = leg1Green ? (this.#leg1.at(-1).prices.close - this.#leg1[0].prices.open) : (this.#leg1[0].prices.open - this.#leg1.at(-1).prices.close)
             const leg2BacktrackLimit = leg1Green ? (this.#leg1.at(-1).prices.close - (leg1Height * ratio)) : (this.#leg1.at(-1).prices.close + (leg1Height * ratio))
 
@@ -128,7 +139,11 @@ class NewWave {
         this.#cycle('good')
     }
 
-    #save (reason) {}
+    #save (reason) {
+        const p = new Printer()
+        p.addCandles([...this.#leg1, ...this.#leg2, ...this.#leg3])
+        p.print(path.resolve(path.join(__dirname, '..', '..', '..', 'trades', this.#symbol.id), reason, `${new Date(this.#leg1[0].tsUs.candle / 1000).toISOString()}.png`))
+    }
 
     #reset (reason) {
         this.#save(reason)

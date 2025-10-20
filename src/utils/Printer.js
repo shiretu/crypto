@@ -1,6 +1,7 @@
 const { createCanvas } = require('canvas')
 const fs = require('fs/promises')
 const path = require('path')
+const Candle = require('../core/Candle')
 
 class Box {
     x
@@ -115,33 +116,35 @@ class Line {
 class Printer {
     #candles = []
     #volumes = []
-    addCandleInfo (info) {
+    /**
+     * @param {Candle} candle
+     */
+    addCandle (candle) {
         this.#candles.push(Box.create(
-            info.ts_.open,
-            info.price.open,
-            info.ts_.close,
-            info.price.close,
-            info.direction > 0 ? '#2ecc71' : '#e74c3c',
+            candle.tsUs.open,
+            candle.prices.open,
+            candle.tsUs.close,
+            candle.prices.close,
+            candle.direction > 0 ? '#2ecc71' : '#e74c3c',
             '#000000'
         ))
-        const topEdgePrice = Math.max(info.price.open, info.price.close)
-        if (topEdgePrice < info.price.high) {
-            this.#candles.push(Line.create(info.ts_.high, topEdgePrice, info.ts_.high, info.price.high, '#000000'))
+        const topEdgePrice = Math.max(candle.prices.open, candle.prices.close)
+        if (topEdgePrice < candle.prices.high) {
+            this.#candles.push(Line.create(candle.tsUs.high, topEdgePrice, candle.tsUs.high, candle.prices.high, '#000000'))
         }
-        const bottomEdgePrice = Math.min(info.price.open, info.price.close)
-        if (bottomEdgePrice > info.price.low) {
-            this.#candles.push(Line.create(info.ts_.low, info.price.low, info.ts_.low, bottomEdgePrice, '#000000'))
+        const bottomEdgePrice = Math.min(candle.prices.open, candle.prices.close)
+        if (bottomEdgePrice > candle.prices.low) {
+            this.#candles.push(Line.create(candle.tsUs.low, candle.prices.low, candle.tsUs.low, bottomEdgePrice, '#000000'))
         }
         this.#volumes.push(Box.create(
-            info.ts_.open,
+            candle.tsUs.open,
             0,
-            info.ts_.close,
-            info.quoteVolume,
-            info.direction > 0 ? '#2ecc71' : '#e74c3c'
+            candle.tsUs.close,
+            candle.volumes.quote,
+            candle.direction > 0 ? '#2ecc71' : '#e74c3c'
         ))
     }
 
-    addCandle (candle) { this.addCandleInfo(candle.info) }
     addCandles (candles) {
         candles.forEach(c => this.addCandle(c))
     }
