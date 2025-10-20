@@ -62,7 +62,7 @@ class NewWave {
 
         // contribute to first leg or start the signal leg
         if (this.#leg2.length === 0) {
-            if (this.#leg1.at(-1).direction === candle.direction) {
+            if (this.#leg1[0].direction === candle.direction) {
                 this.#leg1.push(candle)
             } else {
                 this.#leg2 = [candle]
@@ -71,8 +71,8 @@ class NewWave {
         }
 
         // continue to push to signal leg
-        if (this.#leg1.at(-1).direction === candle.direction) {
-            this.#leg1.push(candle)
+        if (this.#leg2[0].direction === candle.direction) {
+            this.#leg2.push(candle)
             return
         }
 
