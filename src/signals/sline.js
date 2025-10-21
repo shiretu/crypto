@@ -1,8 +1,8 @@
-const Candle = require('../../core/Candle')
+const Candle = require('../core/Candle')
 const { EventEmitter } = require('events')
-const Symbol = require('../../core/Symbol')
-const EventName = require('../../core/EventName')
-const Printer = require('../../utils/Printer')
+const Symbol = require('../core/Symbol')
+const EventName = require('../core/EventName')
+const Printer = require('../utils/Printer')
 const path = require('path')
 
 class SLine {

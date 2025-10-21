@@ -1,6 +1,6 @@
-const EventName = require('../../core/EventName')
-const Symbol = require('../../core/Symbol')
-const Candle = require('../../core/Candle')
+const EventName = require('../core/EventName')
+const Symbol = require('../core/Symbol')
+const Candle = require('../core/Candle')
 
 class FVG {
     #events /** @type {EventEmitter} */
