@@ -5,10 +5,11 @@ const EventName = require('../../core/EventName')
 const Printer = require('../../utils/Printer')
 const path = require('path')
 
-class NewWave {
+class SLine {
     #events /** @type {EventEmitter} */
     #exchangeName /** @type {string} */
     #symbol /** @type {Symbol} */
+    #name = 'sLine' /** @type {string} */
     #leg1 /** @type {Candle[]} */
     #leg2 /** @type {Candle[]} */
     #leg3 /** @type {Candle[]} */
@@ -27,6 +28,14 @@ class NewWave {
         this.#leg1 = []
         this.#leg2 = []
         this.#leg3 = []
+    }
+
+    /**
+     * Returns the name of the strategy
+     * @returns {string}
+     */
+    get name () {
+        return this.#name
     }
 
     /**
@@ -142,7 +151,7 @@ class NewWave {
     #save (reason) {
         const p = new Printer()
         p.addCandles([...this.#leg1, ...this.#leg2, ...this.#leg3])
-        p.print(path.resolve(path.join(__dirname, '..', '..', '..', 'trades', this.#symbol.id), reason, `${new Date(this.#leg1[0].tsUs.candle / 1000).toISOString()}.png`))
+        p.print(path.resolve(path.join(__dirname, '..', '..', '..', 'generatedImages', 'signals', this.#name, this.#symbol.id), reason, `${new Date(this.#leg1[0].tsUs.candle / 1000).toISOString()}.png`))
     }
 
     #reset () {
@@ -160,7 +169,7 @@ class NewWave {
 }
 
 module.exports = {
-    getStrategy: (events, exchangeName, symbol) => {
-        return new NewWave(events, exchangeName, symbol)
+    create: (events, exchangeName, symbol) => {
+        return new SLine(events, exchangeName, symbol)
     }
 }
