@@ -10,6 +10,7 @@ class SLine {
     #exchangeName /** @type {string} */
     #symbol /** @type {Symbol} */
     #name = 'sLine' /** @type {string} */
+    #eventName /** @type {string} */
     #leg1 /** @type {Candle[]} */
     #leg2 /** @type {Candle[]} */
     #leg3 /** @type {Candle[]} */
@@ -28,6 +29,7 @@ class SLine {
         this.#leg1 = []
         this.#leg2 = []
         this.#leg3 = []
+        this.#eventName = EventName.ofSignal(this.#name, this.#exchangeName, this.#symbol.id)
     }
 
     /**
@@ -138,13 +140,21 @@ class SLine {
             return null
         }
 
+        // check if this is a valid signal
         const failReason = check()
         if (failReason !== null) {
             this.#cycle(failReason)
             return
         }
 
-        // success path — placeholder for order execution
+        // alright, it is. Emit the event
+        this.#events.emit(this.#eventName, {
+            leg1: this.#leg1,
+            leg2: this.#leg2,
+            leg3: this.#leg3
+        })
+
+        // cycle to the next event detection
         this.#cycle('good')
     }
 

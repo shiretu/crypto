@@ -12,7 +12,9 @@ class Binance {
     #symbol
     #name = 'binance'
     #databaseName = this.#name
-    #tradesEventName
+    #eventNameTrade
+    #eventNameTradeProcessingStart
+    #eventNameTradeProcessingCompleted
     #tableName
     #columns = [
         ['id', 'UInt64'],
@@ -31,7 +33,9 @@ class Binance {
         this.#symbol = symbol
         this.#historyInDays = historyInDays ?? 2
         this.#tableName = `${this.#databaseName}.trades_${this.#symbol.name('', false)}`
-        this.#tradesEventName = EventName.ofTrade(EventName.ACTION.EXECUTED, this.#name, symbol.id)
+        this.#eventNameTrade = EventName.ofTrade(EventName.ACTION.EXECUTED, this.#name, symbol.id)
+        this.#eventNameTradeProcessingStart = EventName.ofTrade(EventName.ACTION.PROCESSING_STARTED, this.#name, symbol.id)
+        this.#eventNameTradeProcessingCompleted = EventName.ofTrade(EventName.ACTION.PROCESSING_COMPLETED, this.#name, symbol.id)
     }
 
     static async create (events, symbol, historyInDays) {
@@ -59,7 +63,8 @@ class Binance {
             for await (const rows of qr.stream()) {
                 rows.forEach((row) => {
                     const js = row.json()
-                    this.#events.emit(this.#tradesEventName, new Trade(
+                    this.#events.emit(this.#eventNameTradeProcessingStart)
+                    this.#events.emit(this.#eventNameTrade, new Trade(
                         this.#name,
                         this.#symbol,
                         null,
@@ -71,6 +76,7 @@ class Binance {
                         js.quoteQty,
                         js.isBuyerMaker
                     ))
+                    this.#events.emit(this.#eventNameTradeProcessingCompleted)
                 })
             }
         } finally {

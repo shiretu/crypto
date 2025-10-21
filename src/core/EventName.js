@@ -14,16 +14,20 @@ class EventName {
     static CLASS = Object.freeze({
         TRADE: 'trade',
         CANDLE: 'candle',
-        ORDER: 'order'
+        ORDER: 'order',
+        SIGNAL: 'signal'
     })
 
     /** @enum {string} */
     static ACTION = Object.freeze({
+        PROCESSING_STARTED: 'processing_started',
+        PROCESSING_COMPLETED: 'processing_completed',
         OPENED: 'opened',
         CLOSED: 'closed',
         UPDATED: 'updated',
         CANCELED: 'canceled',
-        EXECUTED: 'executed'
+        EXECUTED: 'executed',
+        TRIGGERED: 'triggered'
     })
 
     /**
@@ -46,8 +50,8 @@ class EventName {
     /**
      * Builds an event name for the TRADE class.
      * @param {string} eventAction - One of {@link EventName.ACTION}
-     * @param {...string} subjectParts
-     * @returns {string}
+     * @param {...string} subjectParts - Components describing the subject
+     * @returns {string} - Fully qualified event name
      *
      * @example
      * EventName.ofTrade(EventName.ACTION.UPDATED, 'binance', 'btcusdt')
@@ -60,8 +64,8 @@ class EventName {
     /**
      * Builds an event name for the CANDLE class.
      * @param {string} eventAction - One of {@link EventName.ACTION}
-     * @param {...string} subjectParts
-     * @returns {string}
+     * @param {...string} subjectParts - Components describing the subject
+     * @returns {string} - Fully qualified event name
      *
      * @example
      * EventName.ofCandle(EventName.ACTION.OPENED, 'binance', 'btcusdc')
@@ -74,8 +78,8 @@ class EventName {
     /**
      * Builds an event name for the ORDER class.
      * @param {string} eventAction - One of {@link EventName.ACTION}
-     * @param {...string} subjectParts
-     * @returns {string}
+     * @param {...string} subjectParts - Components describing the subject
+     * @returns {string} - Fully qualified event name
      *
      * @example
      * EventName.ofOrder(EventName.ACTION.CLOSED, 'kraken', 'ethusd')
@@ -83,6 +87,22 @@ class EventName {
      */
     static ofOrder (eventAction, ...subjectParts) {
         return EventName.of(EventName.CLASS.ORDER, eventAction, ...subjectParts)
+    }
+
+    /**
+     * Builds an event name for the SIGNAL class.
+     * @param {string} signalName - Name of the signal/strategy
+     * @param {string} exchangeName - Name of the exchange
+     * @param {string} symbolId - Identifier of the trading symbol
+     * @param {...string} subjectParts - Additional subject components
+     * @returns {string} - Fully qualified event name
+     *
+     * @example
+     * EventName.ofSignal('sLine', 'binance', 'btcusdc')
+     * // → "signal:triggered:sLine:binance:btcusdc"
+     */
+    static ofSignal (signalName, exchangeName, symbolId, ...subjectParts) {
+        return EventName.of(EventName.CLASS.SIGNAL, EventName.ACTION.TRIGGERED, signalName, exchangeName, symbolId, ...subjectParts)
     }
 }
 
