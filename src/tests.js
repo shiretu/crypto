@@ -13,7 +13,7 @@ const work = async () => {
     const source = await getSource(events, exchangeName, symbol)
     console.log('Source initialized: ', source)
 
-    const candlesGenerator = new CandlesGenerator(events, exchangeName, symbol, 1)
+    const candlesGenerator = new CandlesGenerator(events, exchangeName, symbol, 15)
     console.log('CandlesGenerator initialized: ', candlesGenerator)
 
     const signals = {
@@ -25,8 +25,9 @@ const work = async () => {
         console.log('sLine event received', evt)
     })
 
-    events.on(EventName.ofSignal(signals.fvg.name, exchangeName, symbol.id), (evt) => {
-        console.log('fvg event received', evt[0].tsHr)
+    events.on(EventName.ofSignal(signals.fvg.name, exchangeName, symbol.id), (/** @type {Candle[]} */ candles) => {
+        const size = (candles[0].direction > 0) ? (candles[2].prices.low - candles[0].prices.high) : (candles[0].prices.low - candles[2].prices.high)
+        console.log('fvg event received', candles[0].tsHr, size)
     })
 
     await source.run(0)

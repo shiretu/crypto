@@ -34,34 +34,29 @@ class FVG {
     }
 
     #onCandleClosed (candle) {
+        // add the closed candle to the list
         this.#candles.push(candle)
-        if (this.#candles.length < 3) {
-            return
-        } else {
-            if (this.#candles.length > 3) {
-                this.#candles.shift()
-            }
-        }
-        const c1 = this.#candles[0]
-        const c2 = this.#candles[1]
-        const c3 = this.#candles[2]
+
+        // too few candles to form a fair value gap
+        if (this.#candles.length < 3) return
+
+        // keep only the last 3 candles
+        if (this.#candles.length > 3) this.#candles.shift()
+
+        // not all candles are in the same direction
+        if (Math.abs(this.#candles.reduce((totalDirection, candle) => { return totalDirection + candle.direction }, 0)) !== 3) return
 
         // check for fair value gap
-        if (c1.direction === 0 || c2.direction === 0 || c3.direction === 0) { return }
-        if (c1.direction === c2.direction) { return }
-        if (c2.direction === c3.direction) { return }
-        if (c1.direction !== c3.direction) { return }
-        if (c1.direction > 0) {
-            // bullish fvg
-            if (c1.prices.low > c3.prices.high) {
-                this.#events.emit(this.#eventName, this.#candles)
-            }
+        if (this.#candles[0].direction > 0) {
+            // no fair value gap
+            if (this.#candles[0].prices.high >= this.#candles[2].prices.low) return
         } else {
-            // bearish fvg
-            if (c1.prices.high < c3.prices.low) {
-                this.#events.emit(this.#eventName, this.#candles)
-            }
+            // no fair value gap
+            if (this.#candles[0].prices.low <= this.#candles[2].prices.high) return
         }
+
+        // alright, we have a fair value gap, emit the signal
+        this.#events.emit(this.#eventName, this.#candles)
     }
 }
 module.exports = {
