@@ -145,8 +145,7 @@ class NewWave {
         p.print(path.resolve(path.join(__dirname, '..', '..', '..', 'trades', this.#symbol.id), reason, `${new Date(this.#leg1[0].tsUs.candle / 1000).toISOString()}.png`))
     }
 
-    #reset (reason) {
-        this.#save(reason)
+    #reset () {
         this.#leg1 = []
         this.#leg2 = []
         this.#leg3 = []

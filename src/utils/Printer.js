@@ -149,7 +149,7 @@ class Printer {
         candles.forEach(c => this.addCandle(c))
     }
 
-    async print (fullPath, title = '', height = 400, candleDurationUs = 60000000, candleWidth = 16) {
+    async print (fullPath, title = '', height = 400, candleDurationUs = 60000000, candleWidth = 32) {
         const normalize = (shapes, height) => {
             const boundingBox = shapes.reduce((result, shape) => { return shape.boundingBox(result) }, shapes[0].boundingBox(null))
             const translateToOriginX = (v) => v - boundingBox.x
