@@ -9,8 +9,8 @@ class SLine {
     #events /** @type {EventEmitter} */
     #exchangeName /** @type {string} */
     #symbol /** @type {Symbol} */
-    #name = 'sLine' /** @type {string} */
     #eventName /** @type {string} */
+    #name = 'sLine' /** @type {string} */
     #leg1 /** @type {Candle[]} */
     #leg2 /** @type {Candle[]} */
     #leg3 /** @type {Candle[]} */
@@ -22,14 +22,14 @@ class SLine {
         this.#events = events
         this.#exchangeName = exchangeName
         this.#symbol = symbol
-        this.#events.on(
-            EventName.ofCandle(EventName.ACTION.CLOSED, this.#exchangeName, this.#symbol.id),
-            (candle) => { this.#onCandleClosed(candle) }
-        )
         this.#leg1 = []
         this.#leg2 = []
         this.#leg3 = []
         this.#eventName = EventName.ofSignal(this.#name, this.#exchangeName, this.#symbol.id)
+        this.#events.on(
+            EventName.ofCandle(EventName.ACTION.CLOSED, this.#exchangeName, this.#symbol.id),
+            (candle) => { this.#onCandleClosed(candle) }
+        )
     }
 
     /**

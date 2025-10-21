@@ -87,6 +87,15 @@ class Candle {
     get low () { return this.#low }
 
     /**
+     * Timestamp of the candle as human readable string (ISO)
+     * @returns {string}
+     */
+    get tsHr () {
+        const date = new Date(this.periodUs * this.#id / 1000)
+        return date.toISOString()
+    }
+
+    /**
      * OHLC prices for the candle (from trades)
      * @returns {{open:number,close:number,high:number,low:number}}
      */
