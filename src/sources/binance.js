@@ -1,11 +1,11 @@
-const Symbol = require('../../core/Symbol')
+const Symbol = require('../core/Symbol')
 const { createClient } = require('@clickhouse/client')
 const https = require('https')
 const http = require('http')
 const unzipper = require('unzipper')
-const Trade = require('../../core/Trade')
-const CandlesGenerator = require('../../core/CandlesGenerator')
-const EventName = require('../../core/EventName')
+const Trade = require('../core/Trade')
+const CandlesGenerator = require('../core/CandlesGenerator')
+const EventName = require('../core/EventName')
 
 class Binance {
     #events
@@ -153,6 +153,4 @@ class Binance {
     }
 }
 
-module.exports = {
-    getSource: (events, symbol) => Binance.create(events, symbol)
-}
+module.exports = Binance

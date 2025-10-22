@@ -6,6 +6,6 @@ module.exports = {
      * @param {Symbol} symbol - Symbol instance
      */
     getSource: async (events, exchangeName, symbol) => {
-        return await require(`./${exchangeName}/source`).getSource(events, symbol)
+        return await (require(`./${exchangeName}`)).create(events, symbol)
     }
 }
