@@ -18,7 +18,8 @@ const work = async () => {
 
     const signals = {
         sLine: await getSignal('sLine', events, exchangeName, symbol),
-        fvg: await getSignal('fvg', events, exchangeName, symbol)
+        fvg: await getSignal('fvg', events, exchangeName, symbol),
+        simpleEma: await getSignal('simpleema', events, exchangeName, symbol, 9)
     }
 
     events.on(EventName.ofSignal(signals.sLine.name, exchangeName, symbol.id), (evt) => {

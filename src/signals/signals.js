@@ -1,5 +1,5 @@
 module.exports = {
-    getSignal: async (signalName, events, exchangeName, symbol) => {
-        return await require(`./${signalName}`).create(events, exchangeName, symbol)
+    getSignal: async (signalName, events, exchangeName, symbol, ...restOfParams) => {
+        return await new (require(`./${signalName}`))(events, exchangeName, symbol, ...restOfParams)
     }
 }

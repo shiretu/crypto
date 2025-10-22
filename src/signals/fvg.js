@@ -59,8 +59,4 @@ class FVG {
         this.#events.emit(this.#eventName, this.#candles)
     }
 }
-module.exports = {
-    create: async (events, exchangeName, symbol) => {
-        return new FVG(events, exchangeName, symbol)
-    }
-}
+module.exports = FVG

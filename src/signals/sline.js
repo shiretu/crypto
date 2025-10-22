@@ -178,8 +178,4 @@ class SLine {
     }
 }
 
-module.exports = {
-    create: (events, exchangeName, symbol) => {
-        return new SLine(events, exchangeName, symbol)
-    }
-}
+module.exports = SLine
