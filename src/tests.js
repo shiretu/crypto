@@ -10,7 +10,7 @@ const work = async () => {
     const exchangeName = 'binance'
     const symbol = Symbol.find('btcusdc')
 
-    const source = await getSource(events, exchangeName, symbol)
+    const source = await getSource(events, exchangeName, symbol, 365)
     console.log('Source initialized: ', source)
 
     const candlesGenerator = new CandlesGenerator(events, exchangeName, symbol, 15)

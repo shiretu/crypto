@@ -5,7 +5,7 @@ module.exports = {
      * @param {string} exchangeName - exchange identifier
      * @param {Symbol} symbol - Symbol instance
      */
-    getSource: async (events, exchangeName, symbol) => {
-        return await (require(`./${exchangeName}`)).create(events, symbol)
+    getSource: async (events, exchangeName, symbol, historyInDays) => {
+        return await (require(`./${exchangeName}`)).create(events, symbol, historyInDays)
     }
 }

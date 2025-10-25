@@ -7,7 +7,9 @@
         "XRP",
         "PAXG",
         "ZKC",
-        "BCH"
+        "BCH",
+        "EUR",
+        "USD"
     ],
     "symbols": [
         [
@@ -44,6 +46,11 @@
             "BCH",
             "USDC",
             "BCHUSDC"
+        ],
+        [
+            "EUR",
+            "USD",
+            "EURUSD"
         ]
     ]
 }

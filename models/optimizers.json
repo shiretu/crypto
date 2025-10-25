@@ -1,0 +1,46 @@
+{
+    "adam": {
+        "description": "Adaptive Moment Estimation - combines momentum and RMSprop. Excellent general-purpose optimizer with fast convergence and good performance on most problems.",
+        "learning_rate": 0.001,
+        "beta1": 0.9,
+        "beta2": 0.999,
+        "epsilon": 1e-8
+    },
+    "sgd": {
+        "description": "Stochastic Gradient Descent with momentum - simple and reliable optimizer. Often finds better final solutions but requires more tuning and slower convergence.",
+        "learning_rate": 0.01,
+        "momentum": 0.9
+    },
+    "rmsprop": {
+        "description": "Root Mean Square Propagation - adapts learning rate per parameter. Particularly effective for RNNs and non-stationary objectives with noisy gradients.",
+        "learning_rate": 0.001,
+        "decay": 0.9,
+        "momentum": 0.0,
+        "epsilon": 1e-8
+    },
+    "adagrad": {
+        "description": "Adaptive Gradient - adapts learning rate based on historical gradients. Good for sparse features but learning rate decays aggressively over time.",
+        "learning_rate": 0.01,
+        "epsilon": 1e-8
+    },
+    "adadelta": {
+        "description": "Adaptive Delta - extension of AdaGrad that reduces aggressive learning rate decay. No need to manually set learning rate, robust and parameter-free.",
+        "learning_rate": 1.0,
+        "rho": 0.95,
+        "epsilon": 1e-8
+    },
+    "adamax": {
+        "description": "Adam with infinity norm - variant of Adam using infinity norm instead of L2 norm. More stable than Adam for problems with large or unbounded gradients.",
+        "learning_rate": 0.002,
+        "beta1": 0.9,
+        "beta2": 0.999,
+        "epsilon": 1e-8,
+        "decay": 0.0
+    },
+    "momentum": {
+        "description": "Classical momentum-based SGD - accelerates convergence by accumulating velocity in gradient direction. Simple and effective with optional Nesterov acceleration.",
+        "learning_rate": 0.01,
+        "momentum": 0.9,
+        "use_nesterov": false
+    }
+}
