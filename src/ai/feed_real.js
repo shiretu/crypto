@@ -23,7 +23,19 @@ const work = async () => {
     let firstTradeTsUs
     let lastTradeTsUs
     let candleCount = 0
+    let maxCandlesDistanceUs = 0
+    let prevCandle = null
     events.on(EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id), (/** @type {Candle} */ candle) => {
+        if (prevCandle == null) {
+            prevCandle = candle
+        } else {
+            const distanceUs = candle.tsUs.open - prevCandle.tsUs.close
+            if (distanceUs > maxCandlesDistanceUs) {
+                maxCandlesDistanceUs = distanceUs
+                console.log(`New max candle gap: ${maxCandlesDistanceUs / 1000000.0} seconds between ${new Date(prevCandle.tsUs.close / 1000).toISOString()} and ${new Date(candle.tsUs.open / 1000).toISOString()}`)
+            }
+            prevCandle = candle
+        }
         candleCount++
         if (!firstTradeTsUs) {
             firstTradeTsUs = candle.open.tsUs

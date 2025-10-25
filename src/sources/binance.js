@@ -46,7 +46,7 @@ class Binance {
         return result
     }
 
-    async run (startTsMs) {
+    async run (startTsMs, continueCallback) {
         const client = createClient()
         const ok = await client.ping()
         if ((!ok) || (!ok.success)) { throw new Error('unable to ping the client') }
@@ -63,7 +63,7 @@ class Binance {
             })
             if (!qr) throw new Error('Unable to execute fetching query')
             for await (const rows of qr.stream()) {
-                rows.forEach((row) => {
+                for (const row of rows) {
                     const js = row.json()
                     this.#events.emit(this.#eventNameTradeProcessingStart)
                     this.#events.emit(this.#eventNameTrade, new Trade(
@@ -79,7 +79,10 @@ class Binance {
                         js.isBuyerMaker
                     ))
                     this.#events.emit(this.#eventNameTradeProcessingCompleted)
-                })
+                    if (typeof continueCallback === 'function') {
+                        if (!continueCallback()) return
+                    }
+                }
             }
         } finally {
             this.#safeExec(async () => await client.close())
