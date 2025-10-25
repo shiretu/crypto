@@ -147,6 +147,12 @@ class Candle {
     get height () { return Math.abs(this.#close.price - this.#open.price) }
 
     /**
+     * Number of trades in the candle
+     * @returns {number}
+     */
+    get tradeCount () { return this.#trades.length }
+
+    /**
      * Adds a new trade to the candle
      * @param {Trade} trade
      */

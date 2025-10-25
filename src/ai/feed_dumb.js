@@ -46,7 +46,8 @@ const createTrainRequest = (samplesCount) => {
                     volumes: new Array(120).fill(1 + sampleNum * 0.01), // Scale down volumes
                     timestamps: new Array(120).fill(sampleNum), // Use relative timestamps instead of actual unix time
                     colors: new Array(120).fill(sampleNum % 2 === 0 ? 1 : -1),
-                    bodySizes: new Array(120).fill(2 + sampleNum * 0.1) // Scale down body sizes
+                    bodySizes: new Array(120).fill(2 + sampleNum * 0.1), // Scale down body sizes
+                    tradesCount: new Array(120).fill(100 + sampleNum * 5) // Add tradesCount field
                 },
                 studies: {
                     sma9: new Array(120).fill(basePrice + 1),

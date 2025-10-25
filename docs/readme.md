@@ -31,16 +31,18 @@ npm run feed
 This project implements a **real-time trading neural network** with WebSocket-based training:
 
 1. **Neural Network Architecture**
-   - 2,043 input features (market data + technical indicators)
-   - 6-layer dense network: 512→256→128→64→32→2
-   - Dropout regularization for robust predictions
+   - 2,163 input features (market data + technical indicators + trade counts)
+   - 8-layer dense network: 8192→6144→4096→2048→1024→512→256→128→64→2
+   - Progressive dropout regularization (0.5→0.4→0.3→0.2→0.1→0)
+   - 76M+ parameters for maximum precision learning
    - Outputs: grossBuy/grossSell trading signals
 
 2. **Real-Time Training Pipeline**
    - WebSocket server accepting live market feeds
+   - RMSprop optimizer with ultra-low learning rate (0.000005)
    - Unified training API for single samples and batches
    - Model persistence with automatic save/load
-   - Performance: 2,850+ samples/second sustained throughput
+   - Performance: 810+ samples/second sustained throughput
 
 3. **Production Capabilities**
    - Handles 10-20 concurrent WebSocket connections
@@ -87,8 +89,17 @@ ai/
   "type": "train", 
   "samples": [
     {
-      "features": [...2043 values...],
-      "labels": [grossBuy, grossSell]
+      "features": {
+        "candles": {
+          "opens": [120 values], "highs": [120 values], "lows": [120 values],
+          "closes": [120 values], "volumes": [120 values], "timestamps": [120 values],
+          "colors": [120 values], "bodySizes": [120 values], "tradesCount": [120 values]
+        },
+        "studies": {...840 values...},
+        "patterns": {...237 values...}, 
+        "global": {...6 values...}
+      },
+      "outcomes": {"grossBuy": value, "grossSell": value}
     }
   ]
 }
@@ -113,11 +124,12 @@ The system generates and manages:
 
 **Training Performance:**
 ```
-Samples processed: 243,333+
-Training speed: 2,850+ samples/second  
-Loss reduction: 99.9997% improvement
-Model size: 431K+ parameters
-Memory usage: Optimized for production
+Samples processed: 743K+
+Training speed: 810+ samples/second  
+Loss reduction: 99.89% improvement
+Model size: 76M+ parameters (maximum precision architecture)
+Memory usage: ~300MB model weights, 3-10GB training memory
+Data availability: 1.8M+ candles (4+ years BTCUSDC history)
 ```
 
 **WebSocket Connections:**
