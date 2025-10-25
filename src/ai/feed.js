@@ -85,7 +85,7 @@ const work = async () => {
     console.log(await doRequest(ws, createTrainRequest(10)))
     console.log(await doRequest(ws, createTrainRequest(100)))
     console.log(await doRequest(ws, createTrainRequest(1000)))
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 2; i++) {
         console.log(await doRequest(ws, createTrainRequest(5000)))
     }
     console.log(JSON.stringify(await doRequest(ws, { type: 'stats' })))

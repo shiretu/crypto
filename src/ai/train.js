@@ -29,13 +29,15 @@ class TradingTrainingServer {
         debug: false // Debug flag for training stats logging
     } /** @type {{learningRate:number,batchSize:number,epochs:number,validationSplit:number,modelName:string,debug:boolean}} */
 
-    #modelRootPath = path.resolve(path.join(__dirname, '..', 'models', this.#config.modelName)) /** @type {string} */
-    #architecturePath = path.join(this.#modelRootPath, 'architecture.json') /** @type {string} */
-    #optimizersPath = path.resolve(path.join(__dirname, '..', 'models', 'optimizers.json')) /** @type {string} */
-    #tfModelFolder = path.join(this.#modelRootPath, 'tf') /** @type {string} */
-    #tfModelPath = path.join(this.#tfModelFolder, 'model.json') /** @type {string} */
+    #modelsRootPath = path.resolve(path.join(__dirname, '..', '..', 'models')) /** @type {string} */
+    #optimizersPath = path.resolve(path.join(this.#modelsRootPath, 'optimizers.json')) /** @type {string} */
     #optimizers = require(this.#optimizersPath) /** @type {any} */
-    #architecture = require(this.#architecturePath) /** @type {any} */
+
+    #selectedModelRootPath = path.resolve(path.join(this.#modelsRootPath, this.#config.modelName)) /** @type {string} */
+    #selectedModelArchitecturePath = path.join(this.#selectedModelRootPath, 'architecture.json') /** @type {string} */
+    #selectedModelTfFolder = path.join(this.#selectedModelRootPath, 'tf') /** @type {string} */
+    #selectedModelTfPath = path.join(this.#selectedModelTfFolder, 'model.json') /** @type {string} */
+    #selectedModelArchitecture = require(this.#selectedModelArchitecturePath) /** @type {any} */
 
     /**
      * Create a new instance of the TradingTrainingServer
@@ -62,7 +64,7 @@ class TradingTrainingServer {
             // Merge optimizer defaults with explicit parameters
             this.#mergeOptimizerDefaults()
 
-            this.#model = await tf.loadLayersModel(`file://${this.#tfModelPath}`)
+            this.#model = await tf.loadLayersModel(`file://${this.#selectedModelTfPath}`)
         } catch (error) {
             this.#model = this.#createModel()
         }
@@ -71,7 +73,7 @@ class TradingTrainingServer {
     }
 
     #mergeOptimizerDefaults () {
-        const optimizerType = this.#architecture.optimizer.type
+        const optimizerType = this.#selectedModelArchitecture.optimizer.type
 
         if (!this.#optimizers[optimizerType]) {
             throw new Error(`Unknown optimizer type: ${optimizerType}`)
@@ -81,14 +83,14 @@ class TradingTrainingServer {
         const defaults = { ...this.#optimizers[optimizerType] }
 
         // Merge any explicit parameters from architecture.json
-        this.#architecture.optimizer = {
+        this.#selectedModelArchitecture.optimizer = {
             type: optimizerType,
             ...defaults,
-            ...this.#architecture.optimizer
+            ...this.#selectedModelArchitecture.optimizer
         }
 
         if (this.#config.debug) {
-            console.log('[DEBUG] Merged optimizer config:', this.#architecture.optimizer)
+            console.log('[DEBUG] Merged optimizer config:', this.#selectedModelArchitecture.optimizer)
         }
     }
 
@@ -102,7 +104,7 @@ class TradingTrainingServer {
 
                 // Add input shape for first layer
                 if (isFirstLayer) {
-                    layerConfig.inputShape = [this.#architecture.input_features]
+                    layerConfig.inputShape = [this.#selectedModelArchitecture.input_features]
                 }
 
                 // Add name if specified
@@ -116,7 +118,7 @@ class TradingTrainingServer {
         }
 
         return tf.sequential({
-            layers: this.#architecture.layers.map((layerConfig, index) => {
+            layers: this.#selectedModelArchitecture.layers.map((layerConfig, index) => {
                 const factoryFunc = layerFactory[layerConfig.type]
                 if (!factoryFunc) {
                     console.warn(`WARNING: Unknown layer type: ${layerConfig.type}, skipping`)
@@ -128,7 +130,7 @@ class TradingTrainingServer {
     }
 
     #compileModel () {
-        const optimizerConfig = this.#architecture.optimizer
+        const optimizerConfig = this.#selectedModelArchitecture.optimizer
 
         const optimizerFactory = {
             adam: (config) => tf.train.adam(
@@ -172,8 +174,8 @@ class TradingTrainingServer {
 
         this.#model.compile({
             optimizer: optimizerFactory[optimizerConfig.type](optimizerConfig),
-            loss: this.#architecture.loss,
-            metrics: this.#architecture.metrics
+            loss: this.#selectedModelArchitecture.loss,
+            metrics: this.#selectedModelArchitecture.metrics
         })
     }
 
@@ -319,9 +321,9 @@ class TradingTrainingServer {
 
     async #saveModel (callback) {
         try {
-            await fs.mkdir(this.#tfModelFolder, { recursive: true })
-            await this.#model.save(`file://${this.#tfModelFolder}`)
-            callback(null, { type: 'model_saved', path: this.#tfModelFolder })
+            await fs.mkdir(this.#selectedModelTfFolder, { recursive: true })
+            await this.#model.save(`file://${this.#selectedModelTfFolder}`)
+            callback(null, { type: 'model_saved', path: this.#selectedModelTfFolder })
         } catch (error) {
             callback(error)
         }
@@ -442,9 +444,9 @@ class TradingTrainingServer {
 
             // Architecture metadata
             architecture: {
-                name: this.#architecture?.name || 'Unknown',
-                inputFeatures: this.#architecture?.input_features || 0,
-                outputFeatures: this.#architecture?.output_features || 0
+                name: this.#selectedModelArchitecture?.name || 'Unknown',
+                inputFeatures: this.#selectedModelArchitecture?.input_features || 0,
+                outputFeatures: this.#selectedModelArchitecture?.output_features || 0
             }
         }
     }
