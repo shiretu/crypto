@@ -1,7 +1,7 @@
 const { EventEmitter } = require('events')
 const Symbol = require('../core/Symbol')
-const { getSource } = require('./sources/sources')
-const CandlesGenerator = require('./core/CandlesGenerator')
+const { getSource } = require('../sources/sources')
+const CandlesGenerator = require('../core/CandlesGenerator')
 
 const work = async () => {
     const exchangeName = 'binance'

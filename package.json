@@ -8,9 +8,9 @@
   "main": "index.js",
   "scripts": {
     "test": "node src/tests.js",
-    "ai:train": "node src/ai/train_real.js",
-    "ai:feed": "node src/ai/feed.js",
-    "ai:train:debug": "node src/ai/train_real.js --debug",
+    "ai:train": "node src/ai/train.js",
+    "ai:feed": "node src/ai/feed_real.js",
+    "ai:train:debug": "node src/ai/train.js --debug",
     "lint": "eslint src/ --fix --fix-type suggestion,layout"
   },
   "dependencies": {
