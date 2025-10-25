@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars */
 const { createCanvas } = require('canvas')
 const fs = require('fs/promises')
 const path = require('path')
 const Candle = require('../core/Candle')
+/* eslint-enable no-unused-vars */
 
 class Box {
     x

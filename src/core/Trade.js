@@ -1,4 +1,6 @@
+/* eslint-disable no-unused-vars */
 const Symbol = require('./Symbol')
+/* eslint-enable no-unused-vars */
 
 /**
  * Represents a trade from an exchange.

@@ -1,9 +1,11 @@
+/* eslint-disable no-unused-vars */
 const Candle = require('../core/Candle')
 const { EventEmitter } = require('events')
 const Symbol = require('../core/Symbol')
 const EventName = require('../core/EventName')
 const Printer = require('../utils/Printer')
 const path = require('path')
+/* eslint-enable no-unused-vars */
 
 class SLine {
     #events /** @type {EventEmitter} */

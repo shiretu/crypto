@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 const Symbol = require('../core/Symbol')
 const { createClient } = require('@clickhouse/client')
 const https = require('https')
@@ -9,6 +10,7 @@ const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
 const lzma = require('lzma-native')
 const { Transform, PassThrough } = require('stream')
+/* eslint-enable no-unused-vars */
 
 class AdmiralMarkets {
     #name = 'admiralmarkets'

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 const Symbol = require('../core/Symbol')
 const { createClient } = require('@clickhouse/client')
 const https = require('https')
@@ -6,6 +7,7 @@ const unzipper = require('unzipper')
 const Trade = require('../core/Trade')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
+/* eslint-enable no-unused-vars */
 
 class Binance {
     #events

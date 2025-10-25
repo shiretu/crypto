@@ -1,19 +1,26 @@
 {
   "name": "fancy-strategy",
   "version": "1.0.0",
-  "description": "",
+  "description": "Cryptocurrency Trading AI System with Neural Network",
   "license": "ISC",
   "author": "",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "node src/tests.js"
+    "test": "node src/tests.js",
+    "ai:train": "node src/ai/train.js",
+    "ai:feed": "node src/ai/feed.js",
+    "ai:train:debug": "node src/ai/train.js --debug",
+    "lint": "eslint src/ --fix --fix-type suggestion,layout"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.21.0",
+    "@tensorflow/tfjs-node": "^4.21.0",
+    "ws": "^8.18.0",
     "unzipper": "^0.12.3",
     "lzma-native": "^7.0.0",
     "@clickhouse/client": "^1.12.1",
-    "canvas": "3.2.0"
+    "canvas": "^3.2.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",

@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars */
 const { EventEmitter } = require('events')
 const Candle = require('./Candle')
 const Symbol = require('./Symbol')
 const EventName = require('./EventName')
+/* eslint-enable no-unused-vars */
 
 /**
  * Generates candle objects from a stream of trades.

@@ -1,6 +1,8 @@
+/* eslint-disable no-unused-vars */
 const Trade = require('./Trade')
 const Symbol = require('./Symbol')
 const { EventEmitter } = require('events')
+/* eslint-enable no-unused-vars */
 
 /**
  * Represents an aggregated candle (OHLC + volume) for a time bucket.
