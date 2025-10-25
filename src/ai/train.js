@@ -277,13 +277,13 @@ class TradingTrainingServer {
             ...features.candles.bodySizes,
 
             // Studies: 7 arrays × 120 = 840 features
-            ...features.studies.sma9,
-            ...features.studies.sma12,
-            ...features.studies.sma21,
-            ...features.studies.ema9,
-            ...features.studies.ema12,
-            ...features.studies.ema21,
-            ...features.studies.rsi14,
+            ...features.studies.macdShort,
+            ...features.studies.macdLong,
+            ...features.studies.macdLine,
+            ...features.studies.macdSignal,
+            ...features.studies.macdHistogram,
+            ...features.studies.unused1,
+            ...features.studies.unused2,
 
             // Patterns: 237 features
             ...features.patterns.single,
@@ -301,7 +301,7 @@ class TradingTrainingServer {
 
     #prepareTensors (samples) {
         const features = samples.map(sample => this.#makeFlat(sample.features))
-        const labels = samples.map(sample => [sample.outcomes.grossBuy, sample.outcomes.grossSell])
+        const labels = samples.map(sample => [sample.outcomes.buyProfit, sample.outcomes.sellProfit])
 
         return {
             features: tf.tensor2d(features),

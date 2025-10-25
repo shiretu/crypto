@@ -50,13 +50,13 @@ const createTrainRequest = (samplesCount) => {
                     tradesCount: new Array(120).fill(100 + sampleNum * 5) // Add tradesCount field
                 },
                 studies: {
-                    sma9: new Array(120).fill(basePrice + 1),
-                    sma12: new Array(120).fill(basePrice + 0.5),
-                    sma21: new Array(120).fill(basePrice),
-                    ema9: new Array(120).fill(basePrice + 1.5),
-                    ema12: new Array(120).fill(basePrice + 1),
-                    ema21: new Array(120).fill(basePrice + 0.5),
-                    rsi14: new Array(120).fill(50 + sampleNum * 0.5) // Keep RSI in 0-100 range
+                    macdShort: new Array(120).fill(basePrice - 1),
+                    macdLong: new Array(120).fill(basePrice - 1),
+                    macdLine: new Array(120).fill(basePrice - 1),
+                    macdSignal: new Array(120).fill(basePrice - 1),
+                    macdHistogram: new Array(120).fill(basePrice - 1),
+                    unused1: new Array(120).fill(basePrice - 1),
+                    unused2: new Array(120).fill(basePrice - 1)
                 },
                 patterns: {
                     single: new Array(119).fill(0),
@@ -72,8 +72,8 @@ const createTrainRequest = (samplesCount) => {
                 }
             },
             outcomes: {
-                grossBuy: variation + (sampleNum === 1 ? 0.8 : sampleNum === 2 ? -0.3 : 0.0),
-                grossSell: variation + (sampleNum === 1 ? -0.2 : sampleNum === 2 ? 0.6 : 0.0)
+                buyProfit: 0,
+                sellProfit: 0
             }
         })
     }

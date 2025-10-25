@@ -46,6 +46,25 @@ class Binance {
         return result
     }
 
+    async getAvailableDataRangeUs () {
+        const client = createClient()
+        const ok = await client.ping()
+        if ((!ok) || (!ok.success)) { throw new Error('unable to ping the client') }
+        try {
+            const qr = await (await client.query({
+                query: `SELECT coalesce(min(ts), 0) as minTs, coalesce(max(ts), 0) as maxTs FROM ${this.#tableName}`,
+                format: 'JSONEachRow'
+            })).json()
+            if (qr.length === 0) { return { minTsUs: 0, maxTsUs: 0 } }
+            return {
+                minTsUs: qr[0].minTs,
+                maxTsUs: qr[0].maxTs
+            }
+        } finally {
+            this.#safeExec(async () => await client.close())
+        }
+    }
+
     async run (startTsMs, continueCallback) {
         const client = createClient()
         const ok = await client.ping()

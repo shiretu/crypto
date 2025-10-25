@@ -40,6 +40,10 @@ class CandlesGenerator {
         this.#candleClosedEvent = EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id)
     }
 
+    reset () {
+        this.#candle = null
+    }
+
     #onTrade (trade) {
         const candleId = Math.floor(trade.tsUs / this.#candleDurationUs)
         if (!this.#candle) {

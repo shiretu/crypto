@@ -65,6 +65,12 @@ class Candle {
     get periodUs () { return this.#periodUs }
 
     /**
+     * Array of trades for the candle
+     * @returns {Trade[]}
+     */
+    get trades () { return this.#trades }
+
+    /**
      * Open trade for the candle
      * @returns {Trade}
      */
