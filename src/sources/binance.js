@@ -93,6 +93,7 @@ class Binance {
         try {
             await client.query({ query: `CREATE DATABASE IF NOT EXISTS ${this.#databaseName};` })
             await client.query({ query: `CREATE TABLE IF NOT EXISTS ${this.#tableName} (${this.#columns.map(c => (`${c[0]} ${c[1]}`)).join(',')}) ENGINE = MergeTree ORDER BY (ts, id)` })
+            await client.query({ query: `CREATE TABLE IF NOT EXISTS ${this.#tableName}_temp (${this.#columns.map(c => (`${c[0]} ${c[1]}`)).join(',')}) ENGINE = MergeTree ORDER BY (ts, id)` })
             const latestAvailableUs = await (async () => {
                 const qr = await (await client.query({
                     query: `SELECT coalesce(max(ts), 0) as maxTs FROM ${this.#tableName}`,
@@ -114,11 +115,28 @@ class Binance {
                     console.log(`Skip missing ${zipUrl}`)
                     continue
                 }
+                await client.query({ query: `TRUNCATE TABLE ${this.#tableName}_temp` })
                 await client.insert({
-                    table: this.#tableName,
+                    table: `${this.#tableName}_temp`,
                     columns: this.#columns.map(c => c[0]),
                     format: 'CSV',
                     values: stream.pipe(unzipper.ParseOne())
+                })
+                await client.query({
+                    query: `
+INSERT INTO ${this.#tableName}
+SELECT
+    ${this.#columns
+        .map(([name]) => name === 'ts'
+            ? `multiIf(
+            length(toString(ts)) <= 10,  ts * 1000000,
+            length(toString(ts)) <= 13,  ts * 1000,
+                                         ts
+          ) AS ts`
+            : name
+        )
+        .join(',')}
+FROM ${this.#tableName}_temp`
                 })
                 console.log(`Inserted ${zipUrl}`)
             }
