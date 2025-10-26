@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events')
 const Symbol = require('../core/Symbol')
 const Candle = require('../core/Candle')
+const NN = require('../ai/nn')
 const { getSource } = require('../sources/sources')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
@@ -78,10 +79,13 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
     let buyProfitPercent = null
     let sellProfitPercent = null
     let currentTradeIndex = outcomeEntryTradeIndex + 1
-    while (currentTradeIndex < brr.info.recordsCount) {
+    const maxLookAhead = 10000 // Limit search to prevent null values
+    let searchCount = 0
+    while (currentTradeIndex < brr.info.recordsCount && searchCount < maxLookAhead) {
         if ((buyProfitPercent !== null) && (sellProfitPercent !== null)) break
         const trade = await brr.readTrade(currentTradeIndex)
         currentTradeIndex++
+        searchCount++
         if (buyProfitPercent === null) {
             const profit = trade.price - enterPrice
             const percent = profit / enterPrice
@@ -96,6 +100,11 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
                 sellProfitPercent = percent
             }
         }
+    }
+
+    // Skip samples with null outcomes to prevent training issues
+    if (buyProfitPercent === null || sellProfitPercent === null) {
+        return null // Signal to skip this sample
     }
 
     // Create training sample structure
@@ -181,13 +190,18 @@ const getConfig = () => {
  * @param {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}} config
  */
 const feed = async (identity, config) => {
+    const nn = await NN.create({
+        modelName: 'myFirstModel',
+        epochs: 1,
+        autosave: 10
+    })
     const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
     const requiredCandlesCount = config.candlesPerWindow + 100
     const safeStartRegion = 50000
     const safeEndRegion = 1000000
     const safeRecordsCount = config.availableDataRange.recordsCount - safeEndRegion - safeStartRegion
     const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
-    for (let i = 0; i < 1000; i++) {
+    while (true) {
         let index = safeStartRegion + Math.floor(Math.random() * safeRecordsCount)
         const candles = []
         candlesGenerator.reset()
@@ -204,7 +218,18 @@ const feed = async (identity, config) => {
         }
         if (!checkCandleContinuity(candles)) { continue }
         const sample = await createTrainingSample(candles, 120, brr, index)
-        console.log(Date.now())
+
+        // Skip samples with null outcomes
+        if (sample === null) { continue }
+
+        const trainResult = await nn.train([sample])
+
+        // Pretty print training results
+        const loss = trainResult.history.loss[0].toFixed(6)
+        const mae = trainResult.history.mae[0].toFixed(6)
+        const outcomes = `Buy: ${sample.outcomes.buyProfitPercent?.toFixed(4) || 'null'}, Sell: ${sample.outcomes.sellProfitPercent?.toFixed(4) || 'null'}`
+
+        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes}`)
     }
 }
 
