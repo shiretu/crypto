@@ -33,7 +33,7 @@ class Binance {
     constructor (events, symbol, historyInDays) {
         this.#events = events
         this.#symbol = symbol
-        this.#historyInDays = historyInDays ?? 2
+        this.#historyInDays = historyInDays
         this.#tableName = `${this.#databaseName}.trades_${this.#symbol.name('', false)}`
         this.#eventNameTrade = EventName.ofTrade(EventName.ACTION.EXECUTED, this.#name, symbol.id)
         this.#eventNameTradeProcessingStart = EventName.ofTrade(EventName.ACTION.PROCESSING_STARTED, this.#name, symbol.id)
@@ -65,13 +65,17 @@ class Binance {
         }
     }
 
-    async run (startTsMs, continueCallback) {
+    async run (startTsMs, endTsMs = 0, tradeCallback = null) {
         const client = createClient()
         const ok = await client.ping()
         if ((!ok) || (!ok.success)) { throw new Error('unable to ping the client') }
         try {
+            let whereClause = `where ts>=${startTsMs * 1000}`
+            if (endTsMs > 0) {
+                whereClause += ` and ts<=${endTsMs * 1000}`
+            }
             const qr = await client.query({
-                query: `select *, fromUnixTimestamp64Micro(ts, 'UTC') as tsHr from ${this.#tableName} where ts>=${startTsMs * 1000} order by ts, id`,
+                query: `select *, fromUnixTimestamp64Micro(ts, 'UTC') as tsHr from ${this.#tableName} ${whereClause} order by ts, id`,
                 compression: { response: true },
                 clickhouse_settings: {
                     optimize_read_in_order: 1,
@@ -81,11 +85,17 @@ class Binance {
                 format: 'JSONEachRow'
             })
             if (!qr) throw new Error('Unable to execute fetching query')
+            const eventEmittingCallback = (trade) => {
+                this.#events.emit(this.#eventNameTradeProcessingStart)
+                this.#events.emit(this.#eventNameTrade, trade)
+                this.#events.emit(this.#eventNameTradeProcessingCompleted)
+                return true
+            }
+            const callback = typeof tradeCallback === 'function' ? tradeCallback : eventEmittingCallback
             for await (const rows of qr.stream()) {
                 for (const row of rows) {
                     const js = row.json()
-                    this.#events.emit(this.#eventNameTradeProcessingStart)
-                    this.#events.emit(this.#eventNameTrade, new Trade(
+                    if (!callback(new Trade(
                         this.#name,
                         this.#symbol,
                         null,
@@ -96,19 +106,21 @@ class Binance {
                         js.baseQty,
                         js.quoteQty,
                         js.isBuyerMaker
-                    ))
-                    this.#events.emit(this.#eventNameTradeProcessingCompleted)
-                    if (typeof continueCallback === 'function') {
-                        if (!continueCallback()) return
+                    ))) {
+                        return
                     }
                 }
             }
+        } catch (error) {
+            console.error('Error occurred while running:', error)
+            throw error
         } finally {
             this.#safeExec(async () => await client.close())
         }
     }
 
     async #init () {
+        if (this.#historyInDays === null) return Promise.resolve()
         const client = createClient()
         const ok = await client.ping()
         if ((!ok) || (!ok.success)) { throw new Error('unable to ping the client') }

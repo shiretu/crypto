@@ -34,14 +34,39 @@ class CandlesGenerator {
         this.#exchangeName = exchangeName
         this.#candleDurationUs = candleDurationMin * 60000000
         this.#candle = /** @type {Candle} */ (null)
-        this.#events.on(EventName.ofTrade(EventName.ACTION.EXECUTED, exchangeName, symbol.id), (trade) => { this.#onTrade(trade) })
-        this.#candleOpenedEvent = EventName.ofCandle(EventName.ACTION.OPENED, exchangeName, symbol.id)
-        this.#candleUpdatedEvent = EventName.ofCandle(EventName.ACTION.UPDATED, exchangeName, symbol.id)
-        this.#candleClosedEvent = EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id)
+        if (this.#events) {
+            this.#events.on(EventName.ofTrade(EventName.ACTION.EXECUTED, exchangeName, symbol.id), (trade) => { this.#onTrade(trade) })
+            this.#candleOpenedEvent = EventName.ofCandle(EventName.ACTION.OPENED, exchangeName, symbol.id)
+            this.#candleUpdatedEvent = EventName.ofCandle(EventName.ACTION.UPDATED, exchangeName, symbol.id)
+            this.#candleClosedEvent = EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id)
+        }
     }
 
     reset () {
         this.#candle = null
+    }
+
+    /**
+     * Feed a trade into the generator.
+     * @param {Trade} trade
+     * @returns   {Candle|null} - Returns closed candle if a candle was closed, otherwise null
+     */
+    feed (trade) {
+        const candleId = Math.floor(trade.tsUs / this.#candleDurationUs)
+        if (!this.#candle) {
+            this.#candle = new Candle(this.#exchangeName, this.#symbol, candleId, this.#candleDurationUs, trade)
+            return null
+        }
+
+        if (this.#candle.id !== candleId) {
+            const result = this.#candle
+            this.#candle = new Candle(this.#exchangeName, this.#symbol, candleId, this.#candleDurationUs, trade)
+            return result
+        }
+
+        this.#candle.update(trade)
+
+        return null
     }
 
     #onTrade (trade) {
