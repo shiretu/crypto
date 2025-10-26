@@ -198,6 +198,99 @@ FROM ${this.#tableName}_temp`
         })
     }
 
+    async exportAllData (pathToBinaryFile) {
+        const fs = require('fs')
+        const client = createClient()
+        const ok = await client.ping()
+        if ((!ok) || (!ok.success)) { throw new Error('unable to ping the client') }
+
+        const RECORD_SIZE = 40 // 8+8+8+8+8 bytes per record
+
+        try {
+            // Get total count for progress tracking
+            const countResult = await (await client.query({
+                query: `SELECT COUNT(*) as total FROM ${this.#tableName}`,
+                format: 'JSONEachRow'
+            })).json()
+            const totalRecords = countResult[0].total
+            console.log(`Exporting ${totalRecords} records to binary file: ${pathToBinaryFile}`)
+
+            // Create write stream
+            const writeStream = fs.createWriteStream(pathToBinaryFile)
+
+            // Process data in chunks using LIMIT/OFFSET to avoid memory overflow
+            let processedRecords = 0
+            let offset = 0
+            const chunkSize = 1000000 // Process 1M records at a time
+
+            while (offset < totalRecords) {
+                console.log(`Processing chunk: ${offset} to ${Math.min(offset + chunkSize, totalRecords)}`)
+                const qr = await client.query({
+                    query: `SELECT id, ts, price, baseQty, quoteQty, isBuyerMaker, isBestMatch 
+                           FROM ${this.#tableName} 
+                           ORDER BY ts, id 
+                           LIMIT ${chunkSize} OFFSET ${offset}`,
+                    format: 'JSONEachRow'
+                })
+
+                const chunkRecords = await qr.json()
+
+                if (chunkRecords.length === 0) break
+
+                // Process this chunk
+                const chunkBuffer = Buffer.allocUnsafe(chunkRecords.length * RECORD_SIZE)
+                let bufferOffset = 0
+
+                for (const trade of chunkRecords) {
+                    // Pack flags into top 2 bits of ID
+                    const flags = (trade.isBuyerMaker ? 1 : 0) | (trade.isBestMatch ? 2 : 0)
+                    const idWithFlags = BigInt(trade.id) | (BigInt(flags) << 62n)
+
+                    // Write binary record: id_and_flags, timestamp, price, baseQty, quoteQty
+                    chunkBuffer.writeBigUInt64LE(idWithFlags, bufferOffset)
+                    chunkBuffer.writeBigUInt64LE(BigInt(trade.ts), bufferOffset + 8)
+                    chunkBuffer.writeDoubleLE(parseFloat(trade.price), bufferOffset + 16)
+                    chunkBuffer.writeDoubleLE(parseFloat(trade.baseQty), bufferOffset + 24)
+                    chunkBuffer.writeDoubleLE(parseFloat(trade.quoteQty), bufferOffset + 32)
+
+                    bufferOffset += RECORD_SIZE
+                    processedRecords++
+                }
+
+                // Write chunk to file with backpressure handling
+                await new Promise((resolve, reject) => {
+                    writeStream.write(chunkBuffer, (err) => {
+                        if (err) reject(err)
+                        else resolve()
+                    })
+                })
+
+                offset += chunkRecords.length
+
+                // Progress update
+                const progress = ((processedRecords / totalRecords) * 100).toFixed(1)
+                console.log(`Export progress: ${processedRecords}/${totalRecords} (${progress}%)`)
+
+                // Force garbage collection between chunks
+                if (global.gc) global.gc()
+            }
+
+            // Close write stream
+            await new Promise((resolve, reject) => {
+                writeStream.end((err) => {
+                    if (err) reject(err)
+                    else resolve()
+                })
+            })
+
+            console.log(`Export completed: ${processedRecords} records written to ${pathToBinaryFile}`)
+            const fileSizeGB = (processedRecords * RECORD_SIZE / (1024 * 1024 * 1024)).toFixed(2)
+            console.log(`File size: ${fileSizeGB} GB`)
+        } finally {
+            this.#safeExec(async () => await client.close())
+        }
+    }
+
     async #safeExec (fnc) {
         try {
             await fnc()
