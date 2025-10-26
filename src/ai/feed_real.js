@@ -5,15 +5,20 @@ const { getSource } = require('../sources/sources')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
 const Macd = require('../instruments/macd')
+const path = require('path')
+const BinanceRawReader = require('../sources/BinanceRawReader')
 
 /**
  * Create a training sample from 120 candles
- * @param {Candle[]} candles - Array of 120 candles
- * @returns {object} Training sample with features and outcomes
+ * @param {Candle[]} candles - the array of candles
+ * @param {number} trainingLength - how many candles to use for training. they will be taken from the end of the candles array
+ * @param {BinanceRawReader} brr - Binance raw reader instance which will be used to read trades for outcome calculation
+ * @param {number} outcomeEntryTradeIndex - the index of the trade to use as entry point for outcome calculation
+ * @returns  {object} Training sample with features and outcomes
  */
-const createTrainingSample = (candles, start, length) => {
+const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex) => {
     // Extract the training candles
-    const trainingCandles = candles.slice(start, start + length)
+    const trainingCandles = candles.slice(-1 * trainingLength)
 
     // compute the base index for timestamps normalization
     const dayDurationUs = 24 * 60 * 60 * 1000 * 1000
@@ -59,33 +64,36 @@ const createTrainingSample = (candles, start, length) => {
     // signals computations
     const macdComputer = new Macd()
     const macd = []
+    const start = candles.length - trainingLength
     candles.forEach((candle, index) => {
         macdComputer.push(candle.close.normalizedPrice)
-        if (index >= start && index < start + length) {
+        if (index >= start && index < start + trainingLength) {
             macd.push(macdComputer.value)
         }
     })
 
     // compute the 2 possible outcomes
-    const trades = candles.slice(start + length).map(c => c.trades).flat()
-    const enterPrice = trades[0].normalizedPrice
-    let buyProfit = null
-    let sellProfit = null
-    const future = trades.slice(1)
-    for (const trade of future) {
-        if ((buyProfit !== null) && (sellProfit !== null)) break
-        if (buyProfit === null) {
-            const profit = trade.normalizedPrice - enterPrice
+    const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
+    const enterPrice = enterTrade.price
+    let buyProfitPercent = null
+    let sellProfitPercent = null
+    let currentTradeIndex = outcomeEntryTradeIndex + 1
+    while (currentTradeIndex < brr.info.recordsCount) {
+        if ((buyProfitPercent !== null) && (sellProfitPercent !== null)) break
+        const trade = await brr.readTrade(currentTradeIndex)
+        currentTradeIndex++
+        if (buyProfitPercent === null) {
+            const profit = trade.price - enterPrice
             const percent = profit / enterPrice
             if ((percent >= 0.007) || (percent <= -0.004)) {
-                buyProfit = profit
+                buyProfitPercent = percent
             }
         }
-        if (sellProfit === null) {
-            const profit = enterPrice - trade.normalizedPrice
+        if (sellProfitPercent === null) {
+            const profit = enterPrice - trade.price
             const percent = profit / enterPrice
             if ((percent >= 0.007) || (percent <= -0.004)) {
-                sellProfit = profit
+                sellProfitPercent = percent
             }
         }
     }
@@ -119,7 +127,7 @@ const createTrainingSample = (candles, start, length) => {
             },
             global: {
                 candleDuration: trainingCandles[0].periodUs / 60000000,
-                windowSize: length,
+                windowSize: trainingLength,
                 grossProfitTarget: 0.007,
                 grossStopLoss: 0.004,
                 positionSize: 100,
@@ -127,8 +135,8 @@ const createTrainingSample = (candles, start, length) => {
             }
         },
         outcomes: {
-            buyProfit,
-            sellProfit
+            buyProfit: buyProfitPercent,
+            sellProfit: sellProfitPercent
         }
     }
 }
@@ -147,71 +155,64 @@ const checkCandleContinuity = (candles) => {
     return true
 }
 
-const feed = async (identity) => {
-    const exchangeName = 'binance'
-    const symbolName = 'btcusdc'
-    const candleDurationMinutes = 1
-    const candlesPerWindow = 120
-    const extraCandlesPerWindowSide = 120
-
-    const events = new EventEmitter()
-    const symbol = Symbol.find(symbolName)
-
-    const source = await getSource(events, exchangeName, symbol, 365 * 4)
-    console.log('Source initialized: ', source)
-
-    const candlesGenerator = new CandlesGenerator(events, exchangeName, symbol, candleDurationMinutes)
-    console.log('CandlesGenerator initialized: ', candlesGenerator)
-
-    /**
-     * @type {{ minTsUs: number, maxTsUs: number, durationUs: number }}
-     */
-    const availableDataRange = await source.getAvailableDataRangeUs()
-    availableDataRange.durationUs = availableDataRange.maxTsUs - availableDataRange.minTsUs
-    console.log(`Available data range: ${new Date(availableDataRange.minTsUs / 1000).toISOString()} -> ${new Date(availableDataRange.maxTsUs / 1000).toISOString()}: ${Math.floor(availableDataRange.durationUs / (1000000.0 * 60 * 60 * 24))} days`)
-
-    let candles = []
-    events.on(EventName.ofCandle(EventName.ACTION.CLOSED, exchangeName, symbol.id), (/** @type {Candle} */ candle) => {
-        candles.push(candle)
-    })
-
-    const totalCandlesCount = candlesPerWindow + (3 * extraCandlesPerWindowSide)
-    let validWindowsFound = 0
-    while (validWindowsFound < 1000) {
-        const windowStartUs = Math.floor(Math.random() * availableDataRange.durationUs) + availableDataRange.minTsUs
-        candles = []
-        candlesGenerator.reset()
-        await source.run(windowStartUs / 1000, () => candles.length < totalCandlesCount)
-
-        // do we have all required candles?
-        if (candles.length < totalCandlesCount) {
-            console.log(`Window starting at ${new Date(windowStartUs / 1000).toISOString()} rejected due to insufficient candles: got ${candles.length}, expected ${totalCandlesCount}.`)
-            continue
-        }
-
-        // chop first and last candles, they might be incomplete
-        candles = candles.slice(1, candles.length - 1)
-
-        // are the candles continuous?
-        if (!checkCandleContinuity(candles)) {
-            // console.log(`Window starting at ${new Date(windowStartUs / 1000).toISOString()} rejected due to candle gaps.`)
-            continue
-        }
-        validWindowsFound++
-        // console.log(`Window starting at ${new Date(windowStartUs / 1000).toISOString()} accepted with ${candles.length} continuous candles.`)
-
-        // Create training sample from the middle 120 candles
-        const trainingSample = createTrainingSample(candles, 119, 120)
-        console.log({ identity, ...trainingSample.outcomes })
+/**
+ * Get configuration for feeding data
+ * @returns {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}}
+ */
+const getConfig = () => {
+    const result = {
+        exchangeName: 'binance',
+        symbol: Symbol.find('btcusdc'),
+        totalHistoryInDays: 365 * 4,
+        candleDurationMinutes: 1,
+        candlesPerWindow: 120,
+        extraCandlesPerWindowSide: 120
     }
 
-    console.log('Done')
+    const brr = BinanceRawReader.create(path.join(path.resolve(__dirname, '..', '..'), 'data', 'binance_btcusdc_trades.bin'), result.symbol)
+    result.availableDataRange = brr.info
+    result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
+    return result
+}
+
+/**
+ *  Feed data for training
+ * @param {number} identity
+ * @param {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}} config
+ */
+const feed = async (identity, config) => {
+    const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
+    const requiredCandlesCount = config.candlesPerWindow + 100
+    const safeStartRegion = 50000
+    const safeEndRegion = 1000000
+    const safeRecordsCount = config.availableDataRange.recordsCount - safeEndRegion - safeStartRegion
+    const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
+    for (let i = 0; i < 1000; i++) {
+        let index = safeStartRegion + Math.floor(Math.random() * safeRecordsCount)
+        const candles = []
+        candlesGenerator.reset()
+        while (candles.length < requiredCandlesCount) {
+            const trade = await brr.readTrade(index)
+            index++
+            if (!trade) {
+                break
+            }
+            const candle = candlesGenerator.feed(trade)
+            if (candle) {
+                candles.push(candle)
+            }
+        }
+        if (!checkCandleContinuity(candles)) { continue }
+        const sample = await createTrainingSample(candles, 120, brr, index)
+        console.log(Date.now())
+    }
 }
 
 const work = async () => {
+    const config = getConfig()
     const promises = []
-    for (let i = 0; i < 4; i++) {
-        promises.push(feed(i))
+    for (let i = 0; i < 1; i++) {
+        promises.push(feed(i, config))
     }
     await Promise.all(promises)
 }
