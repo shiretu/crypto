@@ -72,8 +72,8 @@ const createTrainRequest = (samplesCount) => {
                 }
             },
             outcomes: {
-                buyProfit: 0,
-                sellProfit: 0
+                buyProfitPercent: 0,
+                sellProfitPercent: 0
             }
         })
     }

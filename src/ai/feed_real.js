@@ -135,8 +135,8 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
             }
         },
         outcomes: {
-            buyProfit: buyProfitPercent,
-            sellProfit: sellProfitPercent
+            buyProfitPercent,
+            sellProfitPercent
         }
     }
 }

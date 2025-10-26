@@ -1,5 +1,5 @@
 {
-  "input_features": 2163,
+  "input_features": 2160,
   "output_features": 2,
   "layers": [
     {

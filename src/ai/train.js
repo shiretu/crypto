@@ -266,7 +266,7 @@ class TradingTrainingServer {
 
     #makeFlat (features) {
         return [
-            // Candles: 8 arrays × 120 = 960 features
+            // Candles: 9 arrays × 120 = 1080 features
             ...features.candles.opens,
             ...features.candles.highs,
             ...features.candles.lows,
@@ -275,19 +275,20 @@ class TradingTrainingServer {
             ...features.candles.timestamps,
             ...features.candles.colors,
             ...features.candles.bodySizes,
+            ...features.candles.tradesCount,
 
-            // Studies: 7 arrays × 120 = 840 features
-            ...features.studies.macdShort,
-            ...features.studies.macdLong,
-            ...features.studies.macdLine,
-            ...features.studies.macdSignal,
-            ...features.studies.macdHistogram,
-            ...features.studies.unused1,
-            ...features.studies.unused2,
+            // Studies: 837 features total
+            ...features.studies.macdShort, // 120
+            ...features.studies.macdLong, // 120
+            ...features.studies.macdLine, // 120
+            ...features.studies.macdSignal, // 120
+            ...features.studies.macdHistogram, // 120
+            ...features.studies.unused1, // 119
+            ...features.studies.unused2, // 118
 
             // Patterns: 237 features
-            ...features.patterns.single,
-            ...features.patterns.sliding,
+            ...features.patterns.single, // 119
+            ...features.patterns.sliding, // 118
 
             // Global: 6 features
             features.global.candleDuration,
@@ -301,7 +302,7 @@ class TradingTrainingServer {
 
     #prepareTensors (samples) {
         const features = samples.map(sample => this.#makeFlat(sample.features))
-        const labels = samples.map(sample => [sample.outcomes.buyProfit, sample.outcomes.sellProfit])
+        const labels = samples.map(sample => [sample.outcomes.buyProfitPercent, sample.outcomes.sellProfitPercent])
 
         return {
             features: tf.tensor2d(features),
@@ -333,15 +334,15 @@ class TradingTrainingServer {
         // Handle both nested object and flat array formats
         let flatFeatures
         if (Array.isArray(features)) {
-            if (features.length !== 2043) {
-                callback(new Error('Features array must have exactly 2043 values'))
+            if (features.length !== 2160) {
+                callback(new Error('Features array must have exactly 2160 values'))
                 return
             }
             flatFeatures = features
         } else if (typeof features === 'object') {
             flatFeatures = this.#makeFlat(features)
-            if (flatFeatures.length !== 2043) {
-                callback(new Error('Features object must flatten to exactly 2043 values'))
+            if (flatFeatures.length !== 2160) {
+                callback(new Error('Features object must flatten to exactly 2160 values'))
                 return
             }
         } else {
