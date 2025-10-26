@@ -147,7 +147,7 @@ const checkCandleContinuity = (candles) => {
     return true
 }
 
-const work = async () => {
+const feed = async (identity) => {
     const exchangeName = 'binance'
     const symbolName = 'btcusdc'
     const candleDurationMinutes = 1
@@ -177,7 +177,7 @@ const work = async () => {
 
     const totalCandlesCount = candlesPerWindow + (3 * extraCandlesPerWindowSide)
     let validWindowsFound = 0
-    while (validWindowsFound < 10) {
+    while (validWindowsFound < 1000) {
         const windowStartUs = Math.floor(Math.random() * availableDataRange.durationUs) + availableDataRange.minTsUs
         candles = []
         candlesGenerator.reset()
@@ -198,20 +198,22 @@ const work = async () => {
             continue
         }
         validWindowsFound++
-        console.log(`Window starting at ${new Date(windowStartUs / 1000).toISOString()} accepted with ${candles.length} continuous candles.`)
+        // console.log(`Window starting at ${new Date(windowStartUs / 1000).toISOString()} accepted with ${candles.length} continuous candles.`)
 
         // Create training sample from the middle 120 candles
         const trainingSample = createTrainingSample(candles, 119, 120)
-        console.log(trainingSample.features.candles.timestamps)
-        // console.log('Training sample created:', {
-        //     candleCount: trainingCandles.length,
-        //     firstCandle: new Date(trainingCandles[0].tsUs.open / 1000).toISOString(),
-        //     lastCandle: new Date(trainingCandles[trainingCandles.length - 1].tsUs.close / 1000).toISOString(),
-        //     sampleKeys: Object.keys(trainingSample),
-        //     featuresKeys: Object.keys(trainingSample.features),
-        //     candleFeatureCount: Object.keys(trainingSample.features.candles).length
-        // })
+        console.log({ identity, ...trainingSample.outcomes })
     }
+
+    console.log('Done')
+}
+
+const work = async () => {
+    const promises = []
+    for (let i = 0; i < 4; i++) {
+        promises.push(feed(i))
+    }
+    await Promise.all(promises)
 }
 
 work()
