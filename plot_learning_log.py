@@ -1,17 +1,20 @@
+NUM_LOG_LINES = 500  # Number of most recent log lines to plot
+
 import re
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button
 import threading
+import argparse
 
-def extract_data():
+def extract_data(num_log_lines):
     with open('learning_logs.txt', 'r') as f:
         lines = f.readlines()
     samples = []
     losses = []
     maes = []
     pattern = re.compile(r'Sample (\d+) \| Trade [^|]+ \| Loss: ([\d.]+) \| MAE: ([\d.]+)')
-    log_lines = lines[-500:] if len(lines) > 500 else lines
+    log_lines = lines[-num_log_lines:] if len(lines) > num_log_lines else lines
     for line in log_lines:
         m = pattern.search(line)
         if m:
@@ -38,7 +41,7 @@ def plot_data(ax, samples, losses, maes):
 
 
 def refresh(event=None):
-    samples, losses, maes = extract_data()
+    samples, losses, maes = extract_data(args.lines)
     plot_data(ax, samples, losses, maes)
 
 def auto_refresh():
@@ -46,16 +49,24 @@ def auto_refresh():
     # Schedule next refresh in 5 seconds
     threading.Timer(5.0, auto_refresh).start()
 
-fig, ax = plt.subplots(figsize=(12, 6))
-plt.subplots_adjust(bottom=0.15)
-samples, losses, maes = extract_data()
-plot_data(ax, samples, losses, maes)
 
-ax_refresh = plt.axes([0.8, 0.025, 0.1, 0.04])
-btn_refresh = Button(ax_refresh, 'Refresh')
-btn_refresh.on_clicked(refresh)
+def parse_args():
+    parser = argparse.ArgumentParser(description='Plot training loss and MAE from log file.')
+    parser.add_argument('--lines', type=int, default=500, help='Number of most recent log lines to plot (default: 500)')
+    return parser.parse_args()
 
-# Start auto-refresh timer
-auto_refresh()
+if __name__ == '__main__':
+    args = parse_args()
+    fig, ax = plt.subplots(figsize=(12, 6))
+    plt.subplots_adjust(bottom=0.15)
+    samples, losses, maes = extract_data(args.lines)
+    plot_data(ax, samples, losses, maes)
 
-plt.show()
+    ax_refresh = plt.axes([0.8, 0.025, 0.1, 0.04])
+    btn_refresh = Button(ax_refresh, 'Refresh')
+    btn_refresh.on_clicked(refresh)
+
+    # Start auto-refresh timer
+    auto_refresh()
+
+    plt.show()

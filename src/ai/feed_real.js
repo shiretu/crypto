@@ -201,7 +201,9 @@ const feed = async (identity, config) => {
     const safeEndRegion = 1000000
     const safeRecordsCount = config.availableDataRange.recordsCount - safeEndRegion - safeStartRegion
     const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
+    let i = 0
     while (true) {
+        i++
         let index = safeStartRegion + Math.floor(Math.random() * safeRecordsCount)
         const candles = []
         candlesGenerator.reset()

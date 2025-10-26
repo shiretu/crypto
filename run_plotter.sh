@@ -15,4 +15,4 @@ pip install --upgrade pip
 pip install matplotlib
 
 # Run the plotter script
-python3 plot_learning_log.py
+python3 plot_learning_log.py "$@"
