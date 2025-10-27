@@ -2,6 +2,10 @@
  * Represents a trading symbol (base/quote pair).
  */
 class Symbol {
+    static #allAssets /** @type {Set<string>} */
+    static #allSymbols /** @type {Array<{ symbol: Symbol, aliases: Set<string> }> } */
+    static #symbolsByAliases /** @type {Map<string, Symbol>} */
+
     #id /** @type {string} */
     #baseAssetName /** @type {string} */
     #quoteAssetName /** @type {string} */
@@ -12,13 +16,15 @@ class Symbol {
      * @param {string} quoteAssetName - quote asset (e.g. USDT)
      */
     constructor (baseAssetName, quoteAssetName) {
-        this.#baseAssetName = baseAssetName
-        this.#quoteAssetName = quoteAssetName
+        this.#baseAssetName = baseAssetName.toLowerCase()
+        this.#quoteAssetName = quoteAssetName.toLowerCase()
+        if (!Symbol.#allAssets.has(this.#baseAssetName)) { throw new Error(`Invalid asset name: base: ${this.#baseAssetName}`) }
+        if (!Symbol.#allAssets.has(this.#quoteAssetName)) { throw new Error(`Invalid asset name: quote: ${this.#quoteAssetName}`) }
         this.#id = this.name('', false)
     }
 
     /**
-     * Unique identifier for the symbol (uppercase concatenation of base and quote)
+     * Unique identifier for the symbol (lowercase concatenation of base and quote)
      * @returns {string}
      */
     get id () { return this.#id }
@@ -53,32 +59,25 @@ class Symbol {
      * @throws {Error} if alias is not found
      */
     static find (alias) {
-        const result = this.#symbolsByAliases.get(alias)
+        const result = this.#symbolsByAliases.get(alias.toLowerCase())
         if (result) { return result }
         throw new Error(`Symbol ${alias} not found`)
     }
 
-    // Private static internals (initialized in the static block below)
-    static #allInfo
-    static #allAssets
-    static #allSymbols
-    static #symbolsByAliases
-
     static {
         const allInfo = require('./allsymbols.json')
-        this.#allInfo = allInfo
-        this.#allAssets = new Set(allInfo.assets.map(a => a.toLocaleLowerCase()))
-        this.#allSymbols = allInfo.symbols.map(raw => [
+        Symbol.#allAssets = new Set(allInfo.assets.map(a => a.toLocaleLowerCase()))
+        Symbol.#allSymbols = allInfo.symbols.map(raw => [
             raw[0].toLocaleLowerCase(),
             raw[1].toLocaleLowerCase(),
             ...raw.slice(2),
             ...raw.slice(2).map(r => r.toLocaleLowerCase()),
             ...raw.slice(2).map(r => r.toLocaleUpperCase())
         ]).map(([baseAssetName, quoteAssetName, ...aliases]) => {
-            if (!(this.#allAssets.has(baseAssetName) && this.#allAssets.has(quoteAssetName))) { throw new Error(`Invalid symbol: ${JSON.stringify([baseAssetName, quoteAssetName, ...aliases])}`) }
-            return { symbol: new Symbol(baseAssetName, quoteAssetName), aliases: new Set([...aliases]) }
+            if (!(Symbol.#allAssets.has(baseAssetName) && Symbol.#allAssets.has(quoteAssetName))) { throw new Error(`Invalid symbol: ${JSON.stringify([baseAssetName, quoteAssetName, ...aliases])}`) }
+            return { symbol: new Symbol(baseAssetName, quoteAssetName), aliases: new Set([...aliases.map(a => a.toLowerCase())]) }
         })
-        this.#symbolsByAliases = this.#allSymbols.reduce((dst, src) => {
+        Symbol.#symbolsByAliases = Symbol.#allSymbols.reduce((dst, src) => {
             src.aliases.forEach(alias => {
                 if (dst.has(alias)) {
                     throw new Error(`Alias ${alias} is used 2 or more times`)

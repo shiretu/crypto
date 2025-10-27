@@ -15,7 +15,9 @@
         [
             "BTC",
             "USDC",
-            "BTCUSDC"
+            "BTCUSDC",
+            "bTcUsDc",
+            "btc-usdc"
         ],
         [
             "ETH",

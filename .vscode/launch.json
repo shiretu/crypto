@@ -9,7 +9,7 @@
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
-                "ai:feed",
+                "test",
                 "BTCUSDC"
             ],
             "runtimeExecutable": "npm",
