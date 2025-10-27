@@ -1,6 +1,6 @@
 {
     "exchangeName": "binance",
-    "symbol": "ethusdc",
+    "symbol": "btcusdc",
     "totalHistoryInDays": 1460,
     "candleDurationMinutes": 1,
     "candlesPerWindow": 120,
