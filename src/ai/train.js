@@ -24,7 +24,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
     let buyProfitPercent = null
     let sellProfitPercent = null
     let currentTradeIndex = outcomeEntryTradeIndex + 1
-    const maxLookAhead = 1000000 // Limit search to prevent null values
+    const maxLookAhead = 10000000 // Limit search to prevent null values
     let searchCount = 0
     while (currentTradeIndex < brr.info.recordsCount && searchCount < maxLookAhead) {
         if ((buyProfitPercent !== null) && (sellProfitPercent !== null)) break
@@ -49,6 +49,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
 
     // Skip samples with null outcomes to prevent training issues
     if (buyProfitPercent === null || sellProfitPercent === null) {
+        console.log('Skipping sample due to null outcomes')
         return null // Signal to skip this sample
     }
 
@@ -108,7 +109,8 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         outcomes: {
             buyProfitPercent,
             sellProfitPercent
-        }
+        },
+        searchCount
     }
 }
 
@@ -187,7 +189,7 @@ const feed = async (identity, config) => {
         const mae = trainResult.history.mae[0].toFixed(6)
         const outcomes = `Buy: ${sample.outcomes.buyProfitPercent?.toFixed(4) || 'null'}, Sell: ${sample.outcomes.sellProfitPercent?.toFixed(4) || 'null'}`
 
-        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes}`)
+        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes} | Search Count: ${sample.searchCount}`)
     }
 }
 
