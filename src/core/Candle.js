@@ -163,6 +163,12 @@ class Candle {
      * @param {Trade} trade
      */
     update (trade) {
+        if (trade.symbol.id !== this.#symbol.id) {
+            throw new Error(`Trade symbol ${trade.symbol.id} does not match candle symbol ${this.#symbol.id}`)
+        }
+        if (trade.tsUs < this.#close.tsUs) {
+            throw new Error(`Trade timestamp ${trade.tsUs} is earlier than last trade timestamp ${this.#close.tsUs}`)
+        }
         this.#trades.push(trade)
         this.#close = trade
         const price = trade.price
