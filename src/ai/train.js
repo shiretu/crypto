@@ -18,61 +18,6 @@ const BinanceRawReader = require('../sources/BinanceRawReader')
  * @returns  {object} Training sample with features and outcomes
  */
 const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex) => {
-    // Extract the training candles
-    const trainingCandles = candles.slice(-1 * trainingLength)
-
-    // compute the base index for timestamps normalization
-    const dayDurationUs = 24 * 60 * 60 * 1000 * 1000
-    const followingMidnightUs = (Math.floor(trainingCandles[0].tsUs.open / dayDurationUs) + 1) * dayDurationUs
-    const baseUs = (followingMidnightUs < trainingCandles[trainingCandles.length - 1].tsUs.close) ? followingMidnightUs : (followingMidnightUs - dayDurationUs)
-    const baseIndex = baseUs / candles[0].periodUs
-
-    // compute price normalization base
-    const minPrice = Math.min(...candles.map(c => c.prices.low))
-    const maxPrice = Math.max(...candles.map(c => c.prices.high))
-    const minVolume = Math.min(...candles.map(c => c.volumes.quote))
-    const maxVolume = Math.max(...candles.map(c => c.volumes.quote))
-    const minHeight = Math.min(...candles.map(c => c.height))
-    const maxHeight = Math.max(...candles.map(c => c.height))
-    const minTradesCount = Math.min(...candles.map(c => c.tradeCount))
-    const maxTradesCount = Math.max(...candles.map(c => c.tradeCount))
-    const priceRange = maxPrice - minPrice
-    const volumeRange = maxVolume - minVolume
-    const heightRange = maxHeight - minHeight
-    const tradesCountRange = maxTradesCount - minTradesCount
-
-    // apply the normalization
-    candles.forEach(candle => {
-        candle.trades.forEach(trade => {
-            trade.normalizedPrice = (trade.price - minPrice) / priceRange
-        })
-        candle.normalizedVolume = (candle.volumes.quote - minVolume) / volumeRange
-        candle.normalizedHeight = (candle.height - minHeight) / heightRange
-        candle.normalizedTradesCount = (candle.tradeCount - minTradesCount) / tradesCountRange
-    })
-
-    // Extract candle data
-    const opens = trainingCandles.map(c => c.open.normalizedPrice)
-    const highs = trainingCandles.map(c => c.high.normalizedPrice)
-    const lows = trainingCandles.map(c => c.low.normalizedPrice)
-    const closes = trainingCandles.map(c => c.close.normalizedPrice)
-    const volumes = trainingCandles.map(c => c.normalizedVolume)
-    const timestamps = trainingCandles.map(c => c.id - baseIndex)
-    const colors = trainingCandles.map(c => c.direction)
-    const bodySizes = trainingCandles.map(c => c.normalizedHeight)
-    const tradesCount = trainingCandles.map(c => c.normalizedTradesCount)
-
-    // signals computations
-    const macdComputer = new Macd()
-    const macd = []
-    const start = candles.length - trainingLength
-    candles.forEach((candle, index) => {
-        macdComputer.push(candle.close.normalizedPrice)
-        if (index >= start && index < start + trainingLength) {
-            macd.push(macdComputer.value)
-        }
-    })
-
     // compute the 2 possible outcomes
     const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
     const enterPrice = enterTrade.price
@@ -107,19 +52,36 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         return null // Signal to skip this sample
     }
 
+    // normalize the candles
+    Candle.normalize(candles)
+
+    // Extract the training candles
+    const trainingCandles = candles.slice(-1 * trainingLength)
+
+    // signals computations
+    const macdComputer = new Macd()
+    const macd = []
+    const start = candles.length - trainingLength
+    candles.forEach((candle, index) => {
+        macdComputer.push(candle.close.normalizedPrice)
+        if (index >= start && index < start + trainingLength) {
+            macd.push(macdComputer.value)
+        }
+    })
+
     // Create training sample structure
     return {
         features: {
             candles: {
-                opens,
-                highs,
-                lows,
-                closes,
-                volumes,
-                timestamps,
-                colors,
-                bodySizes,
-                tradesCount
+                opens: trainingCandles.map(c => c.open.normalizedPrice),
+                highs: trainingCandles.map(c => c.high.normalizedPrice),
+                lows: trainingCandles.map(c => c.low.normalizedPrice),
+                closes: trainingCandles.map(c => c.close.normalizedPrice),
+                volumes: trainingCandles.map(c => c.normalizedQuoteVolume),
+                timestamps: trainingCandles.map(c => c.normalizedMinuteOfDay),
+                colors: trainingCandles.map(c => c.direction),
+                bodySizes: trainingCandles.map(c => c.normalizedHeight),
+                tradesCount: trainingCandles.map(c => c.normalizedTradesCount)
             },
             studies: {
                 macdShort: macd.map(m => m.short),
