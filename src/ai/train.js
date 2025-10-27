@@ -192,12 +192,8 @@ const feed = async (identity, config) => {
 }
 
 const work = async () => {
-    const config = getConfig('myFirstModel')
-    const promises = []
-    for (let i = 0; i < 1; i++) {
-        promises.push(feed(i, config))
-    }
-    await Promise.all(promises)
+    const config = getConfig(process.argv[2])
+    await feed(0, config)
 }
 
 work()

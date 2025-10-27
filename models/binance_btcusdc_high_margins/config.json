@@ -1,0 +1,12 @@
+{
+    "exchangeName": "binance",
+    "symbol": "btcusdc",
+    "totalHistoryInDays": 1460,
+    "candleDurationMinutes": 1,
+    "candlesPerWindow": 120,
+    "extraCandlesPerWindowSide": 120,
+    "profitTargetPercent": 0.07,
+    "stopLossPercent": 0.04,
+    "positionSize": 100,
+    "feesPercent": 0.002
+}
