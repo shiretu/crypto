@@ -18,8 +18,8 @@ class Symbol {
     constructor (baseAssetName, quoteAssetName) {
         this.#baseAssetName = baseAssetName.toLowerCase()
         this.#quoteAssetName = quoteAssetName.toLowerCase()
-        if (!Symbol.#allAssets.has(this.#baseAssetName)) { throw new Error(`Invalid asset name: base: ${this.#baseAssetName}`) }
-        if (!Symbol.#allAssets.has(this.#quoteAssetName)) { throw new Error(`Invalid asset name: quote: ${this.#quoteAssetName}`) }
+        if (!Symbol.#allAssets.has(this.#baseAssetName)) { throw new Error(`Invalid asset name: base: ${baseAssetName}`) }
+        if (!Symbol.#allAssets.has(this.#quoteAssetName)) { throw new Error(`Invalid asset name: quote: ${quoteAssetName}`) }
         this.#id = this.name('', false)
     }
 
