@@ -24,7 +24,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
     let buyProfitPercent = null
     let sellProfitPercent = null
     let currentTradeIndex = outcomeEntryTradeIndex + 1
-    const maxLookAhead = 10000 // Limit search to prevent null values
+    const maxLookAhead = 1000000 // Limit search to prevent null values
     let searchCount = 0
     while (currentTradeIndex < brr.info.recordsCount && searchCount < maxLookAhead) {
         if ((buyProfitPercent !== null) && (sellProfitPercent !== null)) break
@@ -130,21 +130,11 @@ const checkCandleContinuity = (candles) => {
  * Get configuration for feeding data
  * @returns {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}}
  */
-const getConfig = () => {
-    const result = {
-        exchangeName: 'binance',
-        symbol: Symbol.find('btcusdc'),
-        totalHistoryInDays: 365 * 4,
-        candleDurationMinutes: 1,
-        candlesPerWindow: 120,
-        extraCandlesPerWindowSide: 120,
-        profitTargetPercent: 0.007,
-        stopLossPercent: 0.004,
-        positionSize: 100,
-        feesPercent: 0.002
-    }
-
-    const brr = BinanceRawReader.create(path.join(path.resolve(__dirname, '..', '..'), 'data', 'binance_ethusdc_trades.bin'), result.symbol)
+const getConfig = (modelName) => {
+    const result = require(path.resolve(__dirname, '..', '..', 'models', modelName, 'config.json'))
+    result.symbol = Symbol.find(result.symbol)
+    result.modelName = modelName
+    const brr = BinanceRawReader.create(path.resolve(__dirname, '..', '..', 'data', `${result.exchangeName}_${result.symbol.id}_trades.bin`), result.symbol)
     result.availableDataRange = brr.info
     result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
     return result
@@ -157,7 +147,7 @@ const getConfig = () => {
  */
 const feed = async (identity, config) => {
     const nn = await NN.create({
-        modelName: 'myFirstModel',
+        modelName: config.modelName,
         epochs: 1,
         autosave: 10
     })
@@ -202,7 +192,7 @@ const feed = async (identity, config) => {
 }
 
 const work = async () => {
-    const config = getConfig()
+    const config = getConfig('myFirstModel')
     const promises = []
     for (let i = 0; i < 1; i++) {
         promises.push(feed(i, config))
