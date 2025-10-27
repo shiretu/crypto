@@ -17,7 +17,7 @@ const BinanceRawReader = require('../sources/BinanceRawReader')
  * @param {number} outcomeEntryTradeIndex - the index of the trade to use as entry point for outcome calculation
  * @returns  {object} Training sample with features and outcomes
  */
-const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex) => {
+const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex, config) => {
     // compute the 2 possible outcomes
     const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
     const enterPrice = enterTrade.price
@@ -34,14 +34,14 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         if (buyProfitPercent === null) {
             const profit = trade.price - enterPrice
             const percent = profit / enterPrice
-            if ((percent >= 0.007) || (percent <= -0.004)) {
+            if ((percent >= config.profitTargetPercent) || (percent <= -1 * config.stopLossPercent)) {
                 buyProfitPercent = percent
             }
         }
         if (sellProfitPercent === null) {
             const profit = enterPrice - trade.price
             const percent = profit / enterPrice
-            if ((percent >= 0.007) || (percent <= -0.004)) {
+            if ((percent >= config.profitTargetPercent) || (percent <= -1 * config.stopLossPercent)) {
                 sellProfitPercent = percent
             }
         }
@@ -99,10 +99,10 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
             global: {
                 candleDuration: trainingCandles[0].periodUs / 60000000,
                 windowSize: trainingLength,
-                grossProfitTarget: 0.007,
-                grossStopLoss: 0.004,
-                positionSize: 100,
-                fees: 0.002
+                grossProfitTarget: config.profitTargetPercent,
+                grossStopLoss: config.stopLossPercent,
+                positionSize: config.positionSize,
+                fees: config.feesPercent
             }
         },
         outcomes: {
@@ -137,10 +137,14 @@ const getConfig = () => {
         totalHistoryInDays: 365 * 4,
         candleDurationMinutes: 1,
         candlesPerWindow: 120,
-        extraCandlesPerWindowSide: 120
+        extraCandlesPerWindowSide: 120,
+        profitTargetPercent: 0.007,
+        stopLossPercent: 0.004,
+        positionSize: 100,
+        feesPercent: 0.002
     }
 
-    const brr = BinanceRawReader.create(path.join(path.resolve(__dirname, '..', '..'), 'data', 'binance_btcusdc_trades.bin'), result.symbol)
+    const brr = BinanceRawReader.create(path.join(path.resolve(__dirname, '..', '..'), 'data', 'binance_ethusdc_trades.bin'), result.symbol)
     result.availableDataRange = brr.info
     result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
     return result
@@ -181,7 +185,7 @@ const feed = async (identity, config) => {
             }
         }
         if (!checkCandleContinuity(candles)) { continue }
-        const sample = await createTrainingSample(candles, 120, brr, index)
+        const sample = await createTrainingSample(candles, 120, brr, index, config)
 
         // Skip samples with null outcomes
         if (sample === null) { continue }
