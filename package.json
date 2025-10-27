@@ -9,7 +9,6 @@
   "scripts": {
     "test": "UV_THREADPOOL_SIZE=16 node src/tests.js",
     "ai:train": "UV_THREADPOOL_SIZE=16 node src/ai/train.js",
-    "ai:feed": "UV_THREADPOOL_SIZE=16 node src/ai/feed_real.js",
     "ai:train:debug": "UV_THREADPOOL_SIZE=16 node src/ai/train.js --debug",
     "lint": "eslint src/ --fix --fix-type suggestion,layout"
   },
