@@ -6,7 +6,7 @@ const Candle = require('../src/core/Candle')
 const Symbol = require('../src/core/Symbol')
 const Trade = require('../src/core/Trade')
 
-describe('CandlesGenerator', function () {
+describe('CandlesGenerator', () => {
     function makeTrade (tsUs, price, baseQty = 1, quoteQty = 100, isBuyerMaker = false) {
         // Use BTC/USDC as a valid symbol
         const symbol = new Symbol('BTC', 'USDC')
@@ -24,7 +24,7 @@ describe('CandlesGenerator', function () {
         )
     }
 
-    it('should create a new candle on first trade', function () {
+    it('should create a new candle on first trade', () => {
         const events = new EventEmitter()
         const symbol = new Symbol('BTC', 'USDC')
         const cg = new CandlesGenerator(events, 'binance', symbol, 1)
@@ -33,7 +33,7 @@ describe('CandlesGenerator', function () {
         assert.strictEqual(closed, null)
     })
 
-    it('should close previous candle and start new one on new candle interval', function () {
+    it('should close previous candle and start new one on new candle interval', () => {
         const events = new EventEmitter()
         const symbol = new Symbol('BTC', 'USDC')
         const cg = new CandlesGenerator(events, 'binance', symbol, 1)
@@ -47,7 +47,7 @@ describe('CandlesGenerator', function () {
         assert.strictEqual(closed.close.price, 100)
     })
 
-    it('should update the current candle with trades in the same interval', function () {
+    it('should update the current candle with trades in the same interval', () => {
         const events = new EventEmitter()
         const symbol = new Symbol('BTC', 'USDC')
         const cg = new CandlesGenerator(events, 'binance', symbol, 1)
@@ -61,7 +61,7 @@ describe('CandlesGenerator', function () {
         assert.strictEqual(closed, null)
     })
 
-    it('should reset the current candle', function () {
+    it('should reset the current candle', () => {
         const events = new EventEmitter()
         const symbol = new Symbol('BTC', 'USDC')
         const cg = new CandlesGenerator(events, 'binance', symbol, 1)

@@ -177,6 +177,67 @@ class Candle {
         this.#volumes.quote += trade.quoteQty
         this.#volumes.base += trade.baseQty
     }
+
+    /**
+    * Static method to normalize an array of candles. For each candle, this computes normalized values for:
+    *   - prices: open, close, high, low
+    *   - height
+    *   - volumes: quote, base
+    *   - tradeCount
+    *
+    * All these values are rebased to the minimum value, then scaled by the maximum: (value - min) / max.
+    * This means the smallest value becomes 0, and the largest (or max distance from min) becomes 1.
+    *
+    * Timestamps are also normalized to represent the candle's minute position within a day, ranging from -1440 to +1440 (minutes in a day).
+    * Negative values indicate minutes from the previous day, positive values indicate today. Note: -1 is equivalent to 1439, so handle with care.
+    * Negative values only occur if the candle set spans multiple days.
+    *
+    * @param {Array<Candle>} candles - Array of Candle instances to normalize
+    */
+    static normalize (candles) {
+        if (candles.length === 0) return
+
+        const ranges = {
+            price: { min: Infinity, max: -Infinity, range: 0 },
+            height: { min: Infinity, max: -Infinity, range: 0 },
+            volumeQuote: { min: Infinity, max: -Infinity, range: 0 },
+            volumeBase: { min: Infinity, max: -Infinity, range: 0 },
+            tradeCount: { min: Infinity, max: -Infinity, range: 0 }
+        }
+
+        candles.forEach(candle => {
+            ranges.price.min = Math.min(ranges.price.min, candle.prices.low)
+            ranges.price.max = Math.max(ranges.price.max, candle.prices.high)
+            ranges.price.range = ranges.price.max - ranges.price.min
+            const height = candle.height
+            ranges.height.min = Math.min(ranges.height.min, height)
+            ranges.height.max = Math.max(ranges.height.max, height)
+            ranges.height.range = ranges.height.max - ranges.height.min
+            ranges.volumeQuote.min = Math.min(ranges.volumeQuote.min, candle.volumes.quote)
+            ranges.volumeQuote.max = Math.max(ranges.volumeQuote.max, candle.volumes.quote)
+            ranges.volumeQuote.range = ranges.volumeQuote.max - ranges.volumeQuote.min
+            ranges.volumeBase.min = Math.min(ranges.volumeBase.min, candle.volumes.base)
+            ranges.volumeBase.max = Math.max(ranges.volumeBase.max, candle.volumes.base)
+            ranges.volumeBase.range = ranges.volumeBase.max - ranges.volumeBase.min
+            ranges.tradeCount.min = Math.min(ranges.tradeCount.min, candle.tradeCount)
+            ranges.tradeCount.max = Math.max(ranges.tradeCount.max, candle.tradeCount)
+            ranges.tradeCount.range = ranges.tradeCount.max - ranges.tradeCount.min
+        })
+
+        const dayDurationUs = 24 * 60 * 60 * 1000 * 1000
+        const referenceMidnightMin = (Math.floor(candles.at(-1).tsUs.open / dayDurationUs) * dayDurationUs) / (60 * 1000000)
+
+        candles.forEach(candle => {
+            candle.trades.forEach(trade => {
+                trade.normalizedPrice = (trade.price - ranges.price.min) / ranges.price.range
+            })
+            candle.normalizedQuoteVolume = (candle.volumes.quote - ranges.volumeQuote.min) / ranges.volumeQuote.range
+            candle.normalizedBaseVolume = (candle.volumes.base - ranges.volumeBase.min) / ranges.volumeBase.range
+            candle.normalizedHeight = (candle.height - ranges.height.min) / ranges.height.range
+            candle.normalizedTradesCount = (candle.tradeCount - ranges.tradeCount.min) / ranges.tradeCount.range
+            candle.normalizedMinuteOfDay = Math.floor(candle.tsUs.open / (60 * 1000000)) - referenceMidnightMin
+        })
+    }
 }
 
 module.exports = Candle
