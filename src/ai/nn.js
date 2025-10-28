@@ -31,10 +31,10 @@ class NN {
 
     async train (samples) {
         this.#samplesCounter += samples.length
-        const features = tf.tensor2d(samples.map(sample => this.#makeFlat(sample.features)))
-        const labels = tf.tensor2d(samples.map(sample => [sample.outcomes.buyProfitPercent, sample.outcomes.sellProfitPercent]))
+        const inputs = tf.tensor2d(samples.map(sample => this.#makeFlat(sample.inputs)))
+        const outputs = tf.tensor2d(samples.map(sample => [sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent]))
         try {
-            const history = await this.#model.fit(features, labels, {
+            const history = await this.#model.fit(inputs, outputs, {
                 epochs: this.#config.epochs,
                 batchSize: samples.length,
                 verbose: 0
@@ -53,8 +53,8 @@ class NN {
             console.error(`Error during training: ${err}`)
             throw err
         } finally {
-            features.dispose()
-            labels.dispose()
+            inputs.dispose()
+            outputs.dispose()
         }
     }
 

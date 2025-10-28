@@ -80,7 +80,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
 
     // Create training sample structure
     return {
-        features: {
+        inputs: {
             candles: {
                 opens: trainingCandles.map(c => c.open.normalizedPrice),
                 highs: trainingCandles.map(c => c.high.normalizedPrice),
@@ -114,7 +114,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
                 fees: config.feesPercent
             }
         },
-        outcomes: {
+        outputs: {
             buyProfitPercent: buyOrder.profitPercent,
             sellProfitPercent: sellOrder.profitPercent
         },
@@ -196,9 +196,9 @@ const feed = async (identity, config) => {
         // Pretty print training results
         const loss = trainResult.history.loss[0].toFixed(6)
         const mae = trainResult.history.mae[0].toFixed(6)
-        const outcomes = `Buy: ${sample.outcomes.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}, Sell: ${sample.outcomes.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`
+        const outputs = `Buy: ${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}, Sell: ${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`
 
-        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes}`)
+        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outputs}`)
     }
 }
 
