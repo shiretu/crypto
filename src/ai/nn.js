@@ -31,7 +31,8 @@ class NN {
 
     async train (samples) {
         this.#samplesCounter += samples.length
-        const { features, labels } = this.#prepareTensors(samples)
+        const features = tf.tensor2d(samples.map(sample => this.#makeFlat(sample.features)))
+        const labels = tf.tensor2d(samples.map(sample => [sample.outcomes.buyProfitPercent, sample.outcomes.sellProfitPercent]))
         try {
             const history = await this.#model.fit(features, labels, {
                 epochs: this.#config.epochs,
@@ -276,16 +277,6 @@ class NN {
             loss: this.#architecture.loss,
             metrics: this.#architecture.metrics
         })
-    }
-
-    #prepareTensors (samples) {
-        const features = samples.map(sample => this.#makeFlat(sample.features))
-        const labels = samples.map(sample => [sample.outcomes.buyProfitPercent, sample.outcomes.sellProfitPercent])
-
-        return {
-            features: tf.tensor2d(features),
-            labels: tf.tensor2d(labels)
-        }
     }
 
     #makeFlat (features) {
