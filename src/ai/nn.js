@@ -109,15 +109,15 @@ class NN {
                 nonTrainableParams,
                 layerCount: this.#model.layers.length,
                 compiled: !!this.#model.optimizer,
-                inputShape: [this.#architecture.input_features],
-                outputShape: [this.#architecture.output_features],
+                inputShape: [this.#architecture.inputs_count],
+                outputShape: [this.#architecture.outputs_count],
                 layers
             },
 
             // Architecture metadata
             architecture: {
-                inputFeatures: this.#architecture.input_features,
-                outputFeatures: this.#architecture.output_features,
+                inputs_count: this.#architecture.inputs_count,
+                outputs_count: this.#architecture.outputs_count,
                 loss: this.#architecture.loss,
                 metrics: this.#architecture.metrics,
                 layerTypes: this.#architecture.layers.map(l => l.type),
@@ -181,7 +181,7 @@ class NN {
 
                 // Add input shape for first layer
                 if (isFirstLayer) {
-                    layerConfig.inputShape = [this.#architecture.input_features]
+                    layerConfig.inputShape = [this.#architecture.inputs_count]
                 }
 
                 // Add name if specified
