@@ -8,5 +8,6 @@
     "profitTargetPercent": 0.007,
     "stopLossPercent": 0.004,
     "positionSize": 100,
-    "feesPercent": 0.002
+    "feesPercent": 0.002,
+    "maxHoldingTimeMin": 120
 }

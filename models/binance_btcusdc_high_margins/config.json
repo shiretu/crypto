@@ -5,8 +5,9 @@
     "candleDurationMinutes": 1,
     "candlesPerWindow": 120,
     "extraCandlesPerWindowSide": 120,
-    "profitTargetPercent": 0.07,
-    "stopLossPercent": 0.04,
+    "profitTargetPercent": 0.02,
+    "stopLossPercent": 0.01,
     "positionSize": 100,
-    "feesPercent": 0.002
+    "feesPercent": 0.002,
+    "maxHoldingTimeMin": 120
 }

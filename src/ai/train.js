@@ -21,34 +21,42 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
     // compute the 2 possible outcomes
     const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
     const enterPrice = enterTrade.price
-    let buyProfitPercent = null
-    let sellProfitPercent = null
-    let currentTradeIndex = outcomeEntryTradeIndex + 1
-    const maxLookAhead = 10000000 // Limit search to prevent null values
-    let searchCount = 0
-    while (currentTradeIndex < brr.info.recordsCount && searchCount < maxLookAhead) {
-        if ((buyProfitPercent !== null) && (sellProfitPercent !== null)) break
-        const trade = await brr.readTrade(currentTradeIndex)
-        currentTradeIndex++
-        searchCount++
-        if (buyProfitPercent === null) {
+    const buyOrder = {
+        profitPercent: null,
+        durationUs: 0
+    }
+    const sellOrder = {
+        profitPercent: null,
+        durationUs: 0
+    }
+    const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
+    for (let tradeIndex = outcomeEntryTradeIndex + 1; tradeIndex < brr.info.recordsCount; tradeIndex++) {
+        if ((buyOrder.profitPercent !== null) && (sellOrder.profitPercent !== null)) break
+        const trade = await brr.readTrade(tradeIndex)
+        if (buyOrder.profitPercent === null) {
             const profit = trade.price - enterPrice
             const percent = profit / enterPrice
-            if ((percent >= config.profitTargetPercent) || (percent <= -1 * config.stopLossPercent)) {
-                buyProfitPercent = percent
+            if ((percent >= config.profitTargetPercent) ||
+                (percent <= -1 * config.stopLossPercent) ||
+                (trade.tsUs - enterTrade.tsUs) > maxHoldingTimeUs) {
+                buyOrder.profitPercent = percent
+                buyOrder.durationUs = trade.tsUs - enterTrade.tsUs
             }
         }
-        if (sellProfitPercent === null) {
+        if (sellOrder.profitPercent === null) {
             const profit = enterPrice - trade.price
             const percent = profit / enterPrice
-            if ((percent >= config.profitTargetPercent) || (percent <= -1 * config.stopLossPercent)) {
-                sellProfitPercent = percent
+            if ((percent >= config.profitTargetPercent) ||
+                 (percent <= -1 * config.stopLossPercent) ||
+                 (trade.tsUs - enterTrade.tsUs) > maxHoldingTimeUs) {
+                sellOrder.profitPercent = percent
+                sellOrder.durationUs = trade.tsUs - enterTrade.tsUs
             }
         }
     }
 
     // Skip samples with null outcomes to prevent training issues
-    if (buyProfitPercent === null || sellProfitPercent === null) {
+    if (buyOrder.profitPercent === null || sellOrder.profitPercent === null) {
         console.log('Skipping sample due to null outcomes')
         return null // Signal to skip this sample
     }
@@ -107,10 +115,11 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
             }
         },
         outcomes: {
-            buyProfitPercent,
-            sellProfitPercent
+            buyProfitPercent: buyOrder.profitPercent,
+            sellProfitPercent: sellOrder.profitPercent
         },
-        searchCount
+        buyOrder,
+        sellOrder
     }
 }
 
@@ -187,9 +196,9 @@ const feed = async (identity, config) => {
         // Pretty print training results
         const loss = trainResult.history.loss[0].toFixed(6)
         const mae = trainResult.history.mae[0].toFixed(6)
-        const outcomes = `Buy: ${sample.outcomes.buyProfitPercent?.toFixed(4) || 'null'}, Sell: ${sample.outcomes.sellProfitPercent?.toFixed(4) || 'null'}`
+        const outcomes = `Buy: ${sample.outcomes.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}, Sell: ${sample.outcomes.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`
 
-        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes} | Search Count: ${sample.searchCount}`)
+        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outcomes}`)
     }
 }
 
