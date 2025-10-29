@@ -14,8 +14,11 @@ def extract_data(num_log_lines):
     losses = []
     maes = []
     pattern = re.compile(r'Sample (\d+) \| Trade [^|]+ \| Candle: [^|]+ \| Loss: ([\d.]+) \| MAE: ([\d.]+)')
-    log_lines = lines[-num_log_lines:] if len(lines) > num_log_lines else lines
-    for line in log_lines:
+    # Filter the whole file for valid sample lines
+    matching_lines = [line for line in lines if pattern.search(line)]
+    # Select the last num_log_lines valid lines
+    matching_lines = matching_lines[-num_log_lines:]
+    for line in matching_lines:
         m = pattern.search(line)
         if m:
             samples.append(int(m.group(1)))
