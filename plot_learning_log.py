@@ -13,7 +13,7 @@ def extract_data(num_log_lines):
     samples = []
     losses = []
     maes = []
-    pattern = re.compile(r'Sample (\d+) \| Trade [^|]+ \| Loss: ([\d.]+) \| MAE: ([\d.]+)')
+    pattern = re.compile(r'Sample (\d+) \| Trade [^|]+ \| Candle: [^|]+ \| Loss: ([\d.]+) \| MAE: ([\d.]+)')
     log_lines = lines[-num_log_lines:] if len(lines) > num_log_lines else lines
     for line in log_lines:
         m = pattern.search(line)
