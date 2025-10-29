@@ -93,7 +93,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         }
     })
 
-    const scale = (value) => Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor)
+    const scale = (value) => Math.max(-config.outputMultiplicationFactor, Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor))
 
     // Create training sample structure
     return {
