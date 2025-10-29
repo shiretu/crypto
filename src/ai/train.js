@@ -93,6 +93,8 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         }
     })
 
+    const scale = (value) => Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor)
+
     // Create training sample structure
     return {
         inputs: {
@@ -130,8 +132,8 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
             }
         },
         outputs: {
-            buyProfitPercent: buyOrder.profitPercent,
-            sellProfitPercent: sellOrder.profitPercent,
+            buyProfitPercent: scale(buyOrder.profitPercent),
+            sellProfitPercent: scale(sellOrder.profitPercent),
             operation
         },
         buyOrder,
@@ -214,12 +216,12 @@ const feed = async (identity, config) => {
         const mae = trainResult.history.mae[0].toFixed(6)
         const outputs = `Buy: ${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}, Sell: ${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`
 
-        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outputs}`)
+        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Candle: ${candles[0].id.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outputs}`)
     }
 }
 
 const work = async () => {
-    const config = getConfig(process.argv[2])
+    const config = getConfig(process.argv[2] ?? 'binance_btcusdc')
     await feed(0, config)
 }
 

@@ -9,5 +9,6 @@
     "stopLossPercent": 0.01,
     "positionSize": 100,
     "feesPercent": 0.002,
-    "maxHoldingTimeMin": 120
+    "maxHoldingTimeMin": 120,
+    "outputMultiplicationFactor": 1000
 }
