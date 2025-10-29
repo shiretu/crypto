@@ -279,39 +279,39 @@ class NN {
         })
     }
 
-    #makeFlat (features) {
+    #makeFlat (inputs) {
         return [
             // Candles: 9 arrays × 120 = 1080 features
-            ...features.candles.opens,
-            ...features.candles.highs,
-            ...features.candles.lows,
-            ...features.candles.closes,
-            ...features.candles.volumes,
-            ...features.candles.timestamps,
-            ...features.candles.colors,
-            ...features.candles.bodySizes,
-            ...features.candles.tradesCount,
+            ...inputs.candles.opens,
+            ...inputs.candles.highs,
+            ...inputs.candles.lows,
+            ...inputs.candles.closes,
+            ...inputs.candles.volumes,
+            ...inputs.candles.timestamps,
+            ...inputs.candles.colors,
+            ...inputs.candles.bodySizes,
+            ...inputs.candles.tradesCount,
 
             // Studies: 837 features total
-            ...features.studies.macdShort, // 120
-            ...features.studies.macdLong, // 120
-            ...features.studies.macdLine, // 120
-            ...features.studies.macdSignal, // 120
-            ...features.studies.macdHistogram, // 120
-            ...features.studies.unused1, // 119
-            ...features.studies.unused2, // 118
+            ...inputs.studies.macdShort, // 120
+            ...inputs.studies.macdLong, // 120
+            ...inputs.studies.macdLine, // 120
+            ...inputs.studies.macdSignal, // 120
+            ...inputs.studies.macdHistogram, // 120
+            ...inputs.studies.unused1, // 119
+            ...inputs.studies.unused2, // 118
 
             // Patterns: 237 features
-            ...features.patterns.single, // 119
-            ...features.patterns.sliding, // 118
+            ...inputs.patterns.single, // 119
+            ...inputs.patterns.sliding, // 118
 
             // Global: 6 features
-            features.global.candleDuration,
-            features.global.windowSize,
-            features.global.grossProfitTarget,
-            features.global.grossStopLoss,
-            features.global.positionSize,
-            features.global.fees
+            inputs.global.candleDuration,
+            inputs.global.windowSize,
+            inputs.global.grossProfitTarget,
+            inputs.global.grossStopLoss,
+            inputs.global.positionSize,
+            inputs.global.fees
         ]
     }
 }

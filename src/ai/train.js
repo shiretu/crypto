@@ -15,10 +15,9 @@ const BinanceRawReader = require('../sources/BinanceRawReader')
  * @param {number} trainingLength - how many candles to use for training. they will be taken from the end of the candles array
  * @param {BinanceRawReader} brr - Binance raw reader instance which will be used to read trades for outcome calculation
  * @param {number} outcomeEntryTradeIndex - the index of the trade to use as entry point for outcome calculation
- * @returns  {object} Training sample with features and outcomes
+ * @returns  {object} Training sample with inputs and outputs
  */
 const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex, config) => {
-    // compute the 2 possible outcomes
     const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
     const enterPrice = enterTrade.price
     const buyOrder = {
@@ -60,6 +59,22 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         console.log('Skipping sample due to null outcomes')
         return null // Signal to skip this sample
     }
+
+    const operation = (() => {
+        if (buyOrder.profitPercent > 0) {
+            if (sellOrder.profitPercent > 0) {
+                return buyOrder.profitPercent >= sellOrder.profitPercent ? 1 : -1
+            } else {
+                return 1
+            }
+        } else {
+            if (sellOrder.profitPercent > 0) {
+                return -1
+            } else {
+                return 0
+            }
+        }
+    })()
 
     // normalize the candles
     Candle.normalize(candles)
@@ -116,7 +131,8 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         },
         outputs: {
             buyProfitPercent: buyOrder.profitPercent,
-            sellProfitPercent: sellOrder.profitPercent
+            sellProfitPercent: sellOrder.profitPercent,
+            operation
         },
         buyOrder,
         sellOrder
