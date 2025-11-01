@@ -26,10 +26,32 @@ def extract_data(num_log_lines):
             maes.append(float(m.group(3)))
     return samples, losses, maes
 
+
+
+# Global variable to track all loss values > 400 seen in previous refresh
+seen_big_losses = [set()]
+
 def plot_data(ax, samples, losses, maes):
+    import os
     ax.clear()
     ax.plot(samples, losses, label='Loss')
     ax.plot(samples, maes, label='MAE')
+    # EMA(24) for Loss
+    if len(losses) >= 2:
+        ema24 = []
+        alpha = 2 / (24 + 1)
+        for i, loss in enumerate(losses):
+            if i == 0:
+                ema24.append(loss)
+            else:
+                ema24.append(alpha * loss + (1 - alpha) * ema24[-1])
+        ax.plot(samples, ema24, label='EMA(24) Loss', color='purple', linestyle='--')
+    # Play sound for any new loss > 400 not seen in previous refresh
+    big_losses = set(l for l in losses if l > 400)
+    new_big_losses = big_losses - seen_big_losses[0]
+    if new_big_losses:
+        os.system('afplay /System/Library/Sounds/Glass.aiff &')
+    seen_big_losses[0] = big_losses
     if len(samples) > 1:
         z = np.polyfit(samples, losses, 1)
         p = np.poly1d(z)

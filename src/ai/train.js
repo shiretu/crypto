@@ -8,6 +8,7 @@ const EventName = require('../core/EventName')
 const Macd = require('../instruments/macd')
 const path = require('path')
 const BinanceRawReader = require('../sources/BinanceRawReader')
+const TradeKind = require('../core/TradeKind')
 
 /**
  * Simulates trades based on the provided parameters.
@@ -17,41 +18,73 @@ const BinanceRawReader = require('../sources/BinanceRawReader')
  * @returns {Promise<object|null>} - Simulated trade results or null if skipped
  */
 const simulateTrades = async (brr, startTradingIndex, config) => {
-    const enterTrade = await brr.readTrade(startTradingIndex)
-    const enterPrice = enterTrade.price
+    const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
+    const firstTrade = await brr.readTrade(startTradingIndex)
     const buyOrder = {
+        kind: TradeKind.buy,
+        enter: null,
+        lastProfitPercent: null,
         profitPercent: null,
-        durationUs: 0
+        durationUs: -1
     }
     const sellOrder = {
+        kind: TradeKind.sell,
+        enter: null,
+        lastProfitPercent: null,
         profitPercent: null,
-        durationUs: 0
+        durationUs: -1
     }
-    const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
-    for (let tradeIndex = startTradingIndex + 1; tradeIndex < brr.info.recordsCount; tradeIndex++) {
+
+    /**
+     * Process an order to evolve its internal state.
+     * @param {{kind: {TradeKind}, enter: {number}, profitPercent: {number}}} order
+     */
+    const process = (order, currentPrice, currentDurationUs, forceClose) => {
+        if (order.enter === null) {
+            order.enter = currentPrice
+        }
+        order.durationUs = currentDurationUs
+        const profit = order.kind === TradeKind.buy
+            ? currentPrice - order.enter
+            : order.enter - currentPrice
+        order.lastProfitPercent = profit / order.enter
+        if ((order.lastProfitPercent >= config.profitTargetPercent) ||
+            (order.lastProfitPercent <= -1 * config.stopLossPercent) ||
+            forceClose
+        ) {
+            order.profitPercent = order.lastProfitPercent
+        }
+    }
+    const inspectedTrades = []
+    for (let i = startTradingIndex; i < brr.info.recordsCount; i++) {
         if ((buyOrder.profitPercent !== null) && (sellOrder.profitPercent !== null)) break
-        const trade = await brr.readTrade(tradeIndex)
-        if (buyOrder.profitPercent === null) {
-            const profit = trade.price - enterPrice
-            const percent = profit / enterPrice
-            if ((percent >= config.profitTargetPercent) ||
-                (percent <= -1 * config.stopLossPercent) ||
-                (trade.tsUs - enterTrade.tsUs) > maxHoldingTimeUs) {
-                buyOrder.profitPercent = percent
-                buyOrder.durationUs = trade.tsUs - enterTrade.tsUs
+        const trade = await brr.readTrade(i)
+        inspectedTrades.push(trade)
+        const currentDurationUs = trade.tsUs - firstTrade.tsUs
+        const forceClose = currentDurationUs >= maxHoldingTimeUs
+        switch (trade.kind) {
+            case TradeKind.buy:{
+                process(buyOrder, trade.price, currentDurationUs, forceClose)
+                break
             }
+            case TradeKind.sell:
+                process(sellOrder, trade.price, currentDurationUs, forceClose)
+                break
+            default:
+                return null
         }
-        if (sellOrder.profitPercent === null) {
-            const profit = enterPrice - trade.price
-            const percent = profit / enterPrice
-            if ((percent >= config.profitTargetPercent) ||
-                 (percent <= -1 * config.stopLossPercent) ||
-                 (trade.tsUs - enterTrade.tsUs) > maxHoldingTimeUs) {
-                sellOrder.profitPercent = percent
-                sellOrder.durationUs = trade.tsUs - enterTrade.tsUs
-            }
+        if (forceClose) break
+    }
+
+    const closeOrder = (order) => {
+        if (order.profitPercent !== null) return
+        if (order.lastProfitPercent !== null) {
+            order.profitPercent = order.lastProfitPercent
         }
     }
+
+    closeOrder(buyOrder)
+    closeOrder(sellOrder)
 
     // Skip samples with null outcomes to prevent training issues
     if (buyOrder.profitPercent === null || sellOrder.profitPercent === null) {
@@ -88,7 +121,11 @@ const simulateTrades = async (brr, startTradingIndex, config) => {
  */
 const createTrainingSample = async (candles, trainingLength, brr, startTradingIndex, config) => {
     // simulate the trades
-    const { buyOrder, sellOrder, operation } = await simulateTrades(brr, startTradingIndex, config)
+    const simulation = await simulateTrades(brr, startTradingIndex, config)
+    if (!simulation) {
+        return null
+    }
+    const { buyOrder, sellOrder, operation } = simulation
 
     // normalize the candles
     Candle.normalize(candles)
