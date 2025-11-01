@@ -97,6 +97,7 @@
   },
   "loss": "meanSquaredError",
   "metrics": [
-    "mae"
+    "mae",
+    "mse"
   ]
 }

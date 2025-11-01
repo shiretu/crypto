@@ -278,12 +278,17 @@ const feed = async (identity, config) => {
 
         const trainResult = await nn.train([sample])
 
-        // Pretty print training results
-        const loss = trainResult.history.loss[0].toFixed(6)
-        const mae = trainResult.history.mae[0].toFixed(6)
-        const outputs = `Buy: ${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}, Sell: ${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`
-
-        console.log(`Sample ${i.toString().padStart(6, '0')} | Trade ${index.toString().padStart(9, '0')} | Candle: ${candles[0].id.toString().padStart(9, '0')} | Loss: ${loss} | MAE: ${mae} | ${outputs}`)
+        const pp = [
+            ['Sample', i.toString().padStart(6, '0')],
+            ['Trade', index.toString().padStart(9, '0')],
+            ['Candle', candles[0].id.toString().padStart(9, '0')],
+            ['Loss', trainResult.history.loss[0].toFixed(6)],
+            ['MAE', trainResult.history.mae[0].toFixed(6)],
+            ['MSE', trainResult.history.mse[0].toFixed(6)],
+            ['Buy', `${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}`],
+            ['Sell', `${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`]
+        ]
+        console.log(pp.map(pair => `${pair[0]} ${pair[1]}`).join(' | '))
     }
 }
 
