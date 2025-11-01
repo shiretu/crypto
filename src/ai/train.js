@@ -9,6 +9,8 @@ const Macd = require('../instruments/macd')
 const path = require('path')
 const BinanceRawReader = require('../sources/BinanceRawReader')
 const TradeKind = require('../core/TradeKind')
+const cliProgress = require('cli-progress')
+const fs = require('fs')
 
 /**
  * Simulates trades based on the provided parameters.
@@ -229,10 +231,42 @@ const getConfig = (modelName) => {
     const result = require(path.resolve(__dirname, '..', '..', 'models', modelName, 'config.json'))
     result.symbol = Symbol.find(result.symbol)
     result.modelName = modelName
-    const brr = BinanceRawReader.create(path.resolve(__dirname, '..', '..', 'data', `${result.exchangeName}_${result.symbol.id}_trades.bin`), result.symbol)
+    const baseFolder = path.resolve(__dirname, '..', '..', 'data')
+    const binaryFilePath = path.resolve(baseFolder, `${result.exchangeName}_${result.symbol.id}_trades.bin`)
+    result.candlesMapFilePath = path.resolve(baseFolder, `${result.exchangeName}_${result.symbol.id}_candles_map.bin`)
+    const brr = BinanceRawReader.create(binaryFilePath, result.symbol)
     result.availableDataRange = brr.info
     result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
     return result
+}
+
+const generateCandlesMap = (config) => {
+    if (fs.existsSync(config.candlesMapFilePath)) {
+        console.log('Loading existing candles map...')
+        const buf = fs.readFileSync(config.candlesMapFilePath)
+        const uint32 = new Uint32Array(buf.buffer, buf.byteOffset, buf.length / 4)
+        return uint32
+    }
+    const candlesMap = []
+    const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
+    const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
+    const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+    console.log('Generating candles map...')
+    bar.start(brr.info.recordsCount, 0)
+    for (let i = 0; i < brr.info.recordsCount; i++) {
+        if ((i % 10000) === 0) { bar.update(i + 1) }
+        const trade = brr.readTrade(i)
+        const candle = candlesGenerator.feed(trade)
+        if (candle) {
+            candlesMap.push(i - candle.tradeCount)
+            candlesMap.push(candle.tradeCount)
+        }
+    }
+    bar.stop()
+    const uint32 = new Uint32Array(candlesMap)
+    const buf = Buffer.from(uint32.buffer)
+    fs.writeFileSync(config.candlesMapFilePath, buf)
+    return uint32
 }
 
 /**
@@ -246,6 +280,7 @@ const feed = async (identity, config) => {
         epochs: 1,
         autosave: 10
     })
+    const candlesMap = generateCandlesMap(config)
     const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
     const requiredCandlesCount = config.candlesPerWindow + 100
     const safeStartRegion = 50000

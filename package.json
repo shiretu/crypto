@@ -21,7 +21,8 @@
     "lzma-native": "^7.0.0",
     "@clickhouse/client": "^1.12.1",
     "canvas": "^3.2.0",
-    "enum-plus": "^3.1.1"
+    "enum-plus": "^3.1.1",
+    "cli-progress": "^3.12.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
