@@ -10,5 +10,6 @@
     "positionSize": 100,
     "feesPercent": 0.002,
     "maxHoldingTimeMin": 120,
-    "outputMultiplicationFactor": 1
+    "outputMultiplicationFactor": 1,
+    "pastSimulationsTimeoutsLimit": 0
 }

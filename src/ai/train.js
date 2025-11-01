@@ -17,7 +17,7 @@ const TradeKind = require('../core/TradeKind')
  * @param {object} config - Configuration object
  * @returns {Promise<object|null>} - Simulated trade results or null if skipped
  */
-const simulateTrades = async (brr, startTradingIndex, config) => {
+const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTimeouts) => {
     const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
     const firstTrade = await brr.readTrade(startTradingIndex)
     const buyOrder = {
@@ -73,7 +73,22 @@ const simulateTrades = async (brr, startTradingIndex, config) => {
             default:
                 return null
         }
-        if (forceClose) break
+        if (forceClose) {
+            if (pastSimulationsTimeouts.limit === 0) {
+                break
+            } else {
+                pastSimulationsTimeouts.count++
+                if (pastSimulationsTimeouts.count >= pastSimulationsTimeouts.limit) {
+                    return null
+                } else {
+                    break
+                }
+            }
+        }
+    }
+
+    if (pastSimulationsTimeouts.limit !== 0) {
+        if (buyOrder.profitPercent !== null && sellOrder.profitPercent !== null) { pastSimulationsTimeouts.count = 0 }
     }
 
     const closeOrder = (order) => {
@@ -119,9 +134,9 @@ const simulateTrades = async (brr, startTradingIndex, config) => {
  * @param {number} startTradingIndex - the index of the trade to use as entry point for outcome calculation
  * @returns  {object} Training sample with inputs and outputs
  */
-const createTrainingSample = async (candles, trainingLength, brr, startTradingIndex, config) => {
+const createTrainingSample = async (candles, trainingLength, brr, startTradingIndex, config, pastSimulationsTimeouts) => {
     // simulate the trades
-    const simulation = await simulateTrades(brr, startTradingIndex, config)
+    const simulation = await simulateTrades(brr, startTradingIndex, config, pastSimulationsTimeouts)
     if (!simulation) {
         return null
     }
@@ -238,6 +253,7 @@ const feed = async (identity, config) => {
     const safeRecordsCount = config.availableDataRange.recordsCount - safeEndRegion - safeStartRegion
     const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
     let i = 0
+    const pastSimulationsTimeouts = { count: 0, limit: config.pastSimulationsTimeoutsLimit }
     while (true) {
         i++
         let index = safeStartRegion + Math.floor(Math.random() * safeRecordsCount)
@@ -255,7 +271,7 @@ const feed = async (identity, config) => {
             }
         }
         if (!checkCandleContinuity(candles)) { continue }
-        const sample = await createTrainingSample(candles, 120, brr, index, config)
+        const sample = await createTrainingSample(candles, 120, brr, index, config, pastSimulationsTimeouts)
 
         // Skip samples with null outcomes
         if (sample === null) { continue }
