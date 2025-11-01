@@ -67,6 +67,20 @@ class BinanceRawReader {
     }
 
     /**
+     * Read a bulk of trade records from the binary file
+     * @param {number} startIndex
+     * @param {number} count
+     * @returns {Trade[]}
+     */
+    readBulkTrades (startIndex, count) {
+        const trades = []
+        for (let i = 0; i < count; i++) {
+            trades.push(this.readTrade(startIndex + i))
+        }
+        return trades
+    }
+
+    /**
      * Get info about the binary trade file
      * @param {string} filePath
      * @returns {{fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number}}

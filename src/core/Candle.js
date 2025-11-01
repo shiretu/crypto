@@ -41,6 +41,26 @@ class Candle {
     }
 
     /**
+     * Create a Candle instance from an array of trades.
+     * @param {string} exchangeName - Exchange identifier this candle belongs to
+     * @param {Symbol} symbol - Symbol instance this candle belongs to
+     * @param {number} periodUs - The period in micros for this candle
+     * @param {Trade[]} trades - Array of trades to create the candle from
+     * @returns {Candle} - The created Candle instance
+     */
+    static createFromTrades (exchangeName, symbol, periodUs, trades) {
+        if (trades.length === 0) {
+            throw new Error('Cannot create Candle from empty trades array')
+        }
+        const candleId = Math.floor(trades[0].tsUs / periodUs)
+        const candle = new Candle(exchangeName, symbol, candleId, periodUs, trades[0])
+        for (let i = 1; i < trades.length; i++) {
+            candle.update(trades[i])
+        }
+        return candle
+    }
+
+    /**
      * Exchange identifier this candle belongs to
      * @returns {string}
      */

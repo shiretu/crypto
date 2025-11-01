@@ -280,7 +280,7 @@ const feed = async (identity, config) => {
         epochs: 1,
         autosave: 10
     })
-    const candlesMap = generateCandlesMap(config)
+    // const candlesMap = generateCandlesMap(config)
     const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
     const requiredCandlesCount = config.candlesPerWindow + 100
     const safeStartRegion = 50000

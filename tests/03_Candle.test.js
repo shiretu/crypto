@@ -184,4 +184,37 @@ describe('Candle', () => {
         assert(Math.abs(cAt.normalizedMinuteOfDay - (-1440)) < 1e-8)
         assert(Math.abs(cAfter.normalizedMinuteOfDay - 1) < 1e-8)
     })
+
+    it('should create a candle from trades using createFromTrades', () => {
+        const symbol = new Symbol('BTC', 'USDC')
+        const periodUs = 60 * 1_000_000 // 1 minute
+        const trades = [
+            new Trade('binance', symbol, 'lid1', 'rid1', 'olid1', 1000000, 42000, 0.1, 4200, false),
+            new Trade('binance', symbol, 'lid2', 'rid2', 'olid2', 2000000, 43000, 0.2, 8600, false),
+            new Trade('binance', symbol, 'lid3', 'rid3', 'olid3', 3000000, 41000, 0.3, 1230, false)
+        ]
+        const candle = Candle.createFromTrades('binance', symbol, periodUs, trades)
+        assert.strictEqual(candle.exchangeName, 'binance')
+        assert.strictEqual(candle.symbol, symbol)
+        assert.strictEqual(candle.periodUs, periodUs)
+        assert.deepStrictEqual(candle.trades, trades)
+        assert.strictEqual(candle.open, trades[0])
+        assert.strictEqual(candle.close, trades[2])
+        assert.strictEqual(candle.high, trades[1])
+        assert.strictEqual(candle.low, trades[2])
+        assert.deepStrictEqual(candle.volumes, { quote: 4200 + 8600 + 1230, base: 0.1 + 0.2 + 0.3 })
+        assert.strictEqual(candle.prices.open, 42000)
+        assert.strictEqual(candle.prices.close, 41000)
+        assert.strictEqual(candle.prices.high, 43000)
+        assert.strictEqual(candle.prices.low, 41000)
+        assert.strictEqual(candle.tradeCount, 3)
+        assert.strictEqual(candle.id, Math.floor(trades[0].tsUs / periodUs))
+    })
+
+    it('should throw if createFromTrades is called with an empty array', () => {
+        const symbol = new Symbol('BTC', 'USDC')
+        assert.throws(() => {
+            Candle.createFromTrades('binance', symbol, 60 * 1_000_000, [])
+        }, /empty trades array/i)
+    })
 })
