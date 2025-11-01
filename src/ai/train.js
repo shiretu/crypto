@@ -10,15 +10,14 @@ const path = require('path')
 const BinanceRawReader = require('../sources/BinanceRawReader')
 
 /**
- * Create a training sample from 120 candles
- * @param {Candle[]} candles - the array of candles
- * @param {number} trainingLength - how many candles to use for training. they will be taken from the end of the candles array
- * @param {BinanceRawReader} brr - Binance raw reader instance which will be used to read trades for outcome calculation
- * @param {number} outcomeEntryTradeIndex - the index of the trade to use as entry point for outcome calculation
- * @returns  {object} Training sample with inputs and outputs
+ * Simulates trades based on the provided parameters.
+ * @param {BinanceRawReader} brr - Binance raw reader instance
+ * @param {number} startTradingIndex - Index of the trade to use as entry point
+ * @param {object} config - Configuration object
+ * @returns {Promise<object|null>} - Simulated trade results or null if skipped
  */
-const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTradeIndex, config) => {
-    const enterTrade = await brr.readTrade(outcomeEntryTradeIndex)
+const simulateTrades = async (brr, startTradingIndex, config) => {
+    const enterTrade = await brr.readTrade(startTradingIndex)
     const enterPrice = enterTrade.price
     const buyOrder = {
         profitPercent: null,
@@ -29,7 +28,7 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
         durationUs: 0
     }
     const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
-    for (let tradeIndex = outcomeEntryTradeIndex + 1; tradeIndex < brr.info.recordsCount; tradeIndex++) {
+    for (let tradeIndex = startTradingIndex + 1; tradeIndex < brr.info.recordsCount; tradeIndex++) {
         if ((buyOrder.profitPercent !== null) && (sellOrder.profitPercent !== null)) break
         const trade = await brr.readTrade(tradeIndex)
         if (buyOrder.profitPercent === null) {
@@ -75,6 +74,21 @@ const createTrainingSample = async (candles, trainingLength, brr, outcomeEntryTr
             }
         }
     })()
+
+    return { buyOrder, sellOrder, operation }
+}
+
+/**
+ * Create a training sample from the specified number of candles
+ * @param {Candle[]} candles - the array of candles
+ * @param {number} trainingLength - how many candles to use for training. they will be taken from the end of the candles array
+ * @param {BinanceRawReader} brr - Binance raw reader instance which will be used to read trades for outcome calculation
+ * @param {number} startTradingIndex - the index of the trade to use as entry point for outcome calculation
+ * @returns  {object} Training sample with inputs and outputs
+ */
+const createTrainingSample = async (candles, trainingLength, brr, startTradingIndex, config) => {
+    // simulate the trades
+    const { buyOrder, sellOrder, operation } = await simulateTrades(brr, startTradingIndex, config)
 
     // normalize the candles
     Candle.normalize(candles)

@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 const Symbol = require('./Symbol')
+const TradeKind = require('./TradeKind')
 /* eslint-enable no-unused-vars */
 
 /**
@@ -111,6 +112,14 @@ class Trade {
      * @returns {boolean}
      */
     get isBuyerMaker () { return this.#isBuyerMaker }
+
+    /**
+     * The kind of trade (buy/sell)
+     * @returns {TradeKind}
+     */
+    get kind () {
+        return this.#isBuyerMaker ? TradeKind.sell : TradeKind.buy
+    }
 }
 
 module.exports = Trade

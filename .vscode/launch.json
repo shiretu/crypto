@@ -10,7 +10,7 @@
             "runtimeArgs": [
                 "run-script",
                 "ai:train",
-                "binance_btcusdc_high_margins"
+                "binance_btcusdc"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
