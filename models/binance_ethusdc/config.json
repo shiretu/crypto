@@ -1,0 +1,15 @@
+{
+    "exchangeName": "binance",
+    "symbol": "ethusdc",
+    "totalHistoryInDays": 1460,
+    "candleDurationMinutes": 1,
+    "candlesPerWindow": 120,
+    "extraCandlesPerWindowSide": 120,
+    "profitTargetPercent": 0.02,
+    "stopLossPercent": 0.01,
+    "positionSize": 100,
+    "feesPercent": 0.002,
+    "maxHoldingTimeMin": 120,
+    "outputMultiplicationFactor": 1,
+    "pastSimulationsTimeoutsLimit": 0
+}
