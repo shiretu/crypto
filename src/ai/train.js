@@ -9,6 +9,7 @@ const Macd = require('../instruments/macd')
 const path = require('path')
 const BinanceRawReader = require('../sources/BinanceRawReader')
 const TradeKind = require('../core/TradeKind')
+const CandlesMap = require('./CandlesMap')
 
 /**
  * Simulates trades based on the provided parameters.
@@ -248,32 +249,24 @@ const feed = async (identity, config) => {
         epochs: 1,
         autosave: 10
     })
-    const candlesGenerator = new CandlesGenerator(null, config.exchangeName, config.symbol, config.candleDurationMinutes)
-    const requiredCandlesCount = config.candlesPerWindow + 100
-    const safeStartRegion = 50000
-    const safeEndRegion = 1000000
-    const safeRecordsCount = config.availableDataRange.recordsCount - safeEndRegion - safeStartRegion
-    const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol, true)
-    let i = 0
+    const candlesMap = await CandlesMap.create(config)
+    const candlesCount = candlesMap.length
+    const candlesPreambleCount = 100
+    const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol)
     const pastSimulationsTimeouts = { count: 0, limit: config.pastSimulationsTimeoutsLimit }
+    let i = 0
     while (true) {
         i++
-        let index = safeStartRegion + Math.floor(Math.random() * safeRecordsCount)
-        const candles = []
-        candlesGenerator.reset()
-        while (candles.length < requiredCandlesCount) {
-            const trade = await brr.readTrade(index)
-            index++
-            if (!trade) {
-                break
-            }
-            const candle = candlesGenerator.feed(trade)
-            if (candle) {
-                candles.push(candle)
-            }
-        }
-        if (!checkCandleContinuity(candles)) { continue }
-        const sample = await createTrainingSample(candles, 120, brr, index, config, pastSimulationsTimeouts)
+        const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
+        const randomStartIndex = Math.floor(Math.random() * (candlesCount - requiredCandlesCount))
+        const candlesInfo = candlesMap.bulkGet(
+            brr,
+            randomStartIndex,
+            requiredCandlesCount
+        )
+        if (!checkCandleContinuity(candlesInfo.candles)) { continue }
+        const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
+        const sample = await createTrainingSample(candlesInfo.candles, 120, brr, tradeIndex, config, pastSimulationsTimeouts)
 
         // Skip samples with null outcomes
         if (sample === null) { continue }
@@ -282,13 +275,14 @@ const feed = async (identity, config) => {
 
         const pp = [
             ['Sample', i.toString().padStart(6, '0')],
-            ['Trade', index.toString().padStart(9, '0')],
-            ['Candle', candles[0].id.toString().padStart(9, '0')],
+            ['Trade', tradeIndex.toString().padStart(9, '0')],
+            ['Candle', candlesInfo.candles[0].id.toString().padStart(9, '0')],
             ['Loss', trainResult.history.loss[0].toFixed(6)],
             ['MAE', trainResult.history.mae[0].toFixed(6)],
             ['MSE', trainResult.history.mse[0].toFixed(6)],
             ['Buy', `${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}`],
-            ['Sell', `${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`]
+            ['Sell', `${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`],
+            ['TradesCount', candlesInfo.tradesCount.toString()]
         ]
         console.log(pp.map(pair => `${pair[0]} ${pair[1]}`).join(' | '))
     }

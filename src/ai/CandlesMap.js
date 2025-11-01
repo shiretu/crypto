@@ -47,13 +47,27 @@ class CandlesMap {
             throw new Error(`Index out of bounds: ${index}`)
         }
         const startTradeIndex = this.#data[index * 2]
-        const tradesCount = this.#data[startTradeIndex + 1]
-        return Candle.createFromTrades(
-            this.#config.exchangeName,
-            this.#config.symbol,
-            this.#config.candleDurationMinutes * 60 * 1000000,
-            reader.readBulkTrades(startTradeIndex, tradesCount)
-        )
+        const tradesCount = this.#data[index * 2 + 1]
+        return {
+            startTradeIndex,
+            tradesCount,
+            candle: Candle.createFromTrades(
+                this.#config.exchangeName,
+                this.#config.symbol,
+                this.#config.candleDurationMinutes * 60 * 1000000,
+                reader.readBulkTrades(startTradeIndex, tradesCount)
+            )
+        }
+    }
+
+    bulkGet (reader, startIndex, count) {
+        const candlesInfo = []
+        for (let i = 0; i < count; i++) {
+            candlesInfo.push(this.get(reader, startIndex + i))
+        }
+        const startTradeIndex = candlesInfo[0].startTradeIndex
+        const tradesCount = candlesInfo.reduce((sum, info) => sum + info.tradesCount, 0)
+        return { startTradeIndex, tradesCount, candles: candlesInfo.map(info => info.candle) }
     }
 
     async #init () {
