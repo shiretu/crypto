@@ -50,7 +50,7 @@ def refresh(event=None):
 def auto_refresh():
     refresh()
     # Schedule next refresh in 5 seconds
-    threading.Timer(5.0, auto_refresh).start()
+    threading.Timer(1.0, auto_refresh).start()
 
 
 def parse_args():
