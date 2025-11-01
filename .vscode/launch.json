@@ -10,7 +10,7 @@
             "runtimeArgs": [
                 "run-script",
                 "ai:train",
-                "binance_btcusdc"
+                "binance_ethusdc"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [

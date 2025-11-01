@@ -275,6 +275,7 @@ const feed = async (identity, config) => {
 
         const pp = [
             ['Sample', i.toString().padStart(6, '0')],
+            ['idx', randomStartIndex.toString().padStart(7, ' ')],
             ['Trade', tradeIndex.toString().padStart(9, '0')],
             ['Candle', candlesInfo.candles[0].id.toString().padStart(9, '0')],
             ['Loss', trainResult.history.loss[0].toFixed(6)],
