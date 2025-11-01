@@ -46,12 +46,16 @@ def plot_data(ax, samples, losses, maes):
             else:
                 ema24.append(alpha * loss + (1 - alpha) * ema24[-1])
         ax.plot(samples, ema24, label='EMA(24) Loss', color='purple', linestyle='--')
-    # Play sound for any new loss > 400 not seen in previous refresh
-    big_losses = set(l for l in losses if l > 400)
+    # Play sound for any new loss > threshold not seen in previous refresh
+    threshold = args.beep
+    big_losses = set(l for l in losses if l > threshold)
     new_big_losses = big_losses - seen_big_losses[0]
     if new_big_losses:
         os.system('afplay /System/Library/Sounds/Glass.aiff &')
     seen_big_losses[0] = big_losses
+    # Draw a thick black line at the beep threshold
+    if len(samples) > 0:
+        ax.axhline(y=threshold, color='black', linewidth=2.5, linestyle='-', label='beep')
     if len(samples) > 1:
         z = np.polyfit(samples, losses, 1)
         p = np.poly1d(z)
@@ -59,7 +63,10 @@ def plot_data(ax, samples, losses, maes):
     ax.set_xlabel('Sample')
     ax.set_ylabel('Value')
     ax.set_title('Training Loss and MAE over Samples')
-    ax.legend()
+    # Deduplicate legend
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(by_label.values(), by_label.keys())
     ax.grid(True)
     plt.tight_layout()
     plt.draw()
@@ -78,6 +85,7 @@ def auto_refresh():
 def parse_args():
     parser = argparse.ArgumentParser(description='Plot training loss and MAE from log file.')
     parser.add_argument('--lines', type=int, default=500, help='Number of most recent log lines to plot (default: 500)')
+    parser.add_argument('--beep', type=float, default=400, help='Loss value threshold for beep (default: 400)')
     return parser.parse_args()
 
 if __name__ == '__main__':
