@@ -10,6 +10,7 @@ const path = require('path')
 const BinanceRawReader = require('../sources/BinanceRawReader')
 const TradeKind = require('../core/TradeKind')
 const CandlesMap = require('./CandlesMap')
+const fs = require('fs')
 
 /**
  * Simulates trades based on the provided parameters.
@@ -235,7 +236,9 @@ const checkCandleContinuity = (candles) => {
  * @returns {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}}
  */
 const getConfig = (modelName) => {
-    const result = require(path.resolve(__dirname, '..', '..', 'models', modelName, 'config.json'))
+    const modelRootPath = path.resolve(__dirname, '..', '..', 'models', modelName)
+    const result = require(path.resolve(modelRootPath, 'config.json'))
+    result.learnLogPath = path.resolve(modelRootPath, 'learn.log')
     result.symbol = Symbol.find(result.symbol)
     result.modelName = modelName
     const baseFolder = path.resolve(__dirname, '..', '..', 'data')
@@ -262,6 +265,27 @@ const feed = async (identity, config) => {
     const candlesPreambleCount = 100
     const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol)
     const pastSimulationsTimeouts = { count: 0, limit: config.pastSimulationsTimeoutsLimit }
+    let printCsv = null
+    const printCsvWithoutColumns = (data) => {
+        const line = Object.values(data).map(v => {
+            if (typeof v === 'number') {
+                return Number.isInteger(v) ? v.toString() : v.toFixed(10)
+            }
+            return v
+        }).join(',')
+        console.log(line)
+        fs.appendFileSync(config.learnLogPath, line + '\n')
+    }
+    const printCsvWithColumns = (data) => {
+        if (!fs.existsSync(config.learnLogPath)) {
+            const headers = Object.keys(data).join(',')
+            console.log(headers)
+            fs.writeFileSync(config.learnLogPath, headers + '\n')
+        }
+        printCsvWithoutColumns(data)
+        printCsv = printCsvWithoutColumns
+    }
+    printCsv = printCsvWithColumns
     let i = 0
     while (true) {
         i++
@@ -281,35 +305,23 @@ const feed = async (identity, config) => {
 
         const trainResult = await nn.train([sample])
 
-        /**
-         * Pretty print a price with left padding for integer part and fixed fractional digits
-         * @param {number} value
-         * @param {number} integerDigitsCount
-         * @param {number} fractionalDigitsCount
-         * @returns {string}
-         */
-        const prettyPrintPrice = (value, integerDigitsCount, fractionalDigitsCount) => {
-            // Print the number as usual (with sign), then pad with spaces on the left
-            const numStr = value.toFixed(fractionalDigitsCount)
-            // Calculate total width: sign + integerDigitsCount + dot + fractionalDigitsCount
-            // But sign is included in numStr, so just pad to (integerDigitsCount + 1 + fractionalDigitsCount)
-            const totalWidth = integerDigitsCount + 1 + fractionalDigitsCount
-            return numStr.padStart(totalWidth, ' ')
-        }
-
-        const pp = [
-            ['Sample', i.toString().padStart(6, '0')],
-            ['idx', randomStartIndex.toString().padStart(7, ' ')],
-            ['Trade', tradeIndex.toString().padStart(9, '0')],
-            ['Candle', candlesInfo.candles[0].id.toString().padStart(9, '0')],
-            ['Loss', prettyPrintPrice(trainResult.history.loss[0], 4, 4)],
-            ['MAE', prettyPrintPrice(trainResult.history.mae[0], 4, 4)],
-            ['MSE', prettyPrintPrice(trainResult.history.mse[0], 4, 4)],
-            ['Buy', `${prettyPrintPrice(sample.outputs.buyProfitPercent, 4, 4)}/${Math.floor(sample.buyOrder.durationUs / 60000000)}/${sample.buyOrder.forceClose ? '1' : '0'}/${sample.buyOrder.tradesCount}`],
-            ['Sell', `${prettyPrintPrice(sample.outputs.sellProfitPercent, 4, 4)}/${Math.floor(sample.sellOrder.durationUs / 60000000)}/${sample.sellOrder.forceClose ? '1' : '0'}/${sample.sellOrder.tradesCount}`],
-            ['TradesCount', candlesInfo.tradesCount.toString()]
-        ]
-        console.log(pp.map(pair => `${pair[0]} ${pair[1]}`).join(' | '))
+        printCsv({
+            SampleIndex: i,
+            StartCandleIndex: randomStartIndex,
+            StartCandleId: candlesInfo.candles[0].id,
+            TradeIndex: tradeIndex,
+            Loss: trainResult.history.loss[0],
+            MAE: trainResult.history.mae[0],
+            MSE: trainResult.history.mse[0],
+            BuyProfitPercent: sample.outputs.buyProfitPercent,
+            BuyOrderDuration: sample.buyOrder.durationUs,
+            BuyOrderForcedClose: sample.buyOrder.forceClose,
+            BuyOrderTradesCount: sample.buyOrder.tradesCount,
+            SellProfitPercent: sample.outputs.sellProfitPercent,
+            SellOrderDuration: sample.sellOrder.durationUs,
+            SellOrderForcedClose: sample.sellOrder.forceClose,
+            SellOrderTradesCount: sample.sellOrder.tradesCount
+        })
     }
 }
 

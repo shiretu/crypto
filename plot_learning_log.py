@@ -8,22 +8,24 @@ import threading
 import argparse
 
 def extract_data(num_log_lines):
-    with open('learning_logs.txt', 'r') as f:
-        lines = f.readlines()
+    import csv
+    with open(args.csv, 'r') as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+    # Only keep the last num_log_lines rows
+    rows = rows[-num_log_lines:]
     samples = []
     losses = []
     maes = []
-    pattern = re.compile(r"^Sample (\d+).*?\| Loss ([\d\.eE\-]+) \| MAE ([\d\.eE\-]+)")
-    # Filter the whole file for valid sample lines
-    matching_lines = [line for line in lines if pattern.search(line)]
-    # Select the last num_log_lines valid lines
-    matching_lines = matching_lines[-num_log_lines:]
-    for line in matching_lines:
-        m = pattern.search(line)
-        if m:
-            samples.append(int(m.group(1)))
-            losses.append(float(m.group(2)))
-            maes.append(float(m.group(3)))
+    for row in rows:
+        # Try to support both old and new column names
+        sample_val = row.get('Sample') or row.get('SampleIndex')
+        loss_val = row.get('Loss')
+        mae_val = row.get('MAE')
+        if sample_val is not None and loss_val is not None and mae_val is not None:
+            samples.append(int(float(sample_val)))
+            losses.append(float(loss_val))
+            maes.append(float(mae_val))
     return samples, losses, maes
 
 
@@ -83,7 +85,8 @@ def auto_refresh():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Plot training loss and MAE from log file.')
+    parser = argparse.ArgumentParser(description='Plot training loss and MAE from CSV log file.')
+    parser.add_argument('csv', type=str, help='Path to the CSV log file (required)')
     parser.add_argument('--lines', type=int, default=500, help='Number of most recent log lines to plot (default: 500)')
     parser.add_argument('--beep', type=float, default=400, help='Loss value threshold for beep (default: 400)')
     return parser.parse_args()
