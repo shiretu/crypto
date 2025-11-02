@@ -26,14 +26,19 @@ const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTim
         enter: null,
         lastProfitPercent: null,
         profitPercent: null,
-        durationUs: -1
+        durationUs: -1,
+        forceClose: false,
+        tradesCount: 0
+
     }
     const sellOrder = {
         kind: TradeKind.sell,
         enter: null,
         lastProfitPercent: null,
         profitPercent: null,
-        durationUs: -1
+        durationUs: -1,
+        forceClose: false,
+        tradesCount: 0
     }
 
     /**
@@ -45,6 +50,8 @@ const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTim
             order.enter = currentPrice
         }
         order.durationUs = currentDurationUs
+        order.forceClose = forceClose
+        order.tradesCount++
         const profit = order.kind === TradeKind.buy
             ? currentPrice - order.enter
             : order.enter - currentPrice
@@ -96,6 +103,7 @@ const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTim
         if (order.profitPercent !== null) return
         if (order.lastProfitPercent !== null) {
             order.profitPercent = order.lastProfitPercent
+            order.forceClose = true
         }
     }
 
@@ -273,16 +281,32 @@ const feed = async (identity, config) => {
 
         const trainResult = await nn.train([sample])
 
+        /**
+         * Pretty print a price with left padding for integer part and fixed fractional digits
+         * @param {number} value
+         * @param {number} integerDigitsCount
+         * @param {number} fractionalDigitsCount
+         * @returns {string}
+         */
+        const prettyPrintPrice = (value, integerDigitsCount, fractionalDigitsCount) => {
+            // Print the number as usual (with sign), then pad with spaces on the left
+            const numStr = value.toFixed(fractionalDigitsCount)
+            // Calculate total width: sign + integerDigitsCount + dot + fractionalDigitsCount
+            // But sign is included in numStr, so just pad to (integerDigitsCount + 1 + fractionalDigitsCount)
+            const totalWidth = integerDigitsCount + 1 + fractionalDigitsCount
+            return numStr.padStart(totalWidth, ' ')
+        }
+
         const pp = [
             ['Sample', i.toString().padStart(6, '0')],
             ['idx', randomStartIndex.toString().padStart(7, ' ')],
             ['Trade', tradeIndex.toString().padStart(9, '0')],
             ['Candle', candlesInfo.candles[0].id.toString().padStart(9, '0')],
-            ['Loss', trainResult.history.loss[0].toFixed(6)],
-            ['MAE', trainResult.history.mae[0].toFixed(6)],
-            ['MSE', trainResult.history.mse[0].toFixed(6)],
-            ['Buy', `${sample.outputs.buyProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.buyOrder.durationUs / 60000000)}`],
-            ['Sell', `${sample.outputs.sellProfitPercent?.toFixed(4) || 'null'}/${Math.floor(sample.sellOrder.durationUs / 60000000)}`],
+            ['Loss', prettyPrintPrice(trainResult.history.loss[0], 4, 4)],
+            ['MAE', prettyPrintPrice(trainResult.history.mae[0], 4, 4)],
+            ['MSE', prettyPrintPrice(trainResult.history.mse[0], 4, 4)],
+            ['Buy', `${prettyPrintPrice(sample.outputs.buyProfitPercent, 4, 4)}/${Math.floor(sample.buyOrder.durationUs / 60000000)}/${sample.buyOrder.forceClose ? '1' : '0'}/${sample.buyOrder.tradesCount}`],
+            ['Sell', `${prettyPrintPrice(sample.outputs.sellProfitPercent, 4, 4)}/${Math.floor(sample.sellOrder.durationUs / 60000000)}/${sample.sellOrder.forceClose ? '1' : '0'}/${sample.sellOrder.tradesCount}`],
             ['TradesCount', candlesInfo.tradesCount.toString()]
         ]
         console.log(pp.map(pair => `${pair[0]} ${pair[1]}`).join(' | '))
