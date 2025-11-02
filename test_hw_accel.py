@@ -1,39 +1,29 @@
 import torch
 import platform
 
-def detect_cpu():
-    return platform.processor() or platform.machine() or 'Unknown CPU'
-
-def detect_gpu():
-    if torch.cuda.is_available():
-        return f"CUDA GPU: {torch.cuda.get_device_name(0)}"
-    else:
+# Helper to test if a backend is available
+def is_backend_usable(attr):
+    backend = getattr(torch.backends, attr, None)
+    if backend is None or attr.startswith("__"):
         return None
-
-# PyTorch does not natively support NPU detection, but some platforms (like Huawei Ascend) may expose it via torch_npu
-try:
-    import torch_npu
-    npu_available = torch_npu.npu.is_available()
-    npu_name = torch_npu.npu.get_device_name(0) if npu_available else None
-except ImportError:
-    npu_available = False
-    npu_name = None
-
-def detect_npu():
-    if npu_available:
-        return f"NPU: {npu_name}"
-    else:
-        return None
+    try:
+        if hasattr(backend, "is_available"):
+            return backend.is_available()
+    except Exception:
+        return False
+    return None
 
 if __name__ == "__main__":
-    print(f"CPU: {detect_cpu()}")
-    gpu = detect_gpu()
-    if gpu:
-        print(gpu)
-    else:
-        print("CUDA GPU: Not available")
-    npu = detect_npu()
-    if npu:
-        print(npu)
-    else:
-        print("NPU: Not available")
+    # Print a table of only real backends (with is_available), and add CPU as always available
+    print("\nTorch Backends Status:")
+    print(f"{'Backend':<15} | {'Status':<12}")
+    print("-" * 30)
+    print(f"{'cpu':<15} | {'available':<12}")
+    for attr in dir(torch.backends):
+        if attr.startswith("__") or attr == "cpu":
+            continue
+        backend = getattr(torch.backends, attr, None)
+        if hasattr(backend, "is_available") and callable(backend.is_available):
+            usable = is_backend_usable(attr)
+            print(f"{attr:<15} | {'available' if usable else 'not available':<12}")
+
