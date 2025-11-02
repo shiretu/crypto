@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup Python virtual environment and install required packages
 set -e
-VENV_DIR=".venv"
+VENV_DIR="$(dirname "$0")/.venv"
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR"
 fi
