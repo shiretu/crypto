@@ -1,4 +1,5 @@
 {
+    "usePython": true,
     "exchangeName": "binance",
     "symbol": "btcusdc",
     "totalHistoryInDays": 1460,

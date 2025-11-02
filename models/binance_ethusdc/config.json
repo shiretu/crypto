@@ -1,4 +1,5 @@
 {
+    "usePython": true,
     "exchangeName": "binance",
     "symbol": "ethusdc",
     "totalHistoryInDays": 1460,

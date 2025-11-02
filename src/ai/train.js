@@ -2,6 +2,7 @@ const { EventEmitter } = require('events')
 const Symbol = require('../core/Symbol')
 const Candle = require('../core/Candle')
 const NN = require('../ai/nn')
+const MakeFlat = require('../ai/MakeFlat')
 const { getSource } = require('../sources/sources')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
@@ -12,6 +13,65 @@ const TradeKind = require('../core/TradeKind')
 const CandlesMap = require('./CandlesMap')
 const fs = require('fs')
 
+const createPyNn = async (config) => {
+    const pythonFolder = path.resolve(__dirname, '..', '..', 'python')
+    const scriptPath = path.resolve(pythonFolder, 'train.sh')
+    const { spawn } = require('child_process')
+    const py = spawn(scriptPath, [config.modelName], { stdio: ['pipe', 'pipe', 'inherit'] })
+    await new Promise((resolve, reject) => {
+        py.stdout.once('data', (data) => {
+            try {
+                const raw = data.toString()
+                const number = parseInt(raw.split(': ')[1])
+                if (raw !== `bytesCount: ${number}\n`) {
+                    reject(new Error(`Unexpected response from python process: ${raw}`))
+                }
+                resolve()
+            } catch (err) {
+                reject(err)
+            }
+        })
+    })
+    py.train = async (samples) => {
+        const result = {
+            history: {
+                loss: [0],
+                mae: [0],
+                mse: [0]
+            }
+        }
+        for (const sample of samples) {
+            const flat = MakeFlat(sample)
+            const buffer = Buffer.alloc(flat.length * 8)
+            const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
+            floatView.set(flat)
+            await new Promise((resolve, reject) => {
+                py.stdin.write(buffer, (err) => {
+                    if (err) {
+                        reject(err)
+                    } else {
+                        resolve()
+                    }
+                })
+            })
+            await new Promise((resolve, reject) => {
+                py.stdout.once('data', (data) => {
+                    try {
+                        const raw = data.toString()
+                        console.log(raw)
+                        // const result = JSON.parse(raw)
+                        resolve()
+                    } catch (err) {
+                        reject(err)
+                    }
+                })
+            })
+            // results.push(res)
+        }
+        return result
+    }
+    return py
+}
 /**
  * Simulates trades based on the provided parameters.
  * @param {BinanceRawReader} brr - Binance raw reader instance
@@ -254,12 +314,7 @@ const getConfig = (modelName) => {
  * @param {number} identity
  * @param {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}} config
  */
-const feed = async (identity, config) => {
-    const nn = await NN.create({
-        modelName: config.modelName,
-        epochs: 1,
-        autosave: 10
-    })
+const feed = async (nn, config) => {
     const candlesMap = await CandlesMap.create(config)
     const candlesCount = candlesMap.length
     const candlesPreambleCount = 100
@@ -327,7 +382,14 @@ const feed = async (identity, config) => {
 
 const work = async () => {
     const config = getConfig(process.argv[2] ?? 'binance_btcusdc')
-    await feed(0, config)
+    const nn = config.usePython
+        ? await createPyNn(config)
+        : await NN.create({
+            modelName: config.modelName,
+            epochs: 1,
+            autosave: 10
+        })
+    await feed(nn, config)
 }
 
 work()

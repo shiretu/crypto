@@ -22,7 +22,7 @@ with open(ARCH_PATH, 'r') as f:
 
 INPUTS_COUNT = arch['inputs_count']
 OUTPUTS_COUNT = arch['outputs_count']
-BYTES_PER_SAMPLE = (INPUTS_COUNT + OUTPUTS_COUNT) * 4  # float32
+BYTES_PER_SAMPLE = (INPUTS_COUNT + OUTPUTS_COUNT) * 8  # float64
 
 def print_bytes_info(data):
     # Print first 5 and last 5 bytes as integers
@@ -30,12 +30,12 @@ def print_bytes_info(data):
         print(f"Sample too small: {len(data)} bytes")
         return
     first5 = list(data[:5])
-    last5 = list(data[-5:])
-    print(f"First 5 bytes: {first5}")
-    print(f"Last 5 bytes: {last5}")
+    print(f"First 5 bytes: {first5}. received {len(data)} bytes.")
+    sys.stdout.flush()
 
 if __name__ == "__main__":
-    print(f"We expect {BYTES_PER_SAMPLE} bytes per message.")
+    print(f"bytesCount: {BYTES_PER_SAMPLE}")
+    sys.stdout.flush()
     while True:
         raw = sys.stdin.buffer.read(BYTES_PER_SAMPLE)
         if not raw or len(raw) < BYTES_PER_SAMPLE:
