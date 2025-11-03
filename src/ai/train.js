@@ -32,6 +32,7 @@ const createPyNn = async (config) => {
             }
         })
     })
+    py.relativeSavePath = 'pyt'
     py.train = async (samples) => {
         const result = {
             history: {
@@ -57,9 +58,10 @@ const createPyNn = async (config) => {
             await new Promise((resolve, reject) => {
                 py.stdout.once('data', (data) => {
                     try {
-                        const raw = data.toString()
-                        console.log(raw)
-                        // const result = JSON.parse(raw)
+                        const obj = JSON.parse(data.toString())
+                        result.history.loss[0] = obj.loss[0]
+                        result.history.mae[0] = obj.metrics.mae
+                        result.history.mse[0] = obj.metrics.mse
                         resolve()
                     } catch (err) {
                         reject(err)
@@ -298,7 +300,7 @@ const checkCandleContinuity = (candles) => {
 const getConfig = (modelName) => {
     const modelRootPath = path.resolve(__dirname, '..', '..', 'models', modelName)
     const result = require(path.resolve(modelRootPath, 'config.json'))
-    result.learnLogPath = path.resolve(modelRootPath, 'learn.log')
+    result.modelRootPath = modelRootPath
     result.symbol = Symbol.find(result.symbol)
     result.modelName = modelName
     const baseFolder = path.resolve(__dirname, '..', '..', 'data')
@@ -389,6 +391,7 @@ const work = async () => {
             epochs: 1,
             autosave: 10
         })
+    config.learnLogPath = path.resolve(config.modelRootPath, nn.relativeSavePath, 'learn.log')
     await feed(nn, config)
 }
 

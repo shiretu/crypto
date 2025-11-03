@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "WSS server",
+            "name": "JS train",
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
@@ -20,6 +20,16 @@
             "env": {
                 "DEBUG": "express:*"
             }
+        },
+        {
+            "name": "Python train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "binance_ethusdc"
+            ]
         }
     ]
 }

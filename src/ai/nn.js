@@ -19,7 +19,7 @@ class NN {
         this.#config = config
         this.#modelRootFolder = path.join(NN.#modelsRootFolder, this.#config.modelName)
         this.#architecturePath = path.join(this.#modelRootFolder, 'architecture.json')
-        this.#modelTfFolder = path.join(this.#modelRootFolder, 'tf')
+        this.#modelTfFolder = path.join(this.#modelRootFolder, this.relativeSavePath)
         this.#modelTfPath = path.join(this.#modelTfFolder, 'model.json')
     }
 
@@ -28,6 +28,8 @@ class NN {
         await result.#init()
         return result
     }
+
+    get relativeSavePath () { return 'tf' }
 
     async train (samples) {
         this.#samplesCounter += samples.length
