@@ -9,18 +9,10 @@
       "name": "primary_feature_extraction"
     },
     {
-      "type": "dropout",
-      "rate": 0.5
-    },
-    {
       "type": "dense",
       "units": 6144,
       "activation": "relu",
       "name": "secondary_feature_processing"
-    },
-    {
-      "type": "dropout",
-      "rate": 0.5
     },
     {
       "type": "dense",
@@ -29,18 +21,10 @@
       "name": "tertiary_feature_processing"
     },
     {
-      "type": "dropout",
-      "rate": 0.4
-    },
-    {
       "type": "dense",
       "units": 2048,
       "activation": "relu",
       "name": "pattern_recognition"
-    },
-    {
-      "type": "dropout",
-      "rate": 0.4
     },
     {
       "type": "dense",
@@ -49,28 +33,16 @@
       "name": "feature_fusion"
     },
     {
-      "type": "dropout",
-      "rate": 0.3
-    },
-    {
       "type": "dense",
       "units": 512,
       "activation": "relu",
       "name": "decision_processing"
     },
     {
-      "type": "dropout",
-      "rate": 0.2
-    },
-    {
       "type": "dense",
       "units": 256,
       "activation": "relu",
       "name": "signal_extraction"
-    },
-    {
-      "type": "dropout",
-      "rate": 0.1
     },
     {
       "type": "dense",
@@ -93,7 +65,7 @@
   ],
   "optimizer": {
     "type": "rmsprop",
-    "learning_rate": 0.000005
+    "learning_rate": 0.000001
   },
   "loss": "meanSquaredError",
   "metrics": [

@@ -48,13 +48,57 @@ def init_config(argv,config):
         elif metric == 'mse':
             config.metrics.append(('mse', lambda output, y: torch.nn.functional.mse_loss(output, y).item()))
     # Dynamically create optimizer factory from architecture.json
-    opt_cfg = config.architecture.get('optimizer', {})
+    # Merge defaults from models/optimizers.json to mirror JS behavior
+    optimizers_defaults_path = os.path.join(config.models_root, 'optimizers.json')
+    try:
+        with open(optimizers_defaults_path, 'r') as f:
+            optimizers_defaults = json.load(f)
+    except Exception:
+        optimizers_defaults = {}
+    opt_cfg = dict(config.architecture.get('optimizer', {}))
     opt_type = opt_cfg.get('type', 'adam').lower()
+    if opt_type in optimizers_defaults:
+        merged = dict(optimizers_defaults[opt_type])
+        merged.update(opt_cfg)
+        opt_cfg = merged
     opt_params = dict(opt_cfg)
     opt_params.pop('type', None)
-    # Map 'learning_rate' to 'lr' for PyTorch
+    # Map common parameter names to PyTorch equivalents
     if 'learning_rate' in opt_params:
         opt_params['lr'] = opt_params.pop('learning_rate')
+    # Per-optimizer tweaks
+    if opt_type == 'rmsprop':
+        # TFJS uses 'decay' ~ PyTorch alpha; epsilon -> eps
+        if 'decay' in opt_params:
+            opt_params['alpha'] = opt_params.pop('decay')
+        if 'epsilon' in opt_params:
+            opt_params['eps'] = opt_params.pop('epsilon')
+    elif opt_type in ('adam', 'adamax'):
+        # epsilon -> eps, (beta1,beta2) -> betas
+        if 'epsilon' in opt_params:
+            opt_params['eps'] = opt_params.pop('epsilon')
+        if 'beta1' in opt_params or 'beta2' in opt_params:
+            b1 = opt_params.pop('beta1', 0.9)
+            b2 = opt_params.pop('beta2', 0.999)
+            opt_params['betas'] = (b1, b2)
+        # 'decay' in our JSON for adamax is not a PyTorch arg; drop it
+        opt_params.pop('decay', None)
+    elif opt_type == 'sgd':
+        # use_nesterov -> nesterov
+        if 'use_nesterov' in opt_params:
+            opt_params['nesterov'] = opt_params.pop('use_nesterov')
+    # Remove non-optimizer metadata
+    opt_params.pop('description', None)
+
+    # Filter only supported params per optimizer to avoid unexpected kwargs
+    allowed = {
+        'adam': {'lr', 'betas', 'eps', 'weight_decay', 'amsgrad'},
+        'adamax': {'lr', 'betas', 'eps', 'weight_decay'},
+        'rmsprop': {'lr', 'alpha', 'eps', 'weight_decay', 'momentum', 'centered'},
+        'sgd': {'lr', 'momentum', 'dampening', 'weight_decay', 'nesterov'},
+    }.get(opt_type, set())
+    if allowed:
+        opt_params = {k: v for k, v in opt_params.items() if k in allowed}
     def optimizer_factory(params):
         if opt_type == 'adam':
             return torch.optim.Adam(params, **opt_params)
@@ -76,15 +120,25 @@ class DynamicNN(nn.Module):
             if layer['type'] == 'dense':
                 layers.append(nn.Linear(input_dim, layer['units']))
                 input_dim = layer['units']
-                act = layer.get('activation', 'linear')
+                act = (layer.get('activation') or 'linear').lower()
                 if act == 'relu':
                     layers.append(nn.ReLU())
+                elif act in ('leakyrelu', 'leaky_relu'):
+                    negative_slope = layer.get('negative_slope', layer.get('alpha', 0.01))
+                    layers.append(nn.LeakyReLU(negative_slope=negative_slope))
+                elif act == 'elu':
+                    alpha = layer.get('alpha', 1.0)
+                    layers.append(nn.ELU(alpha=alpha))
+                elif act == 'selu':
+                    layers.append(nn.SELU())
+                elif act == 'gelu':
+                    layers.append(nn.GELU())
                 elif act == 'tanh':
                     layers.append(nn.Tanh())
                 elif act == 'sigmoid':
                     layers.append(nn.Sigmoid())
-                elif act == 'linear':
-                    pass
+                elif act == 'linear' or act == 'identity' or act is None:
+                    layers.append(nn.Identity())
                 else:
                     raise ValueError(f"Unsupported activation: {act}")
             elif layer['type'] == 'dropout':
@@ -114,6 +168,7 @@ def main():
     # print(f"PyTorch loss function: {config.loss_fn.__class__.__name__}, reduction: {getattr(config.loss_fn, 'reduction', 'N/A')}")
     sys.stdout.flush()
 
+    iteration = 0
     while True:
         raw = sys.stdin.buffer.read(config.bytes_per_sample)
         arr = np.frombuffer(raw, dtype=np.float64)
@@ -144,10 +199,8 @@ def main():
         sys.stdout.flush()
 
         # Save weights and optimizer state every 100 iterations
-        if not hasattr(main, "iteration"):
-            main.iteration = 0
-        main.iteration += 1
-        if main.iteration % 100 == 0:
+        iteration += 1
+        if iteration % 100 == 0:
             torch.save(net.state_dict(), config.model_save_weights)
             torch.save(optimizer.state_dict(), config.model_save_optimizer)
             # print(f"Saved weights to {config.model_save_weights} and optimizer state to {config.model_save_optimizer}")
