@@ -1,5 +1,6 @@
 const fs = require('fs')
 const Trade = require('../core/Trade')
+const cliProgress = require('cli-progress')
 
 class BinanceRawReader {
     static #RECORD_SIZE = 40 // 8+8+8+8+8 bytes per record
@@ -114,7 +115,6 @@ class BinanceRawReader {
             }
 
             try {
-                console.log(`Reading ${fileSize} bytes into memory...`)
                 const allDataBuffer = Buffer.allocUnsafe(fileSize)
 
                 // Read in chunks due to fs.readSync size limitations (~600MB max)
@@ -122,33 +122,23 @@ class BinanceRawReader {
                 let totalBytesRead = 0
                 let fileOffset = 0
 
+                const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+                console.log(`Loading trades (${fileSize} bytes)...`)
+                bar.start(fileSize, 0)
                 while (totalBytesRead < fileSize) {
                     const remainingBytes = fileSize - totalBytesRead
                     const currentChunkSize = Math.min(chunkSize, remainingBytes)
 
                     const bytesRead = fs.readSync(fd, allDataBuffer, totalBytesRead, currentChunkSize, fileOffset)
                     totalBytesRead += bytesRead
+                    bar.update(totalBytesRead)
                     fileOffset += bytesRead
 
                     if (bytesRead !== currentChunkSize) {
                         throw new Error(`Expected to read ${currentChunkSize} bytes, but got ${bytesRead} at file offset ${fileOffset - bytesRead}`)
                     }
-
-                    // Progress update every 500MB
-                    if (totalBytesRead % (500 * 1024 * 1024) === 0 || totalBytesRead === fileSize) {
-                        const progress = ((totalBytesRead / fileSize) * 100).toFixed(1)
-                        console.log(`Read progress: ${totalBytesRead}/${fileSize} (${progress}%)`)
-                    }
                 }
-
-                console.log(`Successfully read all ${totalBytesRead} bytes`)
-
-                // Debug: Check first few bytes
-                console.log('First 16 bytes:', allDataBuffer.subarray(0, 16).toString('hex'))
-
-                // Debug: Check middle bytes
-                const midPoint = Math.floor(fileSize / 2)
-                console.log('Middle 16 bytes:', allDataBuffer.subarray(midPoint, midPoint + 16).toString('hex'))
+                bar.stop()
 
                 BinanceRawReader.#allFiles.set(this.#filePath, allDataBuffer)
                 return allDataBuffer
