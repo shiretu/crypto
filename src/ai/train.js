@@ -15,7 +15,7 @@ const fs = require('fs')
 
 const createPyNn = async (config) => {
     const pythonFolder = path.resolve(__dirname, '..', '..', 'python')
-    const scriptPath = path.resolve(pythonFolder, 'train.sh')
+    const scriptPath = path.resolve(pythonFolder, 'nn.sh')
     const { spawn } = require('child_process')
     const py = spawn(scriptPath, [config.modelName], { stdio: ['pipe', 'pipe', 'inherit'] })
     await new Promise((resolve, reject) => {
