@@ -10,7 +10,7 @@ exec_name=$(echo "$(basename "$0")" | sed 's/\.sh$//')
 
 # Setup Python virtual environment
 VENV_DIR="${root_folder}"/.venv
-packages="matplotlib torch"
+packages="matplotlib torch black"
 packages_hash=$(echo "${packages}" | md5sum | awk '{print $1}')
 
 # Create venv if needed
