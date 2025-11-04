@@ -5,10 +5,11 @@ set -e
 
 # get current folder and exec name
 current_folder=$(realpath "$(dirname "$0")")
+root_folder=$(realpath "${current_folder}"/..)
 exec_name=$(echo "$(basename "$0")" | sed 's/\.sh$//')
 
 # Setup Python virtual environment
-VENV_DIR="${current_folder}"/.venv
+VENV_DIR="${root_folder}"/.venv
 packages="matplotlib torch"
 packages_hash=$(echo "${packages}" | md5sum | awk '{print $1}')
 

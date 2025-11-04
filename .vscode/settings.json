@@ -21,4 +21,14 @@
         "docker-compose*.yml": "yaml",
         "docker-compose*.yaml": "yaml"
     },
+    "[python]": {
+        // Use Python Indent for on-type indentation; do not use a document formatter
+        // (prevents 'no formatter installed' errors)
+        "editor.formatOnType": true,
+        "editor.formatOnSave": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.terminal.activateEnvironment": true
 }
