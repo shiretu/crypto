@@ -21,7 +21,7 @@ const createPyNn = async (config) => {
 
     const sendCmd = async (cmd, params) => {
         const sendPart = async (part) => {
-            await new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 py.stdin.write(part, (err) => {
                     if (err) {
                         reject(err)
@@ -36,7 +36,7 @@ const createPyNn = async (config) => {
             if (!Buffer.isBuffer(params)) throw new Error('Params must be a Buffer')
             await sendPart(params)
         }
-        return await new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             py.stdout.once('data', (data) => {
                 try {
                     resolve(data.toString())
@@ -47,7 +47,7 @@ const createPyNn = async (config) => {
         })
     }
 
-    if ((await sendCmd('ping')).trim() !== 'pong') {
+    if (JSON.parse(await sendCmd('ping')) !== 'pong') {
         throw new Error('Python NN process is not responding correctly')
     }
 
@@ -71,6 +71,12 @@ const createPyNn = async (config) => {
             result.history.mse[0] = obj.metrics.mse
         }
         return result
+    }
+
+    py.save = async () => {
+        if (JSON.parse(await sendCmd('save')) !== 'saved') {
+            throw new Error('Python NN process did not acknowledge save command')
+        }
     }
     return py
 }
@@ -344,7 +350,15 @@ const feed = async (nn, config) => {
     }
     printCsv = printCsvWithColumns
     let i = 0
+    let lastSavedAt = Date.now()
     while (true) {
+        if (config.autosaveIntervalSeconds) {
+            const now = Date.now()
+            if (now - lastSavedAt >= config.autosaveIntervalSeconds * 1000) {
+                await nn.save()
+                lastSavedAt = now
+            }
+        }
         i++
         const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
         const randomStartIndex = Math.floor(Math.random() * (candlesCount - requiredCandlesCount))
@@ -388,8 +402,7 @@ const work = async () => {
         ? await createPyNn(config)
         : await NN.create({
             modelName: config.modelName,
-            epochs: 1,
-            autosave: 10
+            epochs: 1
         })
     config.learnLogPath = path.resolve(config.modelRootPath, nn.relativeSavePath, 'learn.log')
     await feed(nn, config)

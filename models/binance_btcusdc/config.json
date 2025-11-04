@@ -1,5 +1,6 @@
 {
     "usePython": true,
+    "autosaveIntervalSeconds": 60,
     "exchangeName": "binance",
     "symbol": "btcusdc",
     "totalHistoryInDays": 1460,

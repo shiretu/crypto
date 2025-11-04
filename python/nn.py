@@ -3,6 +3,7 @@ import os
 import sys
 import numpy
 import torch
+import contextlib
 
 
 class Config:
@@ -27,6 +28,8 @@ def init_config(argv, config):
         config.architecture = json.load(f)
     inputs_count = config.architecture["inputs_count"]
     outputs_count = config.architecture["outputs_count"]
+    config.bytes_per_input = inputs_count * 8
+    config.bytes_per_output = outputs_count * 8
     config.bytes_per_sample = (inputs_count + outputs_count) * 8
     if torch.backends.mps.is_available():
         config.device = "mps"
@@ -158,6 +161,41 @@ class DynamicNN(torch.nn.Module):
         return self.model(x)
 
 
+def run_forward(net, x_tensor, *, inference):
+    """Run a forward pass. If inference=True, disable grad; else allow grad for training."""
+    ctx = contextlib.nullcontext() if not inference else torch.no_grad()
+    with ctx:
+        return net(x_tensor)
+
+
+def read_payload(expected_bytes: int, label: str):
+    """Read exactly expected_bytes from stdin; print a lowercase protocol error and return None on mismatch."""
+    raw = sys.stdin.buffer.read(expected_bytes)
+    if raw is None or len(raw) != expected_bytes:
+        print(
+            f"protocol error: expected {expected_bytes} bytes after {label}, got {0 if raw is None else len(raw)}",
+            file=sys.stderr,
+        )
+        return None
+    return raw
+
+
+def tensors_from_raw(config, raw, *, with_targets: bool):
+    """Decode float64 raw payload into torch tensors (and numpy arrays). If with_targets=True, split into (x,y)."""
+    if with_targets:
+        arr = numpy.frombuffer(raw, dtype=numpy.float64)
+        outputs_count = config.architecture["outputs_count"]
+        x = arr[: config.architecture["inputs_count"]]
+        y = arr[-outputs_count:]
+        x_tensor = torch.tensor(x, dtype=torch.float32, device=config.device).unsqueeze(0)
+        y_tensor = torch.tensor(y, dtype=torch.float32, device=config.device).unsqueeze(0)
+        return x, y, x_tensor, y_tensor
+    else:
+        x = numpy.frombuffer(raw, dtype=numpy.float64)
+        x_tensor = torch.tensor(x, dtype=torch.float32, device=config.device).unsqueeze(0)
+        return x, None, x_tensor, None
+
+
 def main():
     config = Config()
     init_config(sys.argv, config)
@@ -196,26 +234,31 @@ def main():
             # Ignore empty lines
             continue
 
-        if cmd == "train":
-            # Expect exactly one sample of binary payload following the command
-            raw = sys.stdin.buffer.read(config.bytes_per_sample)
-            if raw is None or len(raw) != config.bytes_per_sample:
-                print(
-                    f"Protocol error: expected {config.bytes_per_sample} bytes after SAMPLE, got {0 if raw is None else len(raw)}",
-                    file=sys.stderr,
-                )
+        if cmd == "predict":
+            # Expect only the inputs payload (no targets)
+            raw = read_payload(config.bytes_per_input, "predict")
+            if raw is None:
                 break
+            x, _, x_tensor, _ = tensors_from_raw(config, raw, with_targets=False)
 
-            arr = numpy.frombuffer(raw, dtype=numpy.float64)
-            outputs_count = config.architecture["outputs_count"]
-            x = arr[: config.architecture["inputs_count"]]
-            y = arr[-outputs_count:]
+            output = run_forward(net, x_tensor, inference=True)
+            computed = output.detach().cpu().numpy().flatten()
 
-            x_tensor = torch.tensor(x, dtype=torch.float32, device=config.device).unsqueeze(0)
-            y_tensor = torch.tensor(y, dtype=torch.float32, device=config.device).unsqueeze(0)
+            result = {
+                "computed": (computed.tolist() if hasattr(computed, "tolist") else list(computed))
+            }
+            print(json.dumps(result))
+            sys.stdout.flush()
+
+        elif cmd == "train":
+            # Expect one full sample (inputs + targets) payload
+            raw = read_payload(config.bytes_per_sample, "train")
+            if raw is None:
+                break
+            x, y, x_tensor, y_tensor = tensors_from_raw(config, raw, with_targets=True)
 
             optimizer.zero_grad()
-            output = net(x_tensor)
+            output = run_forward(net, x_tensor, inference=False)
             loss = config.loss_fn(output, y_tensor)
             loss.backward()
             optimizer.step()
@@ -236,16 +279,6 @@ def main():
             print(json.dumps(result))
             sys.stdout.flush()
 
-            # Periodic autosave
-            iteration += 1
-            if iteration % 100 == 0:
-                torch.save(net.state_dict(), config.model_save_weights)
-                torch.save(optimizer.state_dict(), config.model_save_optimizer)
-                print(
-                    f"Saved weights to {config.model_save_weights} and optimizer state to {config.model_save_optimizer}",
-                    file=sys.stderr,
-                )
-
         elif cmd == "save":
             # Force a save on demand (no binary payload expected)
             torch.save(net.state_dict(), config.model_save_weights)
@@ -255,12 +288,12 @@ def main():
                 file=sys.stderr,
             )
             # Acknowledge on stdout for callers that expect a response
-            print(json.dumps({"ok": True, "cmd": "SAVE"}))
+            print(json.dumps("saved"))
             sys.stdout.flush()
 
         elif cmd == "ping":
             # Simple liveness check (no payload)
-            print("pong")
+            print(json.dumps("pong"))
             sys.stdout.flush()
 
         elif cmd == "quit":
@@ -270,7 +303,7 @@ def main():
 
         else:
             # Unknown command: report and continue (caller may resynchronize)
-            print(f"Unknown cmd: {cmd}", file=sys.stderr)
+            print(f"unknown cmd: {cmd}", file=sys.stderr)
             # optional: consume nothing further; next readline() will get the next command
 
 

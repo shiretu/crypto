@@ -14,7 +14,6 @@ class NN {
     #architecture /** @type {object} */
     #model /** @type {tf.LayersModel} */
     #samplesCounter = 0 /** @type {number} */
-    #lastSavedSamplesCount = 0 /** @type {number} */
     constructor (config) {
         this.#config = config
         this.#modelRootFolder = path.join(NN.#modelsRootFolder, this.#config.modelName)
@@ -41,15 +40,6 @@ class NN {
                 batchSize: samples.length,
                 verbose: 0
             })
-            if (this.#config.autosave) {
-                const samplesSinceLastSave = this.#samplesCounter - this.#lastSavedSamplesCount
-                if (samplesSinceLastSave >= this.#config.autosave) {
-                    // console.log(`🔄 Autosaving model after ${this.#samplesCounter} samples (${samplesSinceLastSave} since last save)...`)
-                    await this.#saveModel()
-                    this.#lastSavedSamplesCount = this.#samplesCounter
-                    // console.log(`✅ Model saved to ${this.#modelTfPath}`)
-                }
-            }
             return history
         } catch (err) {
             console.error(`Error during training: ${err}`)
@@ -58,6 +48,12 @@ class NN {
             inputs.dispose()
             outputs.dispose()
         }
+    }
+
+    async save () {
+        await fs.mkdir(this.#modelTfFolder, { recursive: true })
+        await this.#model.save(`file://${this.#modelTfFolder}`)
+        console.log(`Saved model to ${this.#modelTfFolder}`)
     }
 
     getInfo () {
@@ -136,11 +132,7 @@ class NN {
 
             // Training statistics
             training: {
-                totalSamples: this.#samplesCounter,
-                lastSavedAt: this.#lastSavedSamplesCount,
-                samplesSinceLastSave: this.#samplesCounter - this.#lastSavedSamplesCount,
-                autosaveEnabled: !!this.#config.autosave,
-                autosaveInterval: this.#config.autosave || 'disabled'
+                totalSamples: this.#samplesCounter
             },
 
             // File paths
@@ -168,7 +160,7 @@ class NN {
         } catch (err) {
             console.log(`Failed to load model from ${this.#modelTfPath}: ${err}. Creating a new one.`)
             this.#createModel()
-            await this.#saveModel()
+            await this.save()
         }
         await this.#compileModel()
     }
@@ -206,11 +198,6 @@ class NN {
                 return factoryFunc(layerConfig, index === 0)
             }).filter(layer => layer !== null)
         })
-    }
-
-    async #saveModel () {
-        await fs.mkdir(this.#modelTfFolder, { recursive: true })
-        await this.#model.save(`file://${this.#modelTfFolder}`)
     }
 
     #loadArchitecture () {
