@@ -12,7 +12,7 @@ class Config:
 
 def init_config(argv, config):
     if len(argv) < 2:
-        print(f"Usage: {argv[0]} <model_name>")
+        print(f"Usage: {argv[0]} <model_name>", file=sys.stderr)
         sys.exit(1)
     config.model_name = argv[1]
     config.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -161,59 +161,117 @@ class DynamicNN(torch.nn.Module):
 def main():
     config = Config()
     init_config(sys.argv, config)
+
     # Ensure model_save_root exists
     os.makedirs(config.model_save_root, exist_ok=True)
     net = DynamicNN(config.architecture).to(config.device)
     optimizer = config.optimizer(net.parameters())
+
     # Try to load weights and optimizer state from bin files if present
     if os.path.exists(config.model_save_weights):
         net.load_state_dict(torch.load(config.model_save_weights, map_location=config.device))
-        # print(f'Loaded weights from {config.model_save_weights}')
+        print(f"Loaded weights from {config.model_save_weights}", file=sys.stderr)
+
     if os.path.exists(config.model_save_optimizer):
         optimizer.load_state_dict(
             torch.load(config.model_save_optimizer, map_location=config.device)
         )
-        # print(f'Loaded optimizer state from {config.model_save_optimizer}')
-    print(f"bytesCount: {config.bytes_per_sample}")
-    # print(f'PyTorch loss function: {config.loss_fn.__class__.__name__}, reduction: {getattr(config.loss_fn, 'reduction', 'N/A')}')
+        print(f"Loaded optimizer state from {config.model_save_optimizer}", file=sys.stderr)
+    print(f"bytesCount: {config.bytes_per_sample}", file=sys.stderr)
+    print(
+        f"PyTorch loss function: {config.loss_fn.__class__.__name__}, reduction: {getattr(config.loss_fn, 'reduction', 'N/A')}",
+        file=sys.stderr,
+    )
     sys.stdout.flush()
 
     iteration = 0
     while True:
-        raw = sys.stdin.buffer.read(config.bytes_per_sample)
-        arr = numpy.frombuffer(raw, dtype=numpy.float64)
-        outputs_count = config.architecture["outputs_count"]
-        x = arr[: config.architecture["inputs_count"]]
-        y = arr[-outputs_count:]
-        x_tensor = torch.tensor(x, dtype=torch.float32, device=config.device).unsqueeze(0)
-        y_tensor = torch.tensor(y, dtype=torch.float32, device=config.device).unsqueeze(0)
-        optimizer.zero_grad()
-        output = net(x_tensor)
-        loss = config.loss_fn(output, y_tensor)
-        loss.backward()
-        optimizer.step()
-        metrics_result = {name: fn(output, y_tensor) for name, fn in config.metrics}
+        # Read a single line command (ASCII/UTF-8, no newlines in command)
+        cmd_line = sys.stdin.buffer.readline()
+        if not cmd_line:
+            # EOF reached
+            break
+        cmd = cmd_line.strip().decode("utf-8", errors="replace").lower()
+        if not cmd:
+            # Ignore empty lines
+            continue
 
-        computed = output.detach().cpu().numpy().flatten()
-        overall_loss = loss.item()
-        per_output_losses = ((computed - y) ** 2).tolist()
-        loss_list = [overall_loss] + per_output_losses
+        if cmd == "train":
+            # Expect exactly one sample of binary payload following the command
+            raw = sys.stdin.buffer.read(config.bytes_per_sample)
+            if raw is None or len(raw) != config.bytes_per_sample:
+                print(
+                    f"Protocol error: expected {config.bytes_per_sample} bytes after SAMPLE, got {0 if raw is None else len(raw)}",
+                    file=sys.stderr,
+                )
+                break
 
-        result = {
-            "wanted": y.tolist() if hasattr(y, "tolist") else list(y),
-            "computed": (computed.tolist() if hasattr(computed, "tolist") else list(computed)),
-            "loss": loss_list,
-            "metrics": metrics_result,
-        }
-        print(json.dumps(result))
-        sys.stdout.flush()
+            arr = numpy.frombuffer(raw, dtype=numpy.float64)
+            outputs_count = config.architecture["outputs_count"]
+            x = arr[: config.architecture["inputs_count"]]
+            y = arr[-outputs_count:]
 
-        # Save weights and optimizer state every 100 iterations
-        iteration += 1
-        if iteration % 100 == 0:
+            x_tensor = torch.tensor(x, dtype=torch.float32, device=config.device).unsqueeze(0)
+            y_tensor = torch.tensor(y, dtype=torch.float32, device=config.device).unsqueeze(0)
+
+            optimizer.zero_grad()
+            output = net(x_tensor)
+            loss = config.loss_fn(output, y_tensor)
+            loss.backward()
+            optimizer.step()
+
+            metrics_result = {name: fn(output, y_tensor) for name, fn in config.metrics}
+
+            computed = output.detach().cpu().numpy().flatten()
+            overall_loss = loss.item()
+            per_output_losses = ((computed - y) ** 2).tolist()
+            loss_list = [overall_loss] + per_output_losses
+
+            result = {
+                "wanted": y.tolist() if hasattr(y, "tolist") else list(y),
+                "computed": (computed.tolist() if hasattr(computed, "tolist") else list(computed)),
+                "loss": loss_list,
+                "metrics": metrics_result,
+            }
+            print(json.dumps(result))
+            sys.stdout.flush()
+
+            # Periodic autosave
+            iteration += 1
+            if iteration % 100 == 0:
+                torch.save(net.state_dict(), config.model_save_weights)
+                torch.save(optimizer.state_dict(), config.model_save_optimizer)
+                print(
+                    f"Saved weights to {config.model_save_weights} and optimizer state to {config.model_save_optimizer}",
+                    file=sys.stderr,
+                )
+
+        elif cmd == "save":
+            # Force a save on demand (no binary payload expected)
             torch.save(net.state_dict(), config.model_save_weights)
             torch.save(optimizer.state_dict(), config.model_save_optimizer)
-            # print(f'Saved weights to {config.model_save_weights} and optimizer state to {config.model_save_optimizer}')
+            print(
+                f"Saved weights to {config.model_save_weights} and optimizer state to {config.model_save_optimizer}",
+                file=sys.stderr,
+            )
+            # Acknowledge on stdout for callers that expect a response
+            print(json.dumps({"ok": True, "cmd": "SAVE"}))
+            sys.stdout.flush()
+
+        elif cmd == "ping":
+            # Simple liveness check (no payload)
+            print("pong")
+            sys.stdout.flush()
+
+        elif cmd == "quit":
+            # Graceful shutdown
+            print("bye", file=sys.stderr)
+            break
+
+        else:
+            # Unknown command: report and continue (caller may resynchronize)
+            print(f"Unknown cmd: {cmd}", file=sys.stderr)
+            # optional: consume nothing further; next readline() will get the next command
 
 
 if __name__ == "__main__":

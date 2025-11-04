@@ -18,20 +18,39 @@ const createPyNn = async (config) => {
     const scriptPath = path.resolve(pythonFolder, 'nn.sh')
     const { spawn } = require('child_process')
     const py = spawn(scriptPath, [config.modelName], { stdio: ['pipe', 'pipe', 'inherit'] })
-    await new Promise((resolve, reject) => {
-        py.stdout.once('data', (data) => {
-            try {
-                const raw = data.toString()
-                const number = parseInt(raw.split(': ')[1])
-                if (raw !== `bytesCount: ${number}\n`) {
-                    reject(new Error(`Unexpected response from python process: ${raw}`))
+
+    const sendCmd = async (cmd, params) => {
+        const sendPart = async (part) => {
+            await new Promise((resolve, reject) => {
+                py.stdin.write(part, (err) => {
+                    if (err) {
+                        reject(err)
+                    } else {
+                        resolve()
+                    }
+                })
+            })
+        }
+        await sendPart(Buffer.from(cmd + '\n'))
+        if (params) {
+            if (!Buffer.isBuffer(params)) throw new Error('Params must be a Buffer')
+            await sendPart(params)
+        }
+        return await new Promise((resolve, reject) => {
+            py.stdout.once('data', (data) => {
+                try {
+                    resolve(data.toString())
+                } catch (err) {
+                    reject(err)
                 }
-                resolve()
-            } catch (err) {
-                reject(err)
-            }
+            })
         })
-    })
+    }
+
+    if ((await sendCmd('ping')).trim() !== 'pong') {
+        throw new Error('Python NN process is not responding correctly')
+    }
+
     py.relativeSavePath = 'pyt'
     py.train = async (samples) => {
         const result = {
@@ -46,29 +65,10 @@ const createPyNn = async (config) => {
             const buffer = Buffer.alloc(flat.length * 8)
             const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
             floatView.set(flat)
-            await new Promise((resolve, reject) => {
-                py.stdin.write(buffer, (err) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve()
-                    }
-                })
-            })
-            await new Promise((resolve, reject) => {
-                py.stdout.once('data', (data) => {
-                    try {
-                        const obj = JSON.parse(data.toString())
-                        result.history.loss[0] = obj.loss[0]
-                        result.history.mae[0] = obj.metrics.mae
-                        result.history.mse[0] = obj.metrics.mse
-                        resolve()
-                    } catch (err) {
-                        reject(err)
-                    }
-                })
-            })
-            // results.push(res)
+            const obj = JSON.parse(await sendCmd('train', buffer))
+            result.history.loss[0] = obj.loss[0]
+            result.history.mae[0] = obj.metrics.mae
+            result.history.mse[0] = obj.metrics.mse
         }
         return result
     }
