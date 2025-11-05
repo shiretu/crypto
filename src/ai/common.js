@@ -7,6 +7,7 @@ const MakeFlat = require('../ai/MakeFlat')
 const TradeKind = require('../core/TradeKind')
 const Candle = require('../core/Candle')
 const Macd = require('../instruments/macd')
+const { postProcessPrediction } = require('./postProcessPrediction')
 
 const _createPyNn = async (config) => {
     const pythonFolder = path.resolve(__dirname, '..', '..', 'python')
@@ -79,7 +80,8 @@ const _createPyNn = async (config) => {
         const buffer = Buffer.alloc(flat.length * 8)
         const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
         floatView.set(flat)
-        return JSON.parse(await sendCmd('pred', buffer))
+        const obj = JSON.parse(await sendCmd('pred', buffer))
+        return postProcessPrediction(obj.computed[0], obj.computed[1])
     }
 
     return py

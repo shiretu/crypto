@@ -1,6 +1,6 @@
-const TradeKind = require('../core/TradeKind')
 const { getConfig, createNn, checkCandleContinuity, createTrainingSample } = require('./common')
 const console = require('../utils/coloredConsole')
+const { postProcessPrediction } = require('./postProcessPrediction')
 
 const feed = async (nn, config) => {
     const candlesCount = config.candlesMap.length
@@ -11,20 +11,9 @@ const feed = async (nn, config) => {
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
         const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
         const sample = await createTrainingSample(candlesInfo.candles, 120, config.brr, tradeIndex, config, { limit: 0 })
-        const result = (await nn.pred(sample)).computed
-        const predictedTradeKind = result[0] > 0 ? TradeKind.buy : (result[1] > 0 ? TradeKind.sell : TradeKind.hold)
-        const predictedPercent = result[0] > 0 ? result[0] : (result[1] > 0 ? result[1] : 0)
-        const predicted = {
-            kind: predictedTradeKind,
-            percent: predictedPercent
-        }
-        const actualTradeKind = sample.outputs.buyProfitPercent > 0 ? TradeKind.buy : (sample.outputs.sellProfitPercent > 0 ? TradeKind.sell : TradeKind.hold)
-        const actualPercent = sample.outputs.buyProfitPercent > 0 ? sample.outputs.buyProfitPercent : (sample.outputs.sellProfitPercent > 0 ? sample.outputs.sellProfitPercent : 0)
-        const actual = {
-            kind: actualTradeKind,
-            percent: actualPercent
-        }
-        console.log(predicted.kind === actual.kind ? console.GREEN : console.RED, `Predicted: ${predicted.kind} (${predicted.percent.toFixed(5)}%), Actual: ${actual.kind} (${actual.percent.toFixed(5)}%)`)
+        const predicted = await nn.pred(sample)
+        const actual = postProcessPrediction(sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent)
+        console.log(predicted.kind === actual.kind ? console.GREEN : console.RED, `Predicted: ${predicted.kind} (${predicted.percent.toFixed(5)}%), Actual: ${actual.kind} (${actual.percent.toFixed(5)}%) - ${predicted.percentages.buy}, ${predicted.percentages.sell}`)
     }
 }
 

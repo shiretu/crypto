@@ -1,5 +1,5 @@
 {
-    "usePython": false,
+    "usePython": true,
     "autosaveIntervalSeconds": 60,
     "exchangeName": "binance",
     "symbol": "btcusdc",

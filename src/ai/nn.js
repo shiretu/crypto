@@ -1,3 +1,4 @@
+const { postProcessPrediction } = require('./postProcessPrediction')
 const MakeFlat = require('./MakeFlat')
 const path = require('path')
 const fs = require('fs').promises
@@ -48,6 +49,21 @@ class NN {
         } finally {
             inputs.dispose()
             outputs.dispose()
+        }
+    }
+
+    async pred (sample) {
+        const inputs = tf.tensor2d([MakeFlat(sample.inputs)])
+        try {
+            const predictions = await this.#model.predict(inputs)
+            const results = await predictions.array()
+            const [buyProfitPercent, sellProfitPercent] = results[0]
+            return postProcessPrediction(buyProfitPercent, sellProfitPercent)
+        } catch (err) {
+            console.error(`Error during prediction: ${err}`)
+            throw err
+        } finally {
+            inputs.dispose()
         }
     }
 
