@@ -1,208 +1,6 @@
-const { EventEmitter } = require('events')
-const Symbol = require('../core/Symbol')
 const Candle = require('../core/Candle')
-const NN = require('../ai/nn')
-const MakeFlat = require('../ai/MakeFlat')
-const { getSource } = require('../sources/sources')
-const CandlesGenerator = require('../core/CandlesGenerator')
-const EventName = require('../core/EventName')
 const Macd = require('../instruments/macd')
-const path = require('path')
-const BinanceRawReader = require('../sources/BinanceRawReader')
-const TradeKind = require('../core/TradeKind')
-const CandlesMap = require('./CandlesMap')
-const fs = require('fs')
-
-const createPyNn = async (config) => {
-    const pythonFolder = path.resolve(__dirname, '..', '..', 'python')
-    const scriptPath = path.resolve(pythonFolder, 'nn.sh')
-    const { spawn } = require('child_process')
-    const py = spawn(scriptPath, [config.modelName], { stdio: ['pipe', 'pipe', 'inherit'] })
-
-    const sendCmd = async (cmd, params) => {
-        const sendPart = async (part) => {
-            return new Promise((resolve, reject) => {
-                py.stdin.write(part, (err) => {
-                    if (err) {
-                        reject(err)
-                    } else {
-                        resolve()
-                    }
-                })
-            })
-        }
-        await sendPart(Buffer.from(cmd + '\n'))
-        if (params) {
-            if (!Buffer.isBuffer(params)) throw new Error('Params must be a Buffer')
-            await sendPart(params)
-        }
-        return new Promise((resolve, reject) => {
-            py.stdout.once('data', (data) => {
-                try {
-                    resolve(data.toString())
-                } catch (err) {
-                    reject(err)
-                }
-            })
-        })
-    }
-
-    if (JSON.parse(await sendCmd('ping')) !== 'pong') {
-        throw new Error('Python NN process is not responding correctly')
-    }
-
-    py.relativeSavePath = 'pyt'
-    py.train = async (samples) => {
-        const result = {
-            history: {
-                loss: [0],
-                mae: [0],
-                mse: [0]
-            }
-        }
-        for (const sample of samples) {
-            const flat = MakeFlat(sample)
-            const buffer = Buffer.alloc(flat.length * 8)
-            const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
-            floatView.set(flat)
-            const obj = JSON.parse(await sendCmd('train', buffer))
-            result.history.loss[0] = obj.loss[0]
-            result.history.mae[0] = obj.metrics.mae
-            result.history.mse[0] = obj.metrics.mse
-        }
-        return result
-    }
-
-    py.save = async () => {
-        if (JSON.parse(await sendCmd('save')) !== 'saved') {
-            throw new Error('Python NN process did not acknowledge save command')
-        }
-    }
-    return py
-}
-/**
- * Simulates trades based on the provided parameters.
- * @param {BinanceRawReader} brr - Binance raw reader instance
- * @param {number} startTradingIndex - Index of the trade to use as entry point
- * @param {object} config - Configuration object
- * @returns {Promise<object|null>} - Simulated trade results or null if skipped
- */
-const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTimeouts) => {
-    const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
-    const firstTrade = await brr.readTrade(startTradingIndex)
-    const buyOrder = {
-        kind: TradeKind.buy,
-        enter: null,
-        lastProfitPercent: null,
-        profitPercent: null,
-        durationUs: -1,
-        forceClose: false,
-        tradesCount: 0
-
-    }
-    const sellOrder = {
-        kind: TradeKind.sell,
-        enter: null,
-        lastProfitPercent: null,
-        profitPercent: null,
-        durationUs: -1,
-        forceClose: false,
-        tradesCount: 0
-    }
-
-    /**
-     * Process an order to evolve its internal state.
-     * @param {{kind: {TradeKind}, enter: {number}, profitPercent: {number}}} order
-     */
-    const process = (order, currentPrice, currentDurationUs, forceClose) => {
-        if (order.enter === null) {
-            order.enter = currentPrice
-        }
-        order.durationUs = currentDurationUs
-        order.forceClose = forceClose
-        order.tradesCount++
-        const profit = order.kind === TradeKind.buy
-            ? currentPrice - order.enter
-            : order.enter - currentPrice
-        order.lastProfitPercent = profit / order.enter
-        if ((order.lastProfitPercent >= config.profitTargetPercent) ||
-            (order.lastProfitPercent <= -1 * config.stopLossPercent) ||
-            forceClose
-        ) {
-            order.profitPercent = order.lastProfitPercent
-        }
-    }
-    const inspectedTrades = []
-    for (let i = startTradingIndex; i < brr.info.recordsCount; i++) {
-        if ((buyOrder.profitPercent !== null) && (sellOrder.profitPercent !== null)) break
-        const trade = await brr.readTrade(i)
-        inspectedTrades.push(trade)
-        const currentDurationUs = trade.tsUs - firstTrade.tsUs
-        const forceClose = currentDurationUs >= maxHoldingTimeUs
-        switch (trade.kind) {
-            case TradeKind.buy:{
-                process(buyOrder, trade.price, currentDurationUs, forceClose)
-                break
-            }
-            case TradeKind.sell:
-                process(sellOrder, trade.price, currentDurationUs, forceClose)
-                break
-            default:
-                return null
-        }
-        if (forceClose) {
-            if (pastSimulationsTimeouts.limit === 0) {
-                break
-            } else {
-                pastSimulationsTimeouts.count++
-                if (pastSimulationsTimeouts.count >= pastSimulationsTimeouts.limit) {
-                    return null
-                } else {
-                    break
-                }
-            }
-        }
-    }
-
-    if (pastSimulationsTimeouts.limit !== 0) {
-        if (buyOrder.profitPercent !== null && sellOrder.profitPercent !== null) { pastSimulationsTimeouts.count = 0 }
-    }
-
-    const closeOrder = (order) => {
-        if (order.profitPercent !== null) return
-        if (order.lastProfitPercent !== null) {
-            order.profitPercent = order.lastProfitPercent
-            order.forceClose = true
-        }
-    }
-
-    closeOrder(buyOrder)
-    closeOrder(sellOrder)
-
-    // Skip samples with null outcomes to prevent training issues
-    if (buyOrder.profitPercent === null || sellOrder.profitPercent === null) {
-        console.log('Skipping sample due to null outcomes')
-        return null // Signal to skip this sample
-    }
-
-    const operation = (() => {
-        if (buyOrder.profitPercent > 0) {
-            if (sellOrder.profitPercent > 0) {
-                return buyOrder.profitPercent >= sellOrder.profitPercent ? 1 : -1
-            } else {
-                return 1
-            }
-        } else {
-            if (sellOrder.profitPercent > 0) {
-                return -1
-            } else {
-                return 0
-            }
-        }
-    })()
-
-    return { buyOrder, sellOrder, operation }
-}
+const { getConfig, createNn, simulateTrades } = require('./common')
 
 /**
  * Create a training sample from the specified number of candles
@@ -214,7 +12,7 @@ const simulateTrades = async (brr, startTradingIndex, config, pastSimulationsTim
  */
 const createTrainingSample = async (candles, trainingLength, brr, startTradingIndex, config, pastSimulationsTimeouts) => {
     // simulate the trades
-    const simulation = await simulateTrades(brr, startTradingIndex, config, pastSimulationsTimeouts)
+    const simulation = await simulateTrades(startTradingIndex, config, pastSimulationsTimeouts)
     if (!simulation) {
         return null
     }
@@ -300,33 +98,14 @@ const checkCandleContinuity = (candles) => {
 }
 
 /**
- * Get configuration for feeding data
- * @returns {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}}
- */
-const getConfig = (modelName) => {
-    const modelRootPath = path.resolve(__dirname, '..', '..', 'models', modelName)
-    const result = require(path.resolve(modelRootPath, 'config.json'))
-    result.modelRootPath = modelRootPath
-    result.symbol = Symbol.find(result.symbol)
-    result.modelName = modelName
-    const baseFolder = path.resolve(__dirname, '..', '..', 'data')
-    result.tradesBinaryFilePath = path.resolve(baseFolder, `${result.exchangeName}_${result.symbol.id}_trades.bin`)
-    const brr = BinanceRawReader.create(result.tradesBinaryFilePath, result.symbol)
-    result.availableDataRange = brr.info
-    result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
-    return result
-}
-
-/**
  *  Feed data for training
  * @param {number} identity
  * @param {{exchangeName: string, symbol: Symbol, totalHistoryInDays: number, candleDurationMinutes: number, candlesPerWindow: number, extraCandlesPerWindowSide: number, availableDataRange: {filePath: string, fileSize: number, startTimestampUs: number, endTimestampUs: number, recordsCount: number, durationUs: number}}} config
  */
 const feed = async (nn, config) => {
-    const candlesMap = await CandlesMap.create(config)
-    const candlesCount = candlesMap.length
+    const fs = require('fs')
+    const candlesCount = config.candlesMap.length
     const candlesPreambleCount = 100
-    const brr = BinanceRawReader.create(config.availableDataRange.filePath, config.symbol)
     const pastSimulationsTimeouts = { count: 0, limit: config.pastSimulationsTimeoutsLimit }
     let printCsv = null
     const printCsvWithoutColumns = (data) => {
@@ -362,14 +141,14 @@ const feed = async (nn, config) => {
         i++
         const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
         const randomStartIndex = Math.floor(Math.random() * (candlesCount - requiredCandlesCount))
-        const candlesInfo = candlesMap.bulkGet(
-            brr,
+        const candlesInfo = config.candlesMap.bulkGet(
+            config.brr,
             randomStartIndex,
             requiredCandlesCount
         )
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
         const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
-        const sample = await createTrainingSample(candlesInfo.candles, 120, brr, tradeIndex, config, pastSimulationsTimeouts)
+        const sample = await createTrainingSample(candlesInfo.candles, 120, config.brr, tradeIndex, config, pastSimulationsTimeouts)
 
         // Skip samples with null outcomes
         if (sample === null) { continue }
@@ -397,14 +176,8 @@ const feed = async (nn, config) => {
 }
 
 const work = async () => {
-    const config = getConfig(process.argv[2] ?? 'binance_btcusdc')
-    const nn = config.usePython
-        ? await createPyNn(config)
-        : await NN.create({
-            modelName: config.modelName,
-            epochs: 1
-        })
-    config.learnLogPath = path.resolve(config.modelRootPath, nn.relativeSavePath, 'learn.log')
+    const config = await getConfig(process.argv[2] ?? 'binance_btcusdc')
+    const nn = await createNn(config)
     await feed(nn, config)
 }
 
