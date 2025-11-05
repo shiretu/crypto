@@ -1,4 +1,4 @@
-module.exports = ({ inputs, outputs }) => {
+module.exports = (inputs, outputs) => {
     return [
         // Candles: 9 arrays × 120 = 1080 features
         ...inputs.candles.opens,
@@ -32,8 +32,7 @@ module.exports = ({ inputs, outputs }) => {
         inputs.global.positionSize,
         inputs.global.fees,
 
-        // Outputs: 2 features
-        outputs.buyProfitPercent,
-        outputs.sellProfitPercent
+        // Outputs: 2 features (only if outputs exists)
+        ...(outputs ? [outputs.buyProfitPercent, outputs.sellProfitPercent] : [])
     ]
 }

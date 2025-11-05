@@ -1,3 +1,4 @@
+const MakeFlat = require('./MakeFlat')
 const path = require('path')
 const fs = require('fs').promises
 const tf = require('@tensorflow/tfjs')
@@ -32,7 +33,7 @@ class NN {
 
     async train (samples) {
         this.#samplesCounter += samples.length
-        const inputs = tf.tensor2d(samples.map(sample => this.#makeFlat(sample.inputs)))
+        const inputs = tf.tensor2d(samples.map(sample => MakeFlat(sample.inputs)))
         const outputs = tf.tensor2d(samples.map(sample => [sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent]))
         try {
             const history = await this.#model.fit(inputs, outputs, {
@@ -266,42 +267,6 @@ class NN {
             loss: this.#architecture.loss,
             metrics: this.#architecture.metrics
         })
-    }
-
-    #makeFlat (inputs) {
-        return [
-            // Candles: 9 arrays × 120 = 1080 features
-            ...inputs.candles.opens,
-            ...inputs.candles.highs,
-            ...inputs.candles.lows,
-            ...inputs.candles.closes,
-            ...inputs.candles.volumes,
-            ...inputs.candles.timestamps,
-            ...inputs.candles.colors,
-            ...inputs.candles.bodySizes,
-            ...inputs.candles.tradesCount,
-
-            // Studies: 837 features total
-            ...inputs.studies.macdShort, // 120
-            ...inputs.studies.macdLong, // 120
-            ...inputs.studies.macdLine, // 120
-            ...inputs.studies.macdSignal, // 120
-            ...inputs.studies.macdHistogram, // 120
-            ...inputs.studies.unused1, // 119
-            ...inputs.studies.unused2, // 118
-
-            // Patterns: 237 features
-            ...inputs.patterns.single, // 119
-            ...inputs.patterns.sliding, // 118
-
-            // Global: 6 features
-            inputs.global.candleDuration,
-            inputs.global.windowSize,
-            inputs.global.grossProfitTarget,
-            inputs.global.grossStopLoss,
-            inputs.global.positionSize,
-            inputs.global.fees
-        ]
     }
 }
 
