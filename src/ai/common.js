@@ -102,6 +102,14 @@ module.exports = {
         config.learnLogPath = path.resolve(config.modelRootPath, result.relativeSavePath, 'learn.log')
         return result
     },
+    checkCandleContinuity: (candles) => {
+        for (let i = 1; i < candles.length; i++) {
+            if ((candles[i].id - candles[i - 1].id) !== 1) {
+                return false
+            }
+        }
+        return true
+    },
     simulateTrades: async (startTradingIndex, config, pastSimulationsTimeouts) => {
         const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
         const firstTrade = await config.brr.readTrade(startTradingIndex)

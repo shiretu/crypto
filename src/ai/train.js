@@ -1,6 +1,6 @@
 const Candle = require('../core/Candle')
 const Macd = require('../instruments/macd')
-const { getConfig, createNn, simulateTrades } = require('./common')
+const { getConfig, createNn, simulateTrades, checkCandleContinuity } = require('./common')
 
 /**
  * Create a training sample from the specified number of candles
@@ -81,20 +81,6 @@ const createTrainingSample = async (candles, trainingLength, brr, startTradingIn
         buyOrder,
         sellOrder
     }
-}
-
-/**
- * Check if candles are continuous without significant gaps.
- * @param {Candle[]} candles
- * @returns true if candles are fine
- */
-const checkCandleContinuity = (candles) => {
-    for (let i = 1; i < candles.length; i++) {
-        if ((candles[i].id - candles[i - 1].id) !== 1) {
-            return false
-        }
-    }
-    return true
 }
 
 /**
