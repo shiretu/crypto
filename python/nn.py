@@ -234,7 +234,7 @@ def main():
             # Ignore empty lines
             continue
 
-        if cmd == "predict":
+        if cmd == "pred":
             # Expect only the inputs payload (no targets)
             raw = read_payload(config.bytes_per_input, "predict")
             if raw is None:

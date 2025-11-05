@@ -73,6 +73,15 @@ const _createPyNn = async (config) => {
             throw new Error('Python NN process did not acknowledge save command')
         }
     }
+
+    py.pred = async (sample) => {
+        const flat = MakeFlat(sample.inputs)
+        const buffer = Buffer.alloc(flat.length * 8)
+        const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
+        floatView.set(flat)
+        return JSON.parse(await sendCmd('pred', buffer))
+    }
+
     return py
 }
 const _createTfNn = async (config) => {
