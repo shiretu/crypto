@@ -46,8 +46,10 @@ const feed = async (nn, config) => {
         sampleIndex++
         const predicted = await nn.pred(sample)
         const actual = postProcessPrediction(sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent)
-        wins += predicted.kind === actual.kind ? 1 : 0
-        losses += predicted.kind !== actual.kind ? 1 : 0
+        if (predicted.kind !== TradeKind.hold) {
+            wins += predicted.kind === actual.kind ? 1 : 0
+            losses += predicted.kind !== actual.kind ? 1 : 0
+        }
         const color = predicted.kind === actual.kind ? console.GREEN : console.RED
         const pKind = predicted.kind.key || String(predicted.kind)
         const aKind = actual.kind.key || String(actual.kind)
@@ -69,7 +71,10 @@ const feed = async (nn, config) => {
             ActualPercent: actual.percent,
             ActualBuy: actual.percentages.buy,
             ActualSell: actual.percentages.sell,
-            Correct: predicted.kind === actual.kind ? 1 : 0
+            Correct: predicted.kind === actual.kind ? 1 : 0,
+            Wins: wins,
+            Losses: losses,
+            WinRate: wins + losses > 0 ? (wins / (wins + losses) * 100).toFixed(2) : 0
         })
     }
 }

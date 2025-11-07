@@ -5,35 +5,56 @@
     {
       "type": "dense",
       "units": 256,
-      "activation": "relu",
+      "activation": "linear",
       "kernelInitializer": "heNormal",
       "name": "feature_processing"
     },
     {
+      "type": "batchNormalization"
+    },
+    {
+      "type": "activation",
+      "activation": "relu"
+    },
+    {
       "type": "dropout",
-      "rate": 0.3
+      "rate": 0.4
     },
     {
       "type": "dense",
       "units": 128,
-      "activation": "relu",
+      "activation": "linear",
       "kernelInitializer": "heNormal",
       "name": "pattern_recognition"
     },
     {
+      "type": "batchNormalization"
+    },
+    {
+      "type": "activation",
+      "activation": "relu"
+    },
+    {
       "type": "dropout",
-      "rate": 0.3
+      "rate": 0.4
     },
     {
       "type": "dense",
       "units": 64,
-      "activation": "relu",
+      "activation": "linear",
       "kernelInitializer": "heNormal",
       "name": "decision_processing"
     },
     {
+      "type": "batchNormalization"
+    },
+    {
+      "type": "activation",
+      "activation": "relu"
+    },
+    {
       "type": "dropout",
-      "rate": 0.2
+      "rate": 0.3
     },
     {
       "type": "dense",
@@ -45,7 +66,7 @@
   ],
   "optimizer": {
     "type": "adam",
-    "learning_rate": 0.0003,
+    "learning_rate": 0.000005,
     "clipnorm": 1.0
   },
   "loss": "meanSquaredError",
