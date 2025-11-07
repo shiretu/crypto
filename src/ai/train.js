@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const { getConfig, createNn, checkCandleContinuity, createTrainingSample, loadCandles } = require('./common')
 
 /**
@@ -6,7 +8,6 @@ const { getConfig, createNn, checkCandleContinuity, createTrainingSample, loadCa
  * @param {*} config
  */
 const feed = async (nn, config) => {
-    const fs = require('fs')
     const pastSimulationsTimeouts = { count: 0, limit: config.pastSimulationsTimeoutsLimit }
     let printCsv = null
     const printCsvWithoutColumns = (data) => {
@@ -24,6 +25,7 @@ const feed = async (nn, config) => {
     }
     const printCsvWithColumns = (data) => {
         if (!fs.existsSync(config.learnLogPath)) {
+            fs.mkdirSync(path.dirname(config.learnLogPath), { recursive: true })
             const headers = Object.keys(data).join(',')
             console.log(headers)
             fs.writeFileSync(config.learnLogPath, headers + '\n')

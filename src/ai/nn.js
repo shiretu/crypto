@@ -30,7 +30,7 @@ class NN {
         return result
     }
 
-    get relativeSavePath () { return 'tf' }
+    get relativeSavePath () { return path.join('tf', `${this.#config.inputsCount}`) }
 
     async train (samples) {
         this.#samplesCounter += samples.length
@@ -134,15 +134,15 @@ class NN {
                 nonTrainableParams,
                 layerCount: this.#model.layers.length,
                 compiled: !!this.#model.optimizer,
-                inputShape: [this.#architecture.inputs_count],
+                inputShape: [this.#config.inputsCount],
                 outputShape: [this.#architecture.outputs_count],
                 layers
             },
 
             // Architecture metadata
             architecture: {
-                inputs_count: this.#architecture.inputs_count,
-                outputs_count: this.#architecture.outputs_count,
+                inputsCount: this.#config.inputsCount,
+                outputsCount: this.#architecture.outputs_count,
                 loss: this.#architecture.loss,
                 metrics: this.#architecture.metrics,
                 layerTypes: this.#architecture.layers.map(l => l.type),
@@ -202,7 +202,7 @@ class NN {
 
                 // Add input shape for first layer
                 if (isFirstLayer) {
-                    layerConfig.inputShape = [this.#architecture.inputs_count]
+                    layerConfig.inputShape = [this.#config.inputsCount]
                 }
 
                 // Add name if specified

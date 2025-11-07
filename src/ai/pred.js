@@ -2,6 +2,7 @@ const { getConfig, createNn, checkCandleContinuity, createTrainingSample, loadCa
 const console = require('../utils/coloredConsole')
 const { postProcessPrediction } = require('./postProcessPrediction')
 const fs = require('fs')
+const path = require('path')
 const TradeKind = require('../core/TradeKind')
 
 const feed = async (nn, config) => {
@@ -21,6 +22,7 @@ const feed = async (nn, config) => {
     }
     const printCsvWithColumns = (data) => {
         if (!fs.existsSync(config.predLogPath)) {
+            fs.mkdirSync(path.dirname(config.predLogPath), { recursive: true })
             const headers = Object.keys(data).join(',')
             fs.writeFileSync(config.predLogPath, headers + '\n')
         }

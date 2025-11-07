@@ -89,7 +89,8 @@ const _createPyNn = async (config) => {
 const _createTfNn = async (config) => {
     return await NN.create({
         modelName: config.modelName,
-        epochs: 1
+        epochs: 1,
+        inputsCount: config.inputsCount
     })
 }
 
@@ -227,6 +228,82 @@ const _loadCandles = async (config, firstCandleIndex) => {
     return result
 }
 
+const _checkCandleContinuity = (candles) => {
+    for (let i = 1; i < candles.length; i++) {
+        if ((candles[i].id - candles[i - 1].id) !== 1) {
+            return false
+        }
+    }
+    return true
+}
+
+const _createTrainingSample = async (candles, startTradingIndex, config, pastSimulationsTimeouts) => {
+    // simulate the trades
+    const simulation = await _simulateTrades(startTradingIndex, config, pastSimulationsTimeouts)
+    if (!simulation) {
+        return null
+    }
+    const { buyOrder, sellOrder, operation } = simulation
+
+    // normalize the candles
+    Candle.normalize(candles, config.normalizeAroundZero ?? false, config.normalizationFactor ?? 1)
+
+    // Extract the training candles
+    const trainingCandles = candles.slice(-1 * config.candlesPerWindow)
+
+    // signals computations
+    const macdComputer = new Macd()
+    const macd = []
+    const start = candles.length - config.candlesPerWindow
+    candles.forEach((candle, index) => {
+        macdComputer.push(candle.close.normalizedPrice)
+        if (index >= start && index < start + config.candlesPerWindow) {
+            macd.push(macdComputer.value)
+        }
+    })
+
+    const scale = (value) => Math.max(-config.outputMultiplicationFactor, Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor))
+
+    // Create training sample structure
+    return {
+        inputs: {
+            candles: {
+                opens: trainingCandles.map(c => c.open.normalizedPrice),
+                highs: trainingCandles.map(c => c.high.normalizedPrice),
+                lows: trainingCandles.map(c => c.low.normalizedPrice),
+                closes: trainingCandles.map(c => c.close.normalizedPrice),
+                volumes: trainingCandles.map(c => c.normalizedQuoteVolume),
+                timestamps: trainingCandles.map(c => c.normalizedMinuteOfDay),
+                colors: trainingCandles.map(c => c.direction),
+                bodySizes: trainingCandles.map(c => c.normalizedHeight),
+                tradesCount: trainingCandles.map(c => c.normalizedTradesCount)
+            },
+            studies: {
+                macdShort: macd.map(m => m.short),
+                macdLong: macd.map(m => m.long),
+                macdLine: macd.map(m => m.macd),
+                macdSignal: macd.map(m => m.signal),
+                macdHistogram: macd.map(m => m.histogram)
+            },
+            global: {
+                candleDuration: trainingCandles[0].periodUs / 60000000,
+                windowSize: config.candlesPerWindow,
+                grossProfitTarget: config.profitTargetPercent,
+                grossStopLoss: config.stopLossPercent,
+                positionSize: config.positionSize,
+                fees: config.feesPercent
+            }
+        },
+        outputs: {
+            buyProfitPercent: scale(buyOrder.profitPercent),
+            sellProfitPercent: scale(sellOrder.profitPercent),
+            operation
+        },
+        buyOrder,
+        sellOrder
+    }
+}
+
 module.exports = {
     getConfig: async (modelName) => {
         const modelRootPath = path.resolve(__dirname, '..', '..', 'models', modelName)
@@ -240,6 +317,15 @@ module.exports = {
         result.availableDataRange = result.brr.info
         result.availableDataRange.durationUs = result.availableDataRange.endTimestampUs - result.availableDataRange.startTimestampUs
         result.candlesMap = await CandlesMap.create(result)
+
+        while (true) {
+            const candlesInfo = await _loadCandles(result, -1)
+            if (!_checkCandleContinuity(candlesInfo.candles)) { continue }
+            const sample = await _createTrainingSample(candlesInfo.candles, candlesInfo.nextTradeIndex, result, { limit: 0 })
+            if (sample === null) { continue }
+            result.inputsCount = MakeFlat(sample.inputs).length
+            break
+        }
         return result
     },
     createNn: async (config) => {
@@ -251,79 +337,7 @@ module.exports = {
         return result
     },
     loadCandles: _loadCandles,
-    checkCandleContinuity: (candles) => {
-        for (let i = 1; i < candles.length; i++) {
-            if ((candles[i].id - candles[i - 1].id) !== 1) {
-                return false
-            }
-        }
-        return true
-    },
+    checkCandleContinuity: _checkCandleContinuity,
     simulateTrades: _simulateTrades,
-    createTrainingSample: async (candles, startTradingIndex, config, pastSimulationsTimeouts) => {
-    // simulate the trades
-        const simulation = await _simulateTrades(startTradingIndex, config, pastSimulationsTimeouts)
-        if (!simulation) {
-            return null
-        }
-        const { buyOrder, sellOrder, operation } = simulation
-
-        // normalize the candles
-        Candle.normalize(candles, config.normalizeAroundZero ?? false, config.normalizationFactor ?? 1)
-
-        // Extract the training candles
-        const trainingCandles = candles.slice(-1 * config.candlesPerWindow)
-
-        // signals computations
-        const macdComputer = new Macd()
-        const macd = []
-        const start = candles.length - config.candlesPerWindow
-        candles.forEach((candle, index) => {
-            macdComputer.push(candle.close.normalizedPrice)
-            if (index >= start && index < start + config.candlesPerWindow) {
-                macd.push(macdComputer.value)
-            }
-        })
-
-        const scale = (value) => Math.max(-config.outputMultiplicationFactor, Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor))
-
-        // Create training sample structure
-        return {
-            inputs: {
-                candles: {
-                    opens: trainingCandles.map(c => c.open.normalizedPrice),
-                    highs: trainingCandles.map(c => c.high.normalizedPrice),
-                    lows: trainingCandles.map(c => c.low.normalizedPrice),
-                    closes: trainingCandles.map(c => c.close.normalizedPrice),
-                    volumes: trainingCandles.map(c => c.normalizedQuoteVolume),
-                    timestamps: trainingCandles.map(c => c.normalizedMinuteOfDay),
-                    colors: trainingCandles.map(c => c.direction),
-                    bodySizes: trainingCandles.map(c => c.normalizedHeight),
-                    tradesCount: trainingCandles.map(c => c.normalizedTradesCount)
-                },
-                studies: {
-                    macdShort: macd.map(m => m.short),
-                    macdLong: macd.map(m => m.long),
-                    macdLine: macd.map(m => m.macd),
-                    macdSignal: macd.map(m => m.signal),
-                    macdHistogram: macd.map(m => m.histogram)
-                },
-                global: {
-                    candleDuration: trainingCandles[0].periodUs / 60000000,
-                    windowSize: config.candlesPerWindow,
-                    grossProfitTarget: config.profitTargetPercent,
-                    grossStopLoss: config.stopLossPercent,
-                    positionSize: config.positionSize,
-                    fees: config.feesPercent
-                }
-            },
-            outputs: {
-                buyProfitPercent: scale(buyOrder.profitPercent),
-                sellProfitPercent: scale(sellOrder.profitPercent),
-                operation
-            },
-            buyOrder,
-            sellOrder
-        }
-    }
+    createTrainingSample: _createTrainingSample
 }
