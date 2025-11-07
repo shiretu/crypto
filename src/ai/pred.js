@@ -29,20 +29,14 @@ const feed = async (nn, config) => {
     }
     printCsv = printCsvWithColumns
 
-    // Generate random indices for sampling
     const maxIndex = candlesCount - requiredCandlesCount
-    const sampleCount = Math.min(1000, maxIndex) // Limit to 1000 random samples
-    const randomIndices = []
-    while (randomIndices.length < sampleCount) {
-        const randomIndex = Math.floor(Math.random() * maxIndex)
-        if (!randomIndices.includes(randomIndex)) {
-            randomIndices.push(randomIndex)
-        }
-    }
-    console.log(`Testing on ${sampleCount} random samples from dataset...`)
+    console.log(`Starting infinite random predictions (max index: ${maxIndex})...`)
 
     let sampleIndex = 0
-    for (const i of randomIndices) {
+    let wins = 0
+    let losses = 0
+    while (true) {
+        const i = Math.floor(Math.random() * maxIndex)
         const candlesInfo = config.candlesMap.bulkGet(config.brr, i, requiredCandlesCount)
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
         const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
@@ -52,12 +46,14 @@ const feed = async (nn, config) => {
         sampleIndex++
         const predicted = await nn.pred(sample)
         const actual = postProcessPrediction(sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent)
+        wins += predicted.kind === actual.kind ? 1 : 0
+        losses += predicted.kind !== actual.kind ? 1 : 0
         const color = predicted.kind === actual.kind ? console.GREEN : console.RED
         const pKind = predicted.kind.key || String(predicted.kind)
         const aKind = actual.kind.key || String(actual.kind)
 
         // if (predicted.kind !== TradeKind.hold) {
-        console.log(color, `P: ${pKind.padEnd(4)} (${predicted.percentages.buy.toFixed(3)}%, ${predicted.percentages.sell.toFixed(3)}%); A: ${aKind.padEnd(4)} (${actual.percentages.buy.toFixed(3)}%, ${actual.percentages.sell.toFixed(3)}%)`)
+        console.log(color, `P: ${pKind.padEnd(4)} (${predicted.percentages.buy.toFixed(3)}%, ${predicted.percentages.sell.toFixed(3)}%); A: ${aKind.padEnd(4)} (${actual.percentages.buy.toFixed(3)}%, ${actual.percentages.sell.toFixed(3)}%); W/L: ${wins}/${losses} = ${(wins / (wins + losses) * 100).toFixed(2)}%`)
         // }
 
         printCsv({
