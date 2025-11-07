@@ -94,7 +94,7 @@ const _createTfNn = async (config) => {
 }
 
 const _simulateTrades = async (startTradingIndex, config, pastSimulationsTimeouts) => {
-    const maxHoldingTimeUs = (config.maxHoldingTimeMin || 120) * 60 * 1000000
+    const maxHoldingTimeUs = config.maxHoldingTimeMin * 60 * 1000000
     const firstTrade = await config.brr.readTrade(startTradingIndex)
     const buyOrder = {
         kind: TradeKind.buy,
@@ -242,7 +242,7 @@ module.exports = {
         return true
     },
     simulateTrades: _simulateTrades,
-    createTrainingSample: async (candles, trainingLength, startTradingIndex, config, pastSimulationsTimeouts) => {
+    createTrainingSample: async (candles, startTradingIndex, config, pastSimulationsTimeouts) => {
     // simulate the trades
         const simulation = await _simulateTrades(startTradingIndex, config, pastSimulationsTimeouts)
         if (!simulation) {
@@ -254,15 +254,15 @@ module.exports = {
         Candle.normalize(candles, config.normalizeAroundZero ?? false, config.normalizationFactor ?? 1)
 
         // Extract the training candles
-        const trainingCandles = candles.slice(-1 * trainingLength)
+        const trainingCandles = candles.slice(-1 * config.candlesPerWindow)
 
         // signals computations
         const macdComputer = new Macd()
         const macd = []
-        const start = candles.length - trainingLength
+        const start = candles.length - config.candlesPerWindow
         candles.forEach((candle, index) => {
             macdComputer.push(candle.close.normalizedPrice)
-            if (index >= start && index < start + trainingLength) {
+            if (index >= start && index < start + config.candlesPerWindow) {
                 macd.push(macdComputer.value)
             }
         })
@@ -292,7 +292,7 @@ module.exports = {
                 },
                 global: {
                     candleDuration: trainingCandles[0].periodUs / 60000000,
-                    windowSize: trainingLength,
+                    windowSize: config.candlesPerWindow,
                     grossProfitTarget: config.profitTargetPercent,
                     grossStopLoss: config.stopLossPercent,
                     positionSize: config.positionSize,

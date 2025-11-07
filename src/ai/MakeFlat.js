@@ -1,6 +1,6 @@
 module.exports = (inputs, outputs) => {
     return [
-        // Candles: 9 arrays × 120 = 1080 features
+        // Candles
         ...inputs.candles.opens,
         ...inputs.candles.highs,
         ...inputs.candles.lows,
@@ -11,14 +11,14 @@ module.exports = (inputs, outputs) => {
         ...inputs.candles.bodySizes,
         ...inputs.candles.tradesCount,
 
-        // Studies: 837 features total
-        ...inputs.studies.macdShort, // 120
-        ...inputs.studies.macdLong, // 120
-        ...inputs.studies.macdLine, // 120
-        ...inputs.studies.macdSignal, // 120
-        ...inputs.studies.macdHistogram, // 120
+        // Studies
+        ...inputs.studies.macdShort,
+        ...inputs.studies.macdLong,
+        ...inputs.studies.macdLine,
+        ...inputs.studies.macdSignal,
+        ...inputs.studies.macdHistogram,
 
-        // Global: 6 features
+        // Global
         inputs.global.candleDuration,
         inputs.global.windowSize,
         inputs.global.grossProfitTarget,
@@ -26,7 +26,7 @@ module.exports = (inputs, outputs) => {
         inputs.global.positionSize,
         inputs.global.fees,
 
-        // Outputs: 2 features (only if outputs exists)
+        // Outputs (only if outputs exists)
         ...(outputs ? [outputs.buyProfitPercent, outputs.sellProfitPercent] : [])
     ]
 }

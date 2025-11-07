@@ -40,7 +40,7 @@ const feed = async (nn, config) => {
         const candlesInfo = config.candlesMap.bulkGet(config.brr, i, requiredCandlesCount)
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
         const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
-        const sample = await createTrainingSample(candlesInfo.candles, 120, tradeIndex, config, { limit: 0 })
+        const sample = await createTrainingSample(candlesInfo.candles, tradeIndex, config, { limit: 0 })
         if (sample === null) { continue }
 
         sampleIndex++
