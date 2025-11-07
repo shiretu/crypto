@@ -137,7 +137,8 @@ describe('Candle', () => {
         c3.update(new Trade('binance', symbol, 'lid3b', 'rid3b', 'olid3b', t0 + 2 * periodUs + 1, 350, 2, 10, false))
         c3.update(new Trade('binance', symbol, 'lid3c', 'rid3c', 'olid3c', t0 + 2 * periodUs + 2, 400, 1, 5, false))
         // Normalize
-        Candle.normalize([c1, c2, c3])
+        // Explicit params: aroundZero=false, factor=1
+        Candle.normalize([c1, c2, c3], false, 1)
         // Check normalized price for lowest and highest trade
         const allTrades = [trade1, trade2, ...c2.trades.slice(1), trade3, ...c3.trades.slice(1)]
         const minPrice = 100; const maxPrice = 400
@@ -160,6 +161,101 @@ describe('Candle', () => {
         assert(Math.abs(c3.normalizedMinuteOfDay - 2) < 1e-8)
     })
 
+    it('should support aroundZero normalization to produce symmetric range around 0', () => {
+        const symbol = new Symbol('BTC', 'USDC')
+        const t0 = 24 * 3600 * 1_000_000
+        const periodUs = 60 * 1_000_000
+        // Create candles with min/mid/max characteristics
+        const tMin = new Trade('binance', symbol, 'lid1', 'rid1', 'olid1', t0, 100, 1, 10, false)
+        const cMin = new Candle('binance', symbol, 0, periodUs, tMin)
+        const tMid = new Trade('binance', symbol, 'lid2', 'rid2', 'olid2', t0 + periodUs, 250, 2, 20, false)
+        const cMid = new Candle('binance', symbol, 1, periodUs, tMid)
+        const tMax = new Trade('binance', symbol, 'lid3', 'rid3', 'olid3', t0 + 2 * periodUs, 400, 3, 30, false)
+        const cMax = new Candle('binance', symbol, 2, periodUs, tMax)
+
+        // Enrich to vary height and tradeCount
+        cMid.update(new Trade('binance', symbol, 'lid2b', 'rid2b', 'olid2b', t0 + periodUs + 1, 275, 1, 5, false))
+        cMax.update(new Trade('binance', symbol, 'lid3b', 'rid3b', 'olid3b', t0 + 2 * periodUs + 1, 450, 2, 10, false))
+        cMax.update(new Trade('binance', symbol, 'lid3c', 'rid3c', 'olid3c', t0 + 2 * periodUs + 2, 500, 1, 5, false))
+
+        // Explicit params: aroundZero=true, factor=1
+        Candle.normalize([cMin, cMid, cMax], true, 1)
+
+        // Prices with aroundZero=true default factor=1:
+        // expected = (value - min) / range * factor - factor/2  => in [-0.5, +0.5]
+        const allTrades = [tMin, ...cMid.trades, ...cMax.trades]
+        const minPrice = 100; const maxPrice = 500
+        const range = maxPrice - minPrice
+        allTrades.forEach(trade => {
+            const expected = range === 0 ? 0 : ((trade.price - minPrice) / range) - 0.5
+            assert(Math.abs(trade.normalizedPrice - expected) < 1e-8)
+        })
+
+        // Quote volume: expect centered scaling in [-0.5, +0.5]
+        const vMin = cMin.normalizedQuoteVolume
+        const vMid = cMid.normalizedQuoteVolume
+        const vMax = cMax.normalizedQuoteVolume
+        const qMin = Math.min(cMin.volumes.quote, cMid.volumes.quote, cMax.volumes.quote)
+        const qMax = Math.max(cMin.volumes.quote, cMid.volumes.quote, cMax.volumes.quote)
+        const qRange = qMax - qMin
+        const expectedVMid = qRange === 0 ? 0 : ((cMid.volumes.quote - qMin) / qRange) - 0.5
+        assert(Math.abs(vMin + 0.5) < 1e-8)
+        assert(Math.abs(vMid - expectedVMid) < 1e-8)
+        assert(Math.abs(vMax - 0.5) < 1e-8)
+
+        // Height: cMin height 0 -> approx -0.5; cMax highest -> approx +0.5
+        assert(Math.abs(cMin.normalizedHeight + 0.5) < 1e-8)
+        assert(Math.abs(cMax.normalizedHeight - 0.5) < 1e-8)
+
+        // Trades count: 1 (cMin) -> -0.5, 3 (cMax) -> +0.5
+        assert(Math.abs(cMin.normalizedTradesCount + 0.5) < 1e-8)
+        assert(Math.abs(cMax.normalizedTradesCount - 0.5) < 1e-8)
+    })
+
+    it('should scale normalized values by factor', () => {
+        const symbol = new Symbol('BTC', 'USDC')
+        const t0 = 24 * 3600 * 1_000_000
+        const periodUs = 60 * 1_000_000
+        const c1 = new Candle('binance', symbol, 0, periodUs, new Trade('binance', symbol, 'lid1', 'rid1', 'olid1', t0, 100, 1, 10, false))
+        const c2 = new Candle('binance', symbol, 1, periodUs, new Trade('binance', symbol, 'lid2', 'rid2', 'olid2', t0 + periodUs, 200, 2, 20, false))
+        const c3 = new Candle('binance', symbol, 2, periodUs, new Trade('binance', symbol, 'lid3', 'rid3', 'olid3', t0 + 2 * periodUs, 300, 3, 30, false))
+
+        // Baseline without factor (factor=1)
+        Candle.normalize([c1, c2, c3], false, 1)
+        const baseline = {
+            p1: c1.trades[0].normalizedPrice,
+            p3: c3.trades[0].normalizedPrice,
+            v1: c1.normalizedQuoteVolume,
+            v3: c3.normalizedQuoteVolume,
+            h1: c1.normalizedHeight,
+            h3: c3.normalizedHeight,
+            t1: c1.normalizedTradesCount,
+            t3: c3.normalizedTradesCount
+        }
+
+        // With factor=2 (and same mode)
+        Candle.normalize([c1, c2, c3], false, 2)
+        assert(Math.abs(c1.trades[0].normalizedPrice - baseline.p1 * 2) < 1e-8)
+        assert(Math.abs(c3.trades[0].normalizedPrice - baseline.p3 * 2) < 1e-8)
+        assert(Math.abs(c1.normalizedQuoteVolume - baseline.v1 * 2) < 1e-8)
+        assert(Math.abs(c3.normalizedQuoteVolume - baseline.v3 * 2) < 1e-8)
+        assert(Math.abs(c1.normalizedHeight - baseline.h1 * 2) < 1e-8)
+        assert(Math.abs(c3.normalizedHeight - baseline.h3 * 2) < 1e-8)
+        assert(Math.abs(c1.normalizedTradesCount - baseline.t1 * 2) < 1e-8)
+        assert(Math.abs(c3.normalizedTradesCount - baseline.t3 * 2) < 1e-8)
+
+        // aroundZero + factor (shifted by factor/2)
+        Candle.normalize([c1, c2, c3], true, 3)
+        {
+            const minPrice2 = 100; const maxPrice2 = 300
+            const range2 = maxPrice2 - minPrice2
+            const expectedMin2 = ((minPrice2 - minPrice2) / range2) * 3 - 1.5 // -1.5
+            const expectedMax2 = ((maxPrice2 - minPrice2) / range2) * 3 - 1.5 // +1.5
+            assert(Math.abs(c1.trades[0].normalizedPrice - expectedMin2) < 1e-8)
+            assert(Math.abs(c3.trades[0].normalizedPrice - expectedMax2) < 1e-8)
+        }
+    })
+
     it('should normalize minute of day correctly for candles before and after midnight', () => {
         const symbol = new Symbol('BTC', 'USDC')
         const periodUs = 60 * 1_000_000 // 1 minute
@@ -175,7 +271,7 @@ describe('Candle', () => {
         const tradeAfter = new Trade('binance', symbol, 'lidAf', 'ridAf', 'olidAf', 2 * dayUs + periodUs, 300, 3, 30, false)
         const cAfter = new Candle('binance', symbol, 2, periodUs, tradeAfter)
         // Normalize
-        Candle.normalize([cBefore, cAt, cAfter])
+        Candle.normalize([cBefore, cAt, cAfter], false, 1)
         // The last candle is after midnight on day 3, so midnight is at 2*dayUs
         // cBefore: (dayUs - periodUs - 2*dayUs) / (60*1_000_000) = (-dayUs - periodUs) / 60_000_000 = -1440 - 1
         // cAt: (dayUs - 2*dayUs) / (60*1_000_000) = -1440

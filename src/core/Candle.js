@@ -199,22 +199,33 @@ class Candle {
     }
 
     /**
-    * Static method to normalize an array of candles. For each candle, this computes normalized values for:
-    *   - prices: open, close, high, low
-    *   - height
-    *   - volumes: quote, base
-    *   - tradeCount
+    * Static method to normalize an array of candles.
+    * For each candle this computes normalized values for:
+    *   - prices: each trade gets normalizedPrice
+    *   - volumes: normalizedQuoteVolume, normalizedBaseVolume
+    *   - height: normalizedHeight
+    *   - trade count: normalizedTradesCount
+    *   - time: normalizedMinuteOfDay (minute index relative to reference midnight)
     *
-    * All these values are rebased to the minimum value, then scaled by the maximum: (value - min) / max.
-    * This means the smallest value becomes 0, and the largest (or max distance from min) becomes 1.
+    * Scaling modes:
+    *   aroundZero=false (default): values are scaled to [0, factor] using (value - min)/(max-min) * factor.
+    *   aroundZero=true: values are shifted to be centered on 0 by subtracting factor/2
+    *       i.e. (value - min)/(max-min) * factor - factor/2, resulting in [-factor/2, +factor/2].
+    *       When max === min the normalized value is 0 (degenerate range).
     *
-    * Timestamps are also normalized to represent the candle's minute position within a day, ranging from -1440 to +1440 (minutes in a day).
-    * Negative values indicate minutes from the previous day, positive values indicate today. Note: -1 is equivalent to 1439, so handle with care.
-    * Negative values only occur if the candle set spans multiple days.
+    * factor (default 1) allows amplifying the output range (e.g. factor=2 doubles the span).
     *
-    * @param {Array<Candle>} candles - Array of Candle instances to normalize
+    * Minute-of-day normalization: We pick midnight based on the last candle's day.
+    *   normalizedMinuteOfDay = floor(openTsUs / 60e6) - referenceMidnightMinutes.
+    * This preserves negative values for candles belonging to previous days and positive / zero for the reference day and forward.
+    *
+    * Edge cases: If a range is zero (all candles share the same value) the normalized value becomes 0.
+    *
+    * @param {Array<Candle>} candles - Array of Candle instances to normalize (in chronological order)
+    * @param {boolean} [aroundZero=false] - When true produce symmetric range around 0 instead of starting at 0.
+    * @param {number} [factor=1] - Multiplier for the output range span.
     */
-    static normalize (candles) {
+    static normalize (candles, aroundZero, factor) {
         if (candles.length === 0) return
 
         const ranges = {
@@ -247,14 +258,24 @@ class Candle {
         const dayDurationUs = 24 * 60 * 60 * 1000 * 1000
         const referenceMidnightMin = (Math.floor(candles.at(-1).tsUs.open / dayDurationUs) * dayDurationUs) / (60 * 1000000)
 
+        const normalizeValueWithZero = (value, min, range) => {
+            if (range === 0) return 0
+            return (value - min) * factor / range - factor / 2
+        }
+        const normalizeValueWithoutZero = (value, min, range) => {
+            if (range === 0) return 0
+            return (value - min) * factor / range
+        }
+        const normalizeValue = aroundZero ? normalizeValueWithZero : normalizeValueWithoutZero
+
         candles.forEach(candle => {
             candle.trades.forEach(trade => {
-                trade.normalizedPrice = (trade.price - ranges.price.min) / ranges.price.range
+                trade.normalizedPrice = normalizeValue(trade.price, ranges.price.min, ranges.price.range)
             })
-            candle.normalizedQuoteVolume = (candle.volumes.quote - ranges.volumeQuote.min) / ranges.volumeQuote.range
-            candle.normalizedBaseVolume = (candle.volumes.base - ranges.volumeBase.min) / ranges.volumeBase.range
-            candle.normalizedHeight = (candle.height - ranges.height.min) / ranges.height.range
-            candle.normalizedTradesCount = (candle.tradeCount - ranges.tradeCount.min) / ranges.tradeCount.range
+            candle.normalizedQuoteVolume = normalizeValue(candle.volumes.quote, ranges.volumeQuote.min, ranges.volumeQuote.range)
+            candle.normalizedBaseVolume = normalizeValue(candle.volumes.base, ranges.volumeBase.min, ranges.volumeBase.range)
+            candle.normalizedHeight = normalizeValue(candle.height, ranges.height.min, ranges.height.range)
+            candle.normalizedTradesCount = normalizeValue(candle.tradeCount, ranges.tradeCount.min, ranges.tradeCount.range)
             candle.normalizedMinuteOfDay = Math.floor(candle.tsUs.open / (60 * 1000000)) - referenceMidnightMin
         })
     }

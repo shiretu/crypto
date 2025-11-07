@@ -15,8 +15,11 @@ const feed = async (nn, config) => {
         const line = Object.values(data).map(v => {
             if (typeof v === 'number') {
                 return Number.isInteger(v) ? v.toString() : v.toFixed(10)
+            } else if (typeof v === 'string') {
+                return `"${v.replace(/"/g, '""')}"`
+            } else {
+                return v
             }
-            return v
         }).join(',')
         console.log(line)
         fs.appendFileSync(config.learnLogPath, line + '\n')
@@ -33,6 +36,8 @@ const feed = async (nn, config) => {
     printCsv = printCsvWithColumns
     let i = 0
     let lastSavedAt = Date.now()
+    let sampleBatch = []
+
     while (true) {
         if (config.autosaveIntervalSeconds) {
             const now = Date.now()
@@ -41,7 +46,7 @@ const feed = async (nn, config) => {
                 lastSavedAt = now
             }
         }
-        i++
+
         const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
         const randomStartIndex = Math.floor(Math.random() * (candlesCount - requiredCandlesCount))
         const candlesInfo = config.candlesMap.bulkGet(
@@ -56,25 +61,51 @@ const feed = async (nn, config) => {
         // Skip samples with null outcomes
         if (sample === null) { continue }
 
-        const trainResult = await nn.train([sample])
+        // Add to batch
+        sampleBatch.push({ sample, randomStartIndex, candlesInfo, tradeIndex })
 
-        printCsv({
-            SampleIndex: i,
-            StartCandleIndex: randomStartIndex,
-            StartCandleId: candlesInfo.candles[0].id,
-            TradeIndex: tradeIndex,
-            Loss: trainResult.history.loss[0],
-            MAE: trainResult.history.mae[0],
-            MSE: trainResult.history.mse[0],
-            BuyProfitPercent: sample.outputs.buyProfitPercent,
-            BuyOrderDuration: sample.buyOrder.durationUs,
-            BuyOrderForcedClose: sample.buyOrder.forceClose,
-            BuyOrderTradesCount: sample.buyOrder.tradesCount,
-            SellProfitPercent: sample.outputs.sellProfitPercent,
-            SellOrderDuration: sample.sellOrder.durationUs,
-            SellOrderForcedClose: sample.sellOrder.forceClose,
-            SellOrderTradesCount: sample.sellOrder.tradesCount
-        })
+        // Train when batch is full
+        if (sampleBatch.length >= config.trainBatchSize) {
+            i++
+            // Get predictions BEFORE training for all samples in batch
+            const predictions = []
+            for (const item of sampleBatch) {
+                const pred = await nn.pred(item.sample)
+                predictions.push(pred)
+            }
+
+            const trainResult = await nn.train(sampleBatch.map(s => s.sample))
+
+            // Collect all predicted and actual values
+            const predictedBuys = predictions.map(p => p.percentages.buy.toFixed(10)).join(':')
+            const predictedSells = predictions.map(p => p.percentages.sell.toFixed(10)).join(':')
+            const actualBuys = sampleBatch.map(s => s.sample.outputs.buyProfitPercent.toFixed(10)).join(':')
+            const actualSells = sampleBatch.map(s => s.sample.outputs.sellProfitPercent.toFixed(10)).join(':')
+
+            // Log the first sample in the batch with all predictions
+            const firstItem = sampleBatch[0]
+            printCsv({
+                SampleIndex: i,
+                StartCandleIndex: firstItem.randomStartIndex,
+                StartCandleId: firstItem.candlesInfo.candles[0].id,
+                TradeIndex: firstItem.tradeIndex,
+                Loss: trainResult.history.loss[0],
+                MAE: trainResult.history.mae[0],
+                MSE: trainResult.history.mse[0],
+                BuyOrderDuration: firstItem.sample.buyOrder.durationUs,
+                BuyOrderForcedClose: firstItem.sample.buyOrder.forceClose,
+                BuyOrderTradesCount: firstItem.sample.buyOrder.tradesCount,
+                SellOrderDuration: firstItem.sample.sellOrder.durationUs,
+                SellOrderForcedClose: firstItem.sample.sellOrder.forceClose,
+                SellOrderTradesCount: firstItem.sample.sellOrder.tradesCount,
+                PredictedBuys: predictedBuys,
+                PredictedSells: predictedSells,
+                ActualBuys: actualBuys,
+                ActualSells: actualSells
+            })
+
+            sampleBatch = []
+        }
     }
 }
 

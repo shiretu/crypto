@@ -55,9 +55,19 @@ class NN {
     async pred (sample) {
         const inputs = tf.tensor2d([MakeFlat(sample.inputs)])
         try {
-            const predictions = await this.#model.predict(inputs)
+            // Temporarily set all dropout layers to rate 0 for inference
+            const dropoutLayers = this.#model.layers.filter(layer => layer.getClassName() === 'Dropout')
+            const originalRates = dropoutLayers.map(layer => layer.rate)
+            dropoutLayers.forEach(layer => { layer.rate = 0 })
+
+            const predictions = this.#model.predict(inputs)
             const results = await predictions.array()
             const [buyProfitPercent, sellProfitPercent] = results[0]
+
+            // Restore original dropout rates
+            dropoutLayers.forEach((layer, i) => { layer.rate = originalRates[i] })
+
+            predictions.dispose()
             return postProcessPrediction(buyProfitPercent, sellProfitPercent)
         } catch (err) {
             console.error(`Error during prediction: ${err}`)
@@ -202,7 +212,17 @@ class NN {
 
                 return tf.layers.dense(layerConfig)
             },
-            dropout: (config) => tf.layers.dropout({ rate: config.rate })
+            dropout: (config) => tf.layers.dropout({ rate: config.rate }),
+            batchNormalization: (config) => tf.layers.batchNormalization({
+                axis: -1,
+                momentum: config.momentum || 0.99,
+                epsilon: config.epsilon || 0.001,
+                center: config.center !== undefined ? config.center : true,
+                scale: config.scale !== undefined ? config.scale : true
+            }),
+            leakyReLU: (config) => tf.layers.leakyReLU({
+                alpha: config.alpha || 0.01
+            })
         }
 
         this.#model = tf.sequential({

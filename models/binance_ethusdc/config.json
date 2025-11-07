@@ -13,5 +13,8 @@
     "feesPercent": 0.002,
     "maxHoldingTimeMin": 120,
     "outputMultiplicationFactor": 1,
-    "pastSimulationsTimeoutsLimit": 0
+    "pastSimulationsTimeoutsLimit": 0,
+    "normalizeAroundZero": false,
+    "normalizationFactor": 1,
+    "trainBatchSize": 1
 }

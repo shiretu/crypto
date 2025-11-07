@@ -230,6 +230,7 @@ module.exports = {
             ? await _createPyNn(config)
             : await _createTfNn(config)
         config.learnLogPath = path.resolve(config.modelRootPath, result.relativeSavePath, 'learn.log')
+        config.predLogPath = path.resolve(config.modelRootPath, result.relativeSavePath, 'pred.log')
         return result
     },
     checkCandleContinuity: (candles) => {
@@ -250,7 +251,7 @@ module.exports = {
         const { buyOrder, sellOrder, operation } = simulation
 
         // normalize the candles
-        Candle.normalize(candles)
+        Candle.normalize(candles, config.normalizeAroundZero ?? false, config.normalizationFactor ?? 1)
 
         // Extract the training candles
         const trainingCandles = candles.slice(-1 * trainingLength)
