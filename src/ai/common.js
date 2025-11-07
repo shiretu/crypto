@@ -242,7 +242,7 @@ module.exports = {
         return true
     },
     simulateTrades: _simulateTrades,
-    createTrainingSample: async (candles, trainingLength, brr, startTradingIndex, config, pastSimulationsTimeouts) => {
+    createTrainingSample: async (candles, trainingLength, startTradingIndex, config, pastSimulationsTimeouts) => {
     // simulate the trades
         const simulation = await _simulateTrades(startTradingIndex, config, pastSimulationsTimeouts)
         if (!simulation) {

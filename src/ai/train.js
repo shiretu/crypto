@@ -56,7 +56,7 @@ const feed = async (nn, config) => {
         )
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
         const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
-        const sample = await createTrainingSample(candlesInfo.candles, 120, config.brr, tradeIndex, config, pastSimulationsTimeouts)
+        const sample = await createTrainingSample(candlesInfo.candles, 120, tradeIndex, config, pastSimulationsTimeouts)
 
         // Skip samples with null outcomes
         if (sample === null) { continue }

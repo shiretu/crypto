@@ -16,5 +16,6 @@
     "pastSimulationsTimeoutsLimit": 0,
     "normalizeAroundZero": false,
     "normalizationFactor": 1,
-    "trainBatchSize": 1
+    "trainBatchSize": 1,
+    "trainWithStudies": true
 }
