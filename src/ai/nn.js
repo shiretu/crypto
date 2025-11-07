@@ -220,6 +220,9 @@ class NN {
                 center: config.center !== undefined ? config.center : true,
                 scale: config.scale !== undefined ? config.scale : true
             }),
+            activation: (config) => tf.layers.activation({
+                activation: config.activation
+            }),
             leakyReLU: (config) => tf.layers.leakyReLU({
                 alpha: config.alpha || 0.01
             })
