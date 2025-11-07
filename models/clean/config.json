@@ -1,6 +1,6 @@
 {
     "usePython": false,
-    "autosaveIntervalSeconds": 60,
+    "autosaveIntervalSeconds": 10,
     "exchangeName": "binance",
     "symbol": "btcusdc",
     "totalHistoryInDays": 1460,
@@ -14,7 +14,7 @@
     "maxHoldingTimeMin": 120,
     "outputMultiplicationFactor": 100,
     "pastSimulationsTimeoutsLimit": 0,
-    "normalizeAroundZero": false,
+    "normalizeAroundZero": true,
     "normalizationFactor": 1,
-    "trainBatchSize": 1
+    "trainBatchSize": 32
 }

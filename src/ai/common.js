@@ -288,13 +288,7 @@ module.exports = {
                     macdLong: macd.map(m => m.long),
                     macdLine: macd.map(m => m.macd),
                     macdSignal: macd.map(m => m.signal),
-                    macdHistogram: macd.map(m => m.histogram),
-                    unused1: new Array(119).fill(0),
-                    unused2: new Array(118).fill(0)
-                },
-                patterns: {
-                    single: new Array(119).fill(0),
-                    sliding: new Array(118).fill(0)
+                    macdHistogram: macd.map(m => m.histogram)
                 },
                 global: {
                     candleDuration: trainingCandles[0].periodUs / 60000000,

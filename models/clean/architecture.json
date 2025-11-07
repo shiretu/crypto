@@ -1,68 +1,52 @@
 {
-  "inputs_count": 2160,
+  "inputs_count": 1686,
   "outputs_count": 2,
   "layers": [
     {
       "type": "dense",
-      "units": 512,
-      "activation": "linear",
+      "units": 256,
+      "activation": "relu",
+      "kernelInitializer": "heNormal",
       "name": "feature_processing"
     },
     {
-      "type": "batchNormalization"
-    },
-    {
-      "type": "leakyReLU",
-      "alpha": 0.01
-    },
-    {
       "type": "dropout",
-      "rate": 0.05
-    },
-    {
-      "type": "dense",
-      "units": 256,
-      "activation": "linear",
-      "name": "pattern_recognition"
-    },
-    {
-      "type": "batchNormalization"
-    },
-    {
-      "type": "leakyReLU",
-      "alpha": 0.01
-    },
-    {
-      "type": "dropout",
-      "rate": 0.05
+      "rate": 0.3
     },
     {
       "type": "dense",
       "units": 128,
-      "activation": "linear",
-      "name": "decision_processing"
-    },
-    {
-      "type": "batchNormalization"
-    },
-    {
-      "type": "leakyReLU",
-      "alpha": 0.01
+      "activation": "relu",
+      "kernelInitializer": "heNormal",
+      "name": "pattern_recognition"
     },
     {
       "type": "dropout",
-      "rate": 0.02
+      "rate": 0.3
+    },
+    {
+      "type": "dense",
+      "units": 64,
+      "activation": "relu",
+      "kernelInitializer": "heNormal",
+      "name": "decision_processing"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.2
     },
     {
       "type": "dense",
       "units": 2,
       "activation": "linear",
+      "kernelInitializer": "glorotNormal",
       "name": "trading_outcomes"
     }
   ],
   "optimizer": {
     "type": "adam",
-    "learning_rate": 0.0001
+    "learning_rate": 0.0003,
+    "clipnorm": 1.0
   },
   "loss": "meanSquaredError",
   "metrics": [

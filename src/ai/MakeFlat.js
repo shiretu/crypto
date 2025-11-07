@@ -17,12 +17,6 @@ module.exports = (inputs, outputs) => {
         ...inputs.studies.macdLine, // 120
         ...inputs.studies.macdSignal, // 120
         ...inputs.studies.macdHistogram, // 120
-        ...inputs.studies.unused1, // 119
-        ...inputs.studies.unused2, // 118
-
-        // Patterns: 237 features
-        ...inputs.patterns.single, // 119
-        ...inputs.patterns.sliding, // 118
 
         // Global: 6 features
         inputs.global.candleDuration,
