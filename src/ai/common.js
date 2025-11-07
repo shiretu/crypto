@@ -210,6 +210,23 @@ const _simulateTrades = async (startTradingIndex, config, pastSimulationsTimeout
     return { buyOrder, sellOrder, operation }
 }
 
+const _loadCandles = async (config, firstCandleIndex) => {
+    const candlesPreambleCount = 100
+    const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
+    if (firstCandleIndex < 0) {
+        firstCandleIndex = Math.floor(Math.random() * (config.candlesMap.length - requiredCandlesCount))
+    }
+    const result = config.candlesMap.bulkGet(
+        config.brr,
+        firstCandleIndex,
+        requiredCandlesCount
+    )
+
+    result.nextTradeIndex = result.firstCandleIndex + result.tradesCount
+
+    return result
+}
+
 module.exports = {
     getConfig: async (modelName) => {
         const modelRootPath = path.resolve(__dirname, '..', '..', 'models', modelName)
@@ -233,6 +250,7 @@ module.exports = {
         config.predLogPath = path.resolve(config.modelRootPath, result.relativeSavePath, 'pred.log')
         return result
     },
+    loadCandles: _loadCandles,
     checkCandleContinuity: (candles) => {
         for (let i = 1; i < candles.length; i++) {
             if ((candles[i].id - candles[i - 1].id) !== 1) {

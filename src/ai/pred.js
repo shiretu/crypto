@@ -1,4 +1,4 @@
-const { getConfig, createNn, checkCandleContinuity, createTrainingSample } = require('./common')
+const { getConfig, createNn, checkCandleContinuity, createTrainingSample, loadCandles } = require('./common')
 const console = require('../utils/coloredConsole')
 const { postProcessPrediction } = require('./postProcessPrediction')
 const fs = require('fs')
@@ -32,18 +32,16 @@ const feed = async (nn, config) => {
     const maxIndex = candlesCount - requiredCandlesCount
     console.log(`Starting infinite random predictions (max index: ${maxIndex})...`)
 
-    let sampleIndex = 0
+    let predictionIndex = 0
     let wins = 0
     let losses = 0
     while (true) {
-        const i = Math.floor(Math.random() * maxIndex)
-        const candlesInfo = config.candlesMap.bulkGet(config.brr, i, requiredCandlesCount)
+        const candlesInfo = await loadCandles(config, -1)
         if (!checkCandleContinuity(candlesInfo.candles)) { continue }
-        const tradeIndex = candlesInfo.startTradeIndex + candlesInfo.tradesCount
-        const sample = await createTrainingSample(candlesInfo.candles, tradeIndex, config, { limit: 0 })
+        const sample = await createTrainingSample(candlesInfo.candles, candlesInfo.nextTradeIndex, config, { limit: 0 })
         if (sample === null) { continue }
 
-        sampleIndex++
+        predictionIndex++
         const predicted = await nn.pred(sample)
         const actual = postProcessPrediction(sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent)
         if (predicted.kind !== TradeKind.hold) {
@@ -54,15 +52,12 @@ const feed = async (nn, config) => {
         const pKind = predicted.kind.key || String(predicted.kind)
         const aKind = actual.kind.key || String(actual.kind)
 
-        // if (predicted.kind !== TradeKind.hold) {
         console.log(color, `P: ${pKind.padEnd(4)} (${predicted.percentages.buy.toFixed(3)}%, ${predicted.percentages.sell.toFixed(3)}%); A: ${aKind.padEnd(4)} (${actual.percentages.buy.toFixed(3)}%, ${actual.percentages.sell.toFixed(3)}%); W/L: ${wins}/${losses} = ${(wins / (wins + losses) * 100).toFixed(2)}%`)
-        // }
 
         printCsv({
-            SampleIndex: sampleIndex,
-            CandleIndex: i,
-            CandleId: candlesInfo.candles[0].id,
-            TradeIndex: tradeIndex,
+            predictionIndex,
+            firstCandleIndex: candlesInfo.firstCandleIndex,
+            nextTradeIndex: candlesInfo.nextTradeIndex,
             PredictedKind: pKind,
             PredictedPercent: predicted.percent,
             PredictedBuy: predicted.percentages.buy,

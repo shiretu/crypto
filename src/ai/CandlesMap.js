@@ -60,14 +60,19 @@ class CandlesMap {
         }
     }
 
-    bulkGet (reader, startIndex, count) {
+    bulkGet (reader, firstCandleIndex, count) {
         const candlesInfo = []
         for (let i = 0; i < count; i++) {
-            candlesInfo.push(this.get(reader, startIndex + i))
+            candlesInfo.push(this.get(reader, firstCandleIndex + i))
         }
-        const startTradeIndex = candlesInfo[0].startTradeIndex
+        const firstTradeIndex = candlesInfo[0].startTradeIndex
         const tradesCount = candlesInfo.reduce((sum, info) => sum + info.tradesCount, 0)
-        return { startTradeIndex, tradesCount, candles: candlesInfo.map(info => info.candle) }
+        return {
+            firstCandleIndex,
+            firstTradeIndex,
+            tradesCount,
+            candles: candlesInfo.map(info => info.candle)
+        }
     }
 
     async #init () {
