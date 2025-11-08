@@ -57,6 +57,9 @@ const feed = async (nn, config) => {
         // Skip samples with null outcomes
         if (sample === null) { continue }
 
+        // Skip weak directional signals (too close to zero)
+        if (Math.abs(sample.output.direction) < 0.3) { continue }
+
         // Add to batch
         sampleBatch.push({ sample, candlesInfo })
 
@@ -65,6 +68,14 @@ const feed = async (nn, config) => {
 
         // okay, bump the training index and start training
         trainingIndex++
+
+        // Calculate direction signal distribution
+        const directions = sampleBatch.map(s => s.sample.output.direction)
+        const avgDirection = directions.reduce((a, b) => a + b, 0) / directions.length
+        const positiveCount = directions.filter(d => d > 0.5).length
+        const negativeCount = directions.filter(d => d < -0.5).length
+        const holdCount = directions.filter(d => d >= -0.5 && d <= 0.5).length
+
         const trainResult = await nn.train(sampleBatch.map(s => s.sample))
 
         // Log the first sample in the batch with all predictions
@@ -72,7 +83,12 @@ const feed = async (nn, config) => {
             trainingIndex,
             loss: trainResult.history.loss[0],
             mae: trainResult.history.mae[0],
-            mse: trainResult.history.mse[0]
+            mse: trainResult.history.mse[0],
+            avgDirection,
+            buySignals: positiveCount,
+            sellSignals: negativeCount,
+            holdSignals: holdCount,
+            actualDirections: directions.map(d => d.toFixed(3)).join('|')
         })
 
         sampleBatch = []

@@ -57,7 +57,7 @@ const _createPyNn = async (config) => {
             }
         }
         for (const sample of samples) {
-            const flat = MakeFlat(sample.inputs, sample.outputs)
+            const flat = MakeFlat(sample.inputs, sample.output.direction)
             const buffer = Buffer.alloc(flat.length * 8)
             const floatView = new Float64Array(buffer.buffer, buffer.byteOffset, flat.length)
             floatView.set(flat)
@@ -192,23 +192,25 @@ const _simulateTrades = async (startTradingIndex, config, pastSimulationsTimeout
         return null // Signal to skip this sample
     }
 
-    const operation = (() => {
+    const direction = (() => {
         if (buyOrder.profitPercent > 0) {
             if (sellOrder.profitPercent > 0) {
-                return buyOrder.profitPercent >= sellOrder.profitPercent ? 1 : -1
+                const value = Math.max(buyOrder.profitPercent, sellOrder.profitPercent)
+                const sign = buyOrder.profitPercent >= sellOrder.profitPercent ? 1 : -1
+                return Math.min(value / config.profitTargetPercent) * sign
             } else {
-                return 1
+                return Math.min(buyOrder.profitPercent / config.profitTargetPercent, 1)
             }
         } else {
             if (sellOrder.profitPercent > 0) {
-                return -1
+                return Math.min(sellOrder.profitPercent / config.profitTargetPercent, 1) * -1
             } else {
                 return 0
             }
         }
     })()
 
-    return { buyOrder, sellOrder, operation }
+    return { buyOrder, sellOrder, direction }
 }
 
 const _loadCandles = async (config, firstCandleIndex) => {
@@ -243,7 +245,7 @@ const _createTrainingSample = async (candles, startTradingIndex, config, pastSim
     if (!simulation) {
         return null
     }
-    const { buyOrder, sellOrder, operation } = simulation
+    const { buyOrder, sellOrder, direction } = simulation
 
     // normalize the candles
     Candle.normalize(candles, config.normalizeAroundZero ?? false, config.normalizationFactor ?? 1)
@@ -262,9 +264,7 @@ const _createTrainingSample = async (candles, startTradingIndex, config, pastSim
         }
     })
 
-    const scale = (value) => Math.max(-config.outputMultiplicationFactor, Math.min(value * config.outputMultiplicationFactor, config.outputMultiplicationFactor))
-
-    // Create training sample structure
+    // Calculate direction signal: positive for buy, negative for sell
     return {
         inputs: {
             candles: {
@@ -288,16 +288,16 @@ const _createTrainingSample = async (candles, startTradingIndex, config, pastSim
             global: {
                 candleDuration: trainingCandles[0].periodUs / 60000000,
                 windowSize: config.candlesPerWindow,
-                grossProfitTarget: config.profitTargetPercent,
-                grossStopLoss: config.stopLossPercent,
+                profitTargetPercent: config.profitTargetPercent,
+                stopLossPercent: config.stopLossPercent,
                 positionSize: config.positionSize,
                 fees: config.feesPercent
             }
         },
-        outputs: {
-            buyProfitPercent: scale(buyOrder.profitPercent),
-            sellProfitPercent: scale(sellOrder.profitPercent),
-            operation
+        output: {
+            direction,
+            buyProfit: buyOrder.profitPercent,
+            sellProfit: sellOrder.profitPercent
         },
         buyOrder,
         sellOrder

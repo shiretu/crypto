@@ -1,5 +1,5 @@
 {
-  "outputs_count": 2,
+  "outputs_count": 1,
   "layers": [
     {
       "type": "dense",
@@ -17,7 +17,7 @@
     },
     {
       "type": "dropout",
-      "rate": 0.4
+      "rate": 0.2
     },
     {
       "type": "dense",
@@ -35,7 +35,7 @@
     },
     {
       "type": "dropout",
-      "rate": 0.4
+      "rate": 0.2
     },
     {
       "type": "dense",
@@ -53,22 +53,21 @@
     },
     {
       "type": "dropout",
-      "rate": 0.3
+      "rate": 0.1
     },
     {
       "type": "dense",
-      "units": 2,
-      "activation": "linear",
+      "units": 1,
+      "activation": "tanh",
       "kernelInitializer": "glorotNormal",
-      "name": "trading_outcomes"
+      "name": "direction_signal"
     }
   ],
   "optimizer": {
     "type": "adam",
-    "learning_rate": 0.000005,
-    "clipnorm": 1.0
+    "learning_rate": 0.0001
   },
-  "loss": "meanSquaredError",
+  "loss": "meanAbsoluteError",
   "metrics": [
     "mae",
     "mse"

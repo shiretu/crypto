@@ -19,28 +19,42 @@ def extract_data(num_log_lines):
     samples = []
     losses = []
     maes = []
+    mses = []
     for row in rows:
         # Try to support both old and new column names (case-insensitive)
         sample_val = row.get("trainingIndex") or row.get("SampleIndex") or row.get("Sample")
         loss_val = row.get("loss") or row.get("Loss")
         mae_val = row.get("mae") or row.get("MAE")
-        if sample_val is not None and loss_val is not None and mae_val is not None:
+        mse_val = row.get("mse") or row.get("MSE")
+        if sample_val is not None and loss_val is not None:
             samples.append(int(float(sample_val)))
             losses.append(float(loss_val))
-            maes.append(float(mae_val))
-    return samples, losses, maes
+            if mae_val is not None:
+                maes.append(float(mae_val))
+            if mse_val is not None:
+                mses.append(float(mse_val))
+    return samples, losses, maes, mses
 
 
 # Global variable to track all loss values > 400 seen in previous refresh
 seen_big_losses = [set()]
 
 
-def plot_data(ax, samples, losses, maes):
+def plot_data(ax, samples, losses, maes, mses):
     import os
 
     ax.clear()
-    ax.plot(samples, losses, label="Loss")
-    ax.plot(samples, maes, label="MAE")
+    ax.plot(samples, losses, label="Loss", linewidth=2)
+    # Only plot MAE if different from Loss
+    if (
+        len(maes) > 0
+        and len(maes) == len(losses)
+        and not all(abs(m - l) < 0.0001 for m, l in zip(maes, losses))
+    ):
+        ax.plot(samples, maes, label="MAE", linestyle="--")
+    # Plot MSE if available
+    if len(mses) > 0 and len(mses) == len(losses):
+        ax.plot(samples, mses, label="MSE", linestyle=":", alpha=0.7)
     # EMA(24) for Loss
     if len(losses) >= 2:
         ema24 = []
@@ -79,8 +93,8 @@ def plot_data(ax, samples, losses, maes):
 
 
 def refresh(event=None):
-    samples, losses, maes = extract_data(args.lines)
-    plot_data(ax, samples, losses, maes)
+    samples, losses, maes, mses = extract_data(args.lines)
+    plot_data(ax, samples, losses, maes, mses)
 
 
 def auto_refresh():
@@ -111,8 +125,8 @@ if __name__ == "__main__":
     args = parse_args()
     fig, ax = plt.subplots(figsize=(12, 6))
     plt.subplots_adjust(bottom=0.15)
-    samples, losses, maes = extract_data(args.lines)
-    plot_data(ax, samples, losses, maes)
+    samples, losses, maes, mses = extract_data(args.lines)
+    plot_data(ax, samples, losses, maes, mses)
 
     ax_refresh = plt.axes([0.8, 0.025, 0.1, 0.04])
     btn_refresh = Button(ax_refresh, "Refresh")

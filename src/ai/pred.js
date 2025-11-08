@@ -45,7 +45,7 @@ const feed = async (nn, config) => {
 
         predictionIndex++
         const predicted = await nn.pred(sample)
-        const actual = postProcessPrediction(sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent)
+        const actual = postProcessPrediction(sample.output.direction)
         if (predicted.kind !== TradeKind.hold) {
             wins += predicted.kind === actual.kind ? 1 : 0
             losses += predicted.kind !== actual.kind ? 1 : 0
@@ -54,20 +54,16 @@ const feed = async (nn, config) => {
         const pKind = predicted.kind.key || String(predicted.kind)
         const aKind = actual.kind.key || String(actual.kind)
 
-        console.log(color, `P: ${pKind.padEnd(4)} (${predicted.percentages.buy.toFixed(3)}%, ${predicted.percentages.sell.toFixed(3)}%); A: ${aKind.padEnd(4)} (${actual.percentages.buy.toFixed(3)}%, ${actual.percentages.sell.toFixed(3)}%); W/L: ${wins}/${losses} = ${(wins / (wins + losses) * 100).toFixed(2)}%`)
+        console.log(color, `P: ${pKind.padEnd(4)} (dir: ${predicted.direction.toFixed(3)}); A: ${aKind.padEnd(4)} (dir: ${actual.direction.toFixed(3)}); W/L: ${wins}/${losses} = ${(wins / (wins + losses) * 100).toFixed(2)}%`)
 
         printCsv({
             predictionIndex,
             firstCandleIndex: candlesInfo.firstCandleIndex,
             nextTradeIndex: candlesInfo.nextTradeIndex,
             PredictedKind: pKind,
-            PredictedPercent: predicted.percent,
-            PredictedBuy: predicted.percentages.buy,
-            PredictedSell: predicted.percentages.sell,
+            PredictedDirection: predicted.direction,
             ActualKind: aKind,
-            ActualPercent: actual.percent,
-            ActualBuy: actual.percentages.buy,
-            ActualSell: actual.percentages.sell,
+            ActualDirection: actual.direction,
             Correct: predicted.kind === actual.kind ? 1 : 0,
             Wins: wins,
             Losses: losses,

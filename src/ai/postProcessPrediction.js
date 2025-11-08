@@ -2,15 +2,21 @@ const TradeKind = require('../core/TradeKind')
 
 module.exports = {
 
-    postProcessPrediction: (buyProfitPercent, sellProfitPercent) => {
-        const tradeKind = buyProfitPercent > sellProfitPercent ? TradeKind.buy : TradeKind.sell
+    postProcessPrediction: (direction) => {
+        const decisionPoint = 0.5
+
+        let tradeKind
+        if (direction > decisionPoint) {
+            tradeKind = TradeKind.buy
+        } else if (direction < -1 * decisionPoint) {
+            tradeKind = TradeKind.sell
+        } else {
+            tradeKind = TradeKind.hold
+        }
+
         return {
-            kind: Math.max(buyProfitPercent, sellProfitPercent) > 0 ? tradeKind : TradeKind.hold,
-            percent: Math.max(buyProfitPercent, sellProfitPercent),
-            percentages: {
-                buy: buyProfitPercent,
-                sell: sellProfitPercent
-            }
+            kind: tradeKind,
+            direction
         }
     }
 }

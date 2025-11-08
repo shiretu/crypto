@@ -35,9 +35,9 @@ class NN {
     async train (samples) {
         this.#samplesCounter += samples.length
         const inputs = tf.tensor2d(samples.map(sample => MakeFlat(sample.inputs)))
-        const outputs = tf.tensor2d(samples.map(sample => [sample.outputs.buyProfitPercent, sample.outputs.sellProfitPercent]))
+        const output = tf.tensor2d(samples.map(sample => [sample.output.direction]))
         try {
-            const history = await this.#model.fit(inputs, outputs, {
+            const history = await this.#model.fit(inputs, output, {
                 epochs: this.#config.epochs,
                 batchSize: samples.length,
                 verbose: 0
@@ -48,7 +48,7 @@ class NN {
             throw err
         } finally {
             inputs.dispose()
-            outputs.dispose()
+            output.dispose()
         }
     }
 
@@ -62,13 +62,13 @@ class NN {
 
             const predictions = this.#model.predict(inputs)
             const results = await predictions.array()
-            const [buyProfitPercent, sellProfitPercent] = results[0]
+            const direction = results[0][0]
 
             // Restore original dropout rates
             dropoutLayers.forEach((layer, i) => { layer.rate = originalRates[i] })
 
             predictions.dispose()
-            return postProcessPrediction(buyProfitPercent, sellProfitPercent)
+            return postProcessPrediction(direction)
         } catch (err) {
             console.error(`Error during prediction: ${err}`)
             throw err

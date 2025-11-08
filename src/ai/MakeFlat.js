@@ -1,4 +1,4 @@
-module.exports = (inputs, outputs) => {
+module.exports = (inputs, output) => {
     return [
         // Candles
         ...inputs.candles.opens,
@@ -21,12 +21,12 @@ module.exports = (inputs, outputs) => {
         // Global
         inputs.global.candleDuration,
         inputs.global.windowSize,
-        inputs.global.grossProfitTarget,
-        inputs.global.grossStopLoss,
+        inputs.global.profitTargetPercent,
+        inputs.global.stopLossPercent,
         inputs.global.positionSize,
         inputs.global.fees,
 
-        // Outputs (only if outputs exists)
-        ...(outputs ? [outputs.buyProfitPercent, outputs.sellProfitPercent] : [])
+        // Output
+        ...(output ? [output] : [])
     ]
 }
