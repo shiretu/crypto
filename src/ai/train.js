@@ -1,9 +1,10 @@
-const { loadConfig } = require('./common')
+const { loadConfig, loadNn } = require('./common')
 
 const work = async () => {
     const modelName = process.argv[2] || 'lstm'
     const config = await loadConfig(modelName)
-    console.log(config)
+    const nn = await loadNn(config)
+    console.log(nn)
 }
 
 work()

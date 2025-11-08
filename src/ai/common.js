@@ -21,5 +21,8 @@ const _loadConfig = async (modelName) => {
 }
 
 module.exports = {
-    loadConfig: _loadConfig
+    loadConfig: _loadConfig,
+    loadNn: async (config) => {
+        return await require(`./${config.nnType}`).load(config)
+    }
 }
