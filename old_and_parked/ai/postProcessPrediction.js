@@ -1,4 +1,4 @@
-const TradeKind = require('../core/TradeKind')
+const TradeKind = require('../../src/core/TradeKind')
 
 module.exports = {
 

@@ -1,9 +1,9 @@
 const { read } = require('fs')
-const CandlesGenerator = require('../core/CandlesGenerator')
-const BinanceRawReader = require('../sources/BinanceRawReader')
+const CandlesGenerator = require('../../src/core/CandlesGenerator')
+const BinanceRawReader = require('../../src/sources/BinanceRawReader')
 const fs = require('fs').promises
 const cliProgress = require('cli-progress')
-const Candle = require('../core/Candle')
+const Candle = require('../../src/core/Candle')
 
 class CandlesMap {
     #config /** @type {object} */
