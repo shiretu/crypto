@@ -1,0 +1,3 @@
+const work = async () => {}
+
+work()

@@ -2,7 +2,10 @@
   "name": "LSTM Time Series Classifier",
   "description": "LSTM-based architecture for temporal pattern recognition in candlestick data",
   "input": {
-    "shape": [120, 15],
+    "shape": [
+      120,
+      15
+    ],
     "description": "120 time steps (candles) with 15 features each"
   },
   "layers": [
@@ -50,8 +53,14 @@
     }
   ],
   "output": {
-    "shape": [3],
-    "classes": ["HOLD", "LONG", "SHORT"],
+    "shape": [
+      3
+    ],
+    "classes": [
+      "HOLD",
+      "LONG",
+      "SHORT"
+    ],
     "description": "Probability distribution over three trading actions"
   },
   "compilation": {
@@ -63,7 +72,10 @@
       "beta_2": 0.999,
       "epsilon": 1e-07
     },
-    "metrics": ["accuracy", "categorical_crossentropy"]
+    "metrics": [
+      "accuracy",
+      "categorical_crossentropy"
+    ]
   },
   "training": {
     "batch_size": 32,

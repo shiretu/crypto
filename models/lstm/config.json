@@ -1,0 +1,5 @@
+{
+    "exchangeName": "binance",
+    "symbol": "BTCUSDC",
+    "candleDurationMinutes": 1
+}

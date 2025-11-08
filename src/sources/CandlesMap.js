@@ -1,9 +1,8 @@
-const { read } = require('fs')
-const CandlesGenerator = require('../../src/core/CandlesGenerator')
-const BinanceRawReader = require('../../src/sources/BinanceRawReader')
+const CandlesGenerator = require('../core/CandlesGenerator')
+const BinanceRawReader = require('./BinanceRawReader')
 const fs = require('fs').promises
 const cliProgress = require('cli-progress')
-const Candle = require('../../src/core/Candle')
+const Candle = require('../core/Candle')
 
 class CandlesMap {
     #config /** @type {object} */
@@ -76,7 +75,7 @@ class CandlesMap {
     }
 
     async #init () {
-        const mapFilePath = this.#config.tradesBinaryFilePath.replace('_trades.bin', `_candles_map_${this.#config.candleDurationMinutes}min.bin`)
+        const mapFilePath = this.#config.tradesDataPath.replace('_trades.bin', `_candles_map_${this.#config.candleDurationMinutes}min.bin`)
         const fileExists = await fs.access(mapFilePath).then(() => true).catch(() => false)
         if (fileExists) {
             const buf = await fs.readFile(mapFilePath)
@@ -84,14 +83,13 @@ class CandlesMap {
             return
         }
         const candlesMap = []
-        const brr = BinanceRawReader.create(this.#config.tradesBinaryFilePath, this.#config.symbol)
         const candlesGenerator = new CandlesGenerator(null, this.#config.exchangeName, this.#config.symbol, this.#config.candleDurationMinutes)
         const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
         console.log('Generating candles map...')
-        bar.start(brr.info.recordsCount, 0)
-        for (let i = 0; i < brr.info.recordsCount; i++) {
+        bar.start(this.#config.tradesReader.info.recordsCount, 0)
+        for (let i = 0; i < this.#config.tradesReader.info.recordsCount; i++) {
             if ((i % 10000) === 0) { bar.update(i + 1) }
-            const trade = brr.readTrade(i)
+            const trade = this.#config.tradesReader.readTrade(i)
             const candle = candlesGenerator.feed(trade)
             if (candle) {
                 candlesMap.push(i - candle.tradeCount)
