@@ -1,0 +1,95 @@
+{
+  "name": "Hybrid CNN-LSTM Time Series Classifier",
+  "description": "Combined CNN and LSTM architecture for both local pattern detection and temporal learning",
+  "input": {
+    "shape": [120, 15],
+    "description": "120 time steps (candles) with 15 features each"
+  },
+  "layers": [
+    {
+      "type": "conv1d",
+      "filters": 64,
+      "kernel_size": 5,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "First convolutional layer - extracts local features from candle patterns"
+    },
+    {
+      "type": "max_pooling1d",
+      "pool_size": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Downsampling to reduce dimensionality before LSTM"
+    },
+    {
+      "type": "conv1d",
+      "filters": 128,
+      "kernel_size": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Second convolutional layer - detects higher-level patterns"
+    },
+    {
+      "type": "max_pooling1d",
+      "pool_size": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Further downsampling"
+    },
+    {
+      "type": "lstm",
+      "units": 64,
+      "return_sequences": false,
+      "activation": "tanh",
+      "recurrent_activation": "sigmoid",
+      "dropout": 0.0,
+      "recurrent_dropout": 0.0,
+      "description": "LSTM layer - learns temporal dependencies of extracted CNN features"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.3,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "dense",
+      "units": 32,
+      "activation": "relu",
+      "description": "Fully connected layer for final feature combination"
+    },
+    {
+      "type": "dense",
+      "units": 3,
+      "activation": "softmax",
+      "description": "Output layer - 3 classes: [HOLD, LONG, SHORT]"
+    }
+  ],
+  "output": {
+    "shape": [3],
+    "classes": ["HOLD", "LONG", "SHORT"],
+    "description": "Probability distribution over three trading actions"
+  },
+  "compilation": {
+    "loss": "categorical_crossentropy",
+    "optimizer": {
+      "type": "adam",
+      "learning_rate": 0.001,
+      "beta_1": 0.9,
+      "beta_2": 0.999,
+      "epsilon": 1e-07
+    },
+    "metrics": ["accuracy", "categorical_crossentropy"]
+  },
+  "training": {
+    "batch_size": 32,
+    "epochs": 100,
+    "validation_split": 0.2,
+    "early_stopping": {
+      "monitor": "val_loss",
+      "patience": 10,
+      "restore_best_weights": true
+    }
+  }
+}

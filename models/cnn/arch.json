@@ -1,0 +1,104 @@
+{
+  "name": "1D CNN Time Series Classifier",
+  "description": "Convolutional architecture for detecting local patterns in candlestick sequences",
+  "input": {
+    "shape": [120, 15],
+    "description": "120 time steps (candles) with 15 features each"
+  },
+  "layers": [
+    {
+      "type": "conv1d",
+      "filters": 64,
+      "kernel_size": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "First convolutional layer - detects 3-candle patterns"
+    },
+    {
+      "type": "max_pooling1d",
+      "pool_size": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Downsampling to reduce dimensionality"
+    },
+    {
+      "type": "conv1d",
+      "filters": 128,
+      "kernel_size": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Second convolutional layer - detects higher-level patterns"
+    },
+    {
+      "type": "max_pooling1d",
+      "pool_size": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Further downsampling"
+    },
+    {
+      "type": "conv1d",
+      "filters": 256,
+      "kernel_size": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Third convolutional layer - detects complex patterns"
+    },
+    {
+      "type": "global_average_pooling1d",
+      "description": "Aggregate features across time dimension"
+    },
+    {
+      "type": "dense",
+      "units": 128,
+      "activation": "relu",
+      "description": "Fully connected layer for feature combination"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.4,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "dense",
+      "units": 64,
+      "activation": "relu",
+      "description": "Second fully connected layer"
+    },
+    {
+      "type": "dense",
+      "units": 3,
+      "activation": "softmax",
+      "description": "Output layer - 3 classes: [HOLD, LONG, SHORT]"
+    }
+  ],
+  "output": {
+    "shape": [3],
+    "classes": ["HOLD", "LONG", "SHORT"],
+    "description": "Probability distribution over three trading actions"
+  },
+  "compilation": {
+    "loss": "categorical_crossentropy",
+    "optimizer": {
+      "type": "adam",
+      "learning_rate": 0.001,
+      "beta_1": 0.9,
+      "beta_2": 0.999,
+      "epsilon": 1e-07
+    },
+    "metrics": ["accuracy", "categorical_crossentropy"]
+  },
+  "training": {
+    "batch_size": 64,
+    "epochs": 100,
+    "validation_split": 0.2,
+    "early_stopping": {
+      "monitor": "val_loss",
+      "patience": 10,
+      "restore_best_weights": true
+    }
+  }
+}
