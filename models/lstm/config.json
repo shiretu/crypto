@@ -1,5 +1,6 @@
 {
     "exchangeName": "binance",
     "symbol": "BTCUSDC",
-    "candleDurationMinutes": 1
+    "candleDurationMinutes": 1,
+    "nnType": "tf"
 }
