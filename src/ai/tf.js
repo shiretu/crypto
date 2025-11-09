@@ -1,12 +1,19 @@
 const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
+const path = require('path')
+const fs = require('fs').promises
 
 class Tf {
     #config /** @type {object} */
     #model /** @type {tf.LayersModel} */
+    #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
 
     constructor (config) {
         this.#config = config
+        this.#batch = []
+        this.#config.modelRunFolder = path.resolve(this.#config.modelFolder, 'tf', `${this.#config.candlesPerWindow}x${this.#config.featuresPerCandle}`)
+        this.#config.modelTrainLogPath = path.resolve(this.#config.modelRunFolder, 'train.csv')
+        this.#config.modelPredLogPath = path.resolve(this.#config.modelRunFolder, 'pred.csv')
     }
 
     static async load (config) {
@@ -15,8 +22,48 @@ class Tf {
         return result
     }
 
-    train (samples) {
-        throw new Error('TensorFlow model training not implemented')
+    async save () {
+        await fs.mkdir(this.#config.modelRunFolder, { recursive: true })
+        await this.#model.save(`file://${this.#config.modelRunFolder}`, { includeOptimizer: true })
+        console.log(`Saved model to ${this.#config.modelRunFolder}`)
+    }
+
+    async train (inputArrays, outputArray) {
+        // Convert input and output to tensors
+        const input = tf.tensor(inputArrays)
+        const output = tf.tensor(outputArray)
+
+        // Add to batch
+        this.#batch.push({ input, output })
+
+        // Check if batch is full
+        if (this.#batch.length < this.#config.modelArch.training.batchSize) { return null }
+
+        // Stack all inputs and outputs into batched tensors
+        const allInputs = tf.stack(this.#batch.map(item => item.input))
+        const allOutputs = tf.stack(this.#batch.map(item => item.output))
+
+        try {
+            // Train on the batch
+            const history = await this.#model.fit(allInputs, allOutputs, {
+                epochs: 1,
+                verbose: 0
+            })
+
+            // Return training metrics
+            return history.history
+        } finally {
+            // Clean up tensors
+            this.#batch.forEach(item => {
+                item.input.dispose()
+                item.output.dispose()
+            })
+            allInputs.dispose()
+            allOutputs.dispose()
+
+            // Clear batch
+            this.#batch = []
+        }
     }
 
     pred (input) {
@@ -25,15 +72,20 @@ class Tf {
 
     async #init () {
         try {
-            this.#load()
+            await this.#load()
         } catch {
-            this.#create()
+            await this.#create()
         }
     }
 
-    #load () { throw new Error('Not implemented yet') }
+    async #load () {
+        const modelPath = `file://${this.#config.modelRunFolder}/model.json`
+        this.#model = await tf.loadLayersModel(modelPath)
+        console.log(`Loaded model from ${this.#config.modelRunFolder}`)
+        this.#model.summary()
+    }
 
-    #create () {
+    async #create () {
         // Add all configured layers
         const layers = this.#config.modelArch.layers.map((layer, index) => this.#createLayer(layer, index === 0)).filter(layer => layer !== null)
 
@@ -51,6 +103,7 @@ class Tf {
         console.log('Model created successfully')
         model.summary()
         this.#model = model
+        await this.save()
     }
 
     #createLayer (layerConf, isFirstLayer) {
@@ -61,11 +114,11 @@ class Tf {
                 return tf.layers.lstm({
                     ...baseConfig,
                     units: layerConf.units,
-                    returnSequences: layerConf.return_sequences,
+                    returnSequences: layerConf.returnSequences,
                     activation: layerConf.activation,
-                    recurrentActivation: layerConf.recurrent_activation,
+                    recurrentActivation: layerConf.recurrentActivation,
                     dropout: layerConf.dropout,
-                    recurrentDropout: layerConf.recurrent_dropout
+                    recurrentDropout: layerConf.recurrentDropout
                 })
 
             case 'dropout':
@@ -83,20 +136,20 @@ class Tf {
                 return tf.layers.conv1d({
                     ...baseConfig,
                     filters: layerConf.filters,
-                    kernelSize: layerConf.kernel_size,
+                    kernelSize: layerConf.kernelSize,
                     strides: layerConf.strides,
                     padding: layerConf.padding,
                     activation: layerConf.activation
                 })
 
-            case 'max_pooling1d':
+            case 'maxPooling1d':
                 return tf.layers.maxPooling1d({
-                    poolSize: layerConf.pool_size,
+                    poolSize: layerConf.poolSize,
                     strides: layerConf.strides,
                     padding: layerConf.padding
                 })
 
-            case 'global_average_pooling1d':
+            case 'globalAveragePooling1d':
                 return tf.layers.globalAveragePooling1d()
 
             default:
@@ -109,9 +162,9 @@ class Tf {
         switch (optimizerConf.type) {
             case 'adam':
                 return tf.train.adam(
-                    optimizerConf.learning_rate,
-                    optimizerConf.beta_1,
-                    optimizerConf.beta_2,
+                    optimizerConf.learningRate,
+                    optimizerConf.beta1,
+                    optimizerConf.beta2,
                     optimizerConf.epsilon
                 )
 

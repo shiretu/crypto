@@ -5,15 +5,15 @@
     {
       "type": "conv1d",
       "filters": 64,
-      "kernel_size": 3,
+      "kernelSize": 3,
       "strides": 1,
       "padding": "same",
       "activation": "relu",
       "description": "First convolutional layer - detects 3-candle patterns"
     },
     {
-      "type": "max_pooling1d",
-      "pool_size": 2,
+      "type": "maxPooling1d",
+      "poolSize": 2,
       "strides": 2,
       "padding": "valid",
       "description": "Downsampling to reduce dimensionality"
@@ -21,15 +21,15 @@
     {
       "type": "conv1d",
       "filters": 128,
-      "kernel_size": 3,
+      "kernelSize": 3,
       "strides": 1,
       "padding": "same",
       "activation": "relu",
       "description": "Second convolutional layer - detects higher-level patterns"
     },
     {
-      "type": "max_pooling1d",
-      "pool_size": 2,
+      "type": "maxPooling1d",
+      "poolSize": 2,
       "strides": 2,
       "padding": "valid",
       "description": "Further downsampling"
@@ -37,14 +37,14 @@
     {
       "type": "conv1d",
       "filters": 256,
-      "kernel_size": 3,
+      "kernelSize": 3,
       "strides": 1,
       "padding": "same",
       "activation": "relu",
       "description": "Third convolutional layer - detects complex patterns"
     },
     {
-      "type": "global_average_pooling1d",
+      "type": "globalAveragePooling1d",
       "description": "Aggregate features across time dimension"
     },
     {
@@ -86,9 +86,9 @@
     "loss": "categoricalCrossentropy",
     "optimizer": {
       "type": "adam",
-      "learning_rate": 0.001,
-      "beta_1": 0.9,
-      "beta_2": 0.999,
+      "learningRate": 0.001,
+      "beta1": 0.9,
+      "beta2": 0.999,
       "epsilon": 1e-07
     },
     "metrics": [
@@ -97,13 +97,13 @@
     ]
   },
   "training": {
-    "batch_size": 64,
+    "batchSize": 64,
     "epochs": 100,
-    "validation_split": 0.2,
-    "early_stopping": {
+    "validationSplit": 0.2,
+    "earlyStopping": {
       "monitor": "val_loss",
       "patience": 10,
-      "restore_best_weights": true
+      "restoreBestWeights": true
     }
   }
 }

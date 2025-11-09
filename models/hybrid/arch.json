@@ -5,15 +5,15 @@
     {
       "type": "conv1d",
       "filters": 64,
-      "kernel_size": 5,
+      "kernelSize": 5,
       "strides": 1,
       "padding": "same",
       "activation": "relu",
       "description": "First convolutional layer - extracts local features from candle patterns"
     },
     {
-      "type": "max_pooling1d",
-      "pool_size": 2,
+      "type": "maxPooling1d",
+      "poolSize": 2,
       "strides": 2,
       "padding": "valid",
       "description": "Downsampling to reduce dimensionality before LSTM"
@@ -21,15 +21,15 @@
     {
       "type": "conv1d",
       "filters": 128,
-      "kernel_size": 3,
+      "kernelSize": 3,
       "strides": 1,
       "padding": "same",
       "activation": "relu",
       "description": "Second convolutional layer - detects higher-level patterns"
     },
     {
-      "type": "max_pooling1d",
-      "pool_size": 2,
+      "type": "maxPooling1d",
+      "poolSize": 2,
       "strides": 2,
       "padding": "valid",
       "description": "Further downsampling"
@@ -37,11 +37,11 @@
     {
       "type": "lstm",
       "units": 64,
-      "return_sequences": false,
+      "returnSequences": false,
       "activation": "tanh",
-      "recurrent_activation": "sigmoid",
+      "recurrentActivation": "sigmoid",
       "dropout": 0.0,
-      "recurrent_dropout": 0.0,
+      "recurrentDropout": 0.0,
       "description": "LSTM layer - learns temporal dependencies of extracted CNN features"
     },
     {
@@ -77,9 +77,9 @@
     "loss": "categoricalCrossentropy",
     "optimizer": {
       "type": "adam",
-      "learning_rate": 0.001,
-      "beta_1": 0.9,
-      "beta_2": 0.999,
+      "learningRate": 0.001,
+      "beta1": 0.9,
+      "beta2": 0.999,
       "epsilon": 1e-07
     },
     "metrics": [
@@ -88,13 +88,13 @@
     ]
   },
   "training": {
-    "batch_size": 32,
+    "batchSize": 32,
     "epochs": 100,
-    "validation_split": 0.2,
-    "early_stopping": {
+    "validationSplit": 0.2,
+    "earlyStopping": {
       "monitor": "val_loss",
       "patience": 10,
-      "restore_best_weights": true
+      "restoreBestWeights": true
     }
   }
 }
