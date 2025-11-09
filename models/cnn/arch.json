@@ -66,24 +66,23 @@
     },
     {
       "type": "dense",
-      "units": 3,
-      "activation": "softmax",
-      "description": "Output layer - 3 classes: [HOLD, LONG, SHORT]"
+      "units": 2,
+      "activation": "tanh",
+      "description": "Output layer - 2 values: [p_buy, p_sell] with tanh for range [-1, 1]"
     }
   ],
   "output": {
     "shape": [
-      3
+      2
     ],
-    "classes": [
-      "HOLD",
-      "LONG",
-      "SHORT"
+    "values": [
+      "p_buy",
+      "p_sell"
     ],
-    "description": "Probability distribution over three trading actions"
+    "description": "Continuous predictions for buy and sell quality, range [-1, 1]"
   },
   "compilation": {
-    "loss": "categoricalCrossentropy",
+    "loss": "meanAbsoluteError",
     "optimizer": {
       "type": "adam",
       "learningRate": 0.001,
@@ -92,8 +91,7 @@
       "epsilon": 1e-07
     },
     "metrics": [
-      "accuracy",
-      "categoricalCrossentropy"
+      "mae"
     ]
   },
   "training": {
