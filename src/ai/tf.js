@@ -5,6 +5,7 @@ const fs = require('fs').promises
 const Csv = require('../utils/Csv')
 const AttentionLayer = require('./AttentionLayer')
 const SqueezeExcitationLayer = require('./SqueezeExcitationLayer')
+const GatedResidualLayer = require('./GatedResidualLayer')
 
 class Tf {
     #config /** @type {object} */
@@ -189,6 +190,17 @@ class Tf {
                 // Note: Expects input shape [batch, timesteps, channels]
                 return new SqueezeExcitationLayer({
                     reduction: layerConf.reduction || 16
+                })
+            }
+
+            case 'gatedResidual': {
+                // Gated Residual Block with learned skip connection
+                // Network learns whether to use transformation or skip it
+                // Note: Expects input shape [batch, timesteps, channels]
+                return new GatedResidualLayer({
+                    filters: layerConf.filters,
+                    kernelSize: layerConf.kernelSize || 3,
+                    activation: layerConf.activation || 'relu'
                 })
             }
 
