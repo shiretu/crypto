@@ -43,7 +43,7 @@ const generateOnTheFlyFeed = async (config, onSample, onSave) => {
 
 const work = async () => {
     // Parse command line arguments
-    const modelName = process.argv[2] || 'lstm'
+    const modelName = process.argv[2] || 'tpn'
 
     // load the configuration
     const config = await loadConfig(modelName)
