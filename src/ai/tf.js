@@ -151,7 +151,8 @@ class Tf {
                     kernelSize: layerConf.kernelSize,
                     strides: layerConf.strides,
                     padding: layerConf.padding,
-                    activation: layerConf.activation
+                    activation: layerConf.activation,
+                    dilationRate: layerConf.dilation || 1
                 })
 
             case 'maxPooling1d':

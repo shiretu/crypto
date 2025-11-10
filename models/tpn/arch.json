@@ -1,0 +1,166 @@
+{
+    "name": "Multi-Scale Inception Network",
+    "description": "Multiple kernel sizes for multi-scale pattern detection - inspired by Inception architecture",
+    "layers": [
+        {
+            "type": "conv1d",
+            "filters": 48,
+            "kernelSize": 1,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Branch 1: Single-candle features (kernel=1)"
+        },
+        {
+            "type": "conv1d",
+            "filters": 48,
+            "kernelSize": 3,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Branch 2: 3-candle patterns (kernel=3)"
+        },
+        {
+            "type": "conv1d",
+            "filters": 48,
+            "kernelSize": 5,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Branch 3: 5-candle patterns (kernel=5)"
+        },
+        {
+            "type": "conv1d",
+            "filters": 48,
+            "kernelSize": 7,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Branch 4: 7-candle patterns (kernel=7)"
+        },
+        {
+            "type": "conv1d",
+            "filters": 96,
+            "kernelSize": 1,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Inception fusion: Combine all scales (1x1 bottleneck)"
+        },
+        {
+            "type": "maxPooling1d",
+            "poolSize": 2,
+            "strides": 2,
+            "padding": "valid",
+            "description": "Downsample: 120 → 60"
+        },
+        {
+            "type": "conv1d",
+            "filters": 64,
+            "kernelSize": 3,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Inception 2 - Branch 1: 3-candle on fused features"
+        },
+        {
+            "type": "conv1d",
+            "filters": 64,
+            "kernelSize": 5,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Inception 2 - Branch 2: 5-candle on fused features"
+        },
+        {
+            "type": "conv1d",
+            "filters": 128,
+            "kernelSize": 1,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Second inception fusion (1x1 bottleneck)"
+        },
+        {
+            "type": "maxPooling1d",
+            "poolSize": 2,
+            "strides": 2,
+            "padding": "valid",
+            "description": "Downsample: 60 → 30"
+        },
+        {
+            "type": "conv1d",
+            "filters": 256,
+            "kernelSize": 3,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "High-level feature extraction"
+        },
+        {
+            "type": "globalAveragePooling1d",
+            "description": "Aggregate all features"
+        },
+        {
+            "type": "dense",
+            "units": 128,
+            "activation": "relu",
+            "description": "Decision layer 1"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.4,
+            "description": "Regularization"
+        },
+        {
+            "type": "dense",
+            "units": 64,
+            "activation": "relu",
+            "description": "Decision layer 2"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.3,
+            "description": "Light regularization"
+        },
+        {
+            "type": "dense",
+            "units": 2,
+            "activation": "tanh",
+            "description": "Output: [p_buy, p_sell] in range [-1, 1]"
+        }
+    ],
+    "output": {
+        "shape": [
+            2
+        ],
+        "values": [
+            "p_buy",
+            "p_sell"
+        ],
+        "description": "Continuous predictions for buy and sell confidence"
+    },
+    "compilation": {
+        "loss": "meanAbsoluteError",
+        "optimizer": {
+            "type": "adam",
+            "learningRate": 0.0007,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-07
+        },
+        "metrics": [
+            "mae"
+        ]
+    },
+    "training": {
+        "batchSize": 56,
+        "epochs": 100,
+        "validationSplit": 0.2,
+        "earlyStopping": {
+            "monitor": "val_loss",
+            "patience": 10,
+            "restoreBestWeights": true
+        }
+    }
+}
