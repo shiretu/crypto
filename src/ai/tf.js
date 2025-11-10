@@ -267,13 +267,28 @@ class Tf {
 
     #createOptimizer (optimizerConf) {
         switch (optimizerConf.type) {
-            case 'adam':
-                return tf.train.adam(
+            case 'adam': {
+                const optimizer = tf.train.adam(
                     optimizerConf.learningRate,
                     optimizerConf.beta1,
                     optimizerConf.beta2,
                     optimizerConf.epsilon
                 )
+
+                // Apply gradient clipping if specified
+                if (optimizerConf.clipNorm) {
+                    return tf.train.adam(
+                        optimizerConf.learningRate,
+                        optimizerConf.beta1,
+                        optimizerConf.beta2,
+                        optimizerConf.epsilon,
+                        null, // decay
+                        optimizerConf.clipNorm // clipNorm
+                    )
+                }
+
+                return optimizer
+            }
 
             default:
                 console.warn(`Unknown optimizer type: ${optimizerConf.type}, using adam`)
