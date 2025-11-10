@@ -100,6 +100,15 @@ class Tf {
     }
 
     async #create () {
+        // Check if this is an ensemble (multi-branch) architecture
+        if (this.#config.modelArch.branches) {
+            await this.#createEnsemble()
+        } else {
+            await this.#createSequential()
+        }
+    }
+
+    async #createSequential () {
         // Add all configured layers
         const layers = this.#config.modelArch.layers.map((layer, index) => this.#createLayer(layer, index === 0)).filter(layer => layer !== null)
 
@@ -115,6 +124,52 @@ class Tf {
         })
 
         console.log('Model created successfully')
+        model.summary()
+        this.#model = model
+        await this.save()
+    }
+
+    async #createEnsemble () {
+        // Create input layer
+        const input = tf.input({ shape: [this.#config.candlesPerWindow, this.#config.featuresPerCandle] })
+
+        // Build each branch
+        const branchOutputs = this.#config.modelArch.branches.map(branchConfig => {
+            let x = input
+            for (const layerConf of branchConfig.layers) {
+                const layer = this.#createLayer(layerConf, false)
+                if (layer) {
+                    x = layer.apply(x)
+                }
+            }
+            return x
+        })
+
+        // Concatenate branch outputs
+        let merged = branchOutputs.length > 1
+            ? tf.layers.concatenate().apply(branchOutputs)
+            : branchOutputs[0]
+
+        // Add fusion layers
+        for (const layerConf of this.#config.modelArch.fusion) {
+            const layer = this.#createLayer(layerConf, false)
+            if (layer) {
+                merged = layer.apply(merged)
+            }
+        }
+
+        // Create functional model
+        const model = tf.model({ inputs: input, outputs: merged })
+
+        // Compile model
+        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
+        model.compile({
+            optimizer,
+            loss: this.#config.modelArch.compilation.loss,
+            metrics: this.#config.modelArch.compilation.metrics
+        })
+
+        console.log('Ensemble model created successfully')
         model.summary()
         this.#model = model
         await this.save()
