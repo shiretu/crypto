@@ -13,6 +13,7 @@ class Tf {
     #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
     #logTrain /** @type {function(Object):void} */
     #batchCount /** @type {number} */
+    #outputTransformation /** @type {function(Array):Array} */
 
     constructor (config) {
         this.#config = config
@@ -27,6 +28,13 @@ class Tf {
         } else {
             this.#logTrain = (data) => {}
         }
+        this.#outputTransformation = this.#config.modelArch.output.binary
+            ? (array) => {
+                // Winner-takes-all: highest value becomes 1, others become 0
+                const maxValue = Math.max(...array)
+                return array.map(value => value === maxValue ? 1 : 0)
+            }
+            : (array) => array
     }
 
     static async load (config) {
@@ -44,7 +52,7 @@ class Tf {
     async train (inputArrays, outputArray) {
         // Convert input and output to tensors
         const input = tf.tensor(inputArrays)
-        const output = tf.tensor(outputArray)
+        const output = tf.tensor(this.#outputTransformation(outputArray))
 
         // Add to batch
         this.#batch.push({ input, output })
@@ -112,8 +120,16 @@ class Tf {
             inputTensor.dispose()
             outputTensor.dispose()
 
-            // Return the prediction array (first batch item, which is the only one)
-            return prediction[0]
+            // Get the prediction array (first batch item, which is the only one)
+            let result = prediction[0]
+
+            // For binary classification with softmax, apply argmax to get discrete output
+            if (this.#config.modelArch.output.binary) {
+                const maxIndex = result.indexOf(Math.max(...result))
+                result = result.map((_, index) => index === maxIndex ? 1 : 0)
+            }
+
+            return result
         } catch (error) {
             inputTensor.dispose()
             throw error

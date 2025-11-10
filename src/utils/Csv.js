@@ -38,15 +38,17 @@ class Csv {
                 return v
             }
         }).join(',')
-        fs.appendFileSync(this.#filePath, line + '\n')
+        if (this.#filePath) { fs.appendFileSync(this.#filePath, line + '\n') }
         if (this.#consoleOutput) { console.log(line) }
     }
 
     #printCsvWithColumns (data) {
         const headers = Object.keys(data).join(',')
-        if (!fs.existsSync(this.#filePath)) {
-            fs.mkdirSync(path.dirname(this.#filePath), { recursive: true })
-            fs.writeFileSync(this.#filePath, headers + '\n')
+        if (this.#filePath) {
+            if (!fs.existsSync(this.#filePath)) {
+                fs.mkdirSync(path.dirname(this.#filePath), { recursive: true })
+                fs.writeFileSync(this.#filePath, headers + '\n')
+            }
         }
         if (this.#consoleOutput) { console.log(headers) }
         this.#printFnc = (data) => this.#printCsvWithoutColumns(data)
