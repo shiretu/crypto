@@ -60,12 +60,18 @@ class Tf {
             // Train on the batch
             const history = await this.#model.fit(allInputs, allOutputs, {
                 epochs: 1,
+                batchSize: this.#batch.length,
                 verbose: 0
             })
+            this.#batchCount++
 
             // do the logging
-            this.#logTrain({ outputArray, ...history.history })
-            this.#batchCount++
+            this.#logTrain({ outputArray, ...history.history, batchIndex: this.#batchCount - 1 })
+
+            // Every 100 batches, check if model is collapsing
+            if (this.#batchCount % 100 === 0) {
+                await this.#checkModelCollapse(allInputs, allOutputs)
+            }
 
             // Return training metrics
             return history.history
@@ -115,7 +121,9 @@ class Tf {
     async #init () {
         try {
             await this.#load()
-        } catch {
+        } catch (error) {
+            console.error('Failed to load model:', error)
+            console.log('Creating new model instead...')
             await this.#create()
         }
     }
@@ -223,9 +231,21 @@ class Tf {
                     rate: layerConf.rate
                 })
 
+            case 'flatten':
+                return tf.layers.flatten(baseConfig)
+
             case 'dense':
                 return tf.layers.dense({
                     units: layerConf.units,
+                    activation: layerConf.activation,
+                    kernelInitializer: layerConf.kernelInitializer
+                })
+
+            case 'batchNormalization':
+                return tf.layers.batchNormalization()
+
+            case 'activation':
+                return tf.layers.activation({
                     activation: layerConf.activation
                 })
 
