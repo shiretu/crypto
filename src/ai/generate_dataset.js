@@ -29,7 +29,7 @@ const work = async () => {
         // create the outputs
         const outputs = await createOutputs(config, inputsInfo.nextTradeIndex)
 
-        all.push([inputsInfo.firstCandleIndex])
+        all.push([inputsInfo.firstCandleIndex, inputsInfo.nextTradeIndex])
         all.push(inputsInfo.inputs.flat())
         all.push(outputs)
 

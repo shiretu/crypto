@@ -1,6 +1,7 @@
 {
     "exchangeName": "binance",
     "symbol": "BTCUSDC",
+    "usePregeneratedSamples": true,
     "autosaveIntervalSecs": 10,
     "logTrainEnabled": true,
     "logPredEnabled": true,

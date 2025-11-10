@@ -16,7 +16,7 @@ class Tf {
         this.#batch = []
         this.#config.modelRunFolder = path.resolve(this.#config.modelFolder, 'tf', `${this.#config.candlesPerWindow}x${this.#config.featuresPerCandle}`)
         if (this.#config.logTrainEnabled) {
-            const csv = new Csv(path.resolve(this.#config.modelRunFolder, 'train.csv'), true)
+            const csv = new Csv(path.resolve(this.#config.modelRunFolder, 'train.csv'), !this.#config.usePregeneratedSamples)
             this.#logTrain = (data) => {
                 csv.print(data)
             }
