@@ -4,6 +4,7 @@ const path = require('path')
 const fs = require('fs').promises
 const Csv = require('../utils/Csv')
 const AttentionLayer = require('./AttentionLayer')
+const SqueezeExcitationLayer = require('./SqueezeExcitationLayer')
 
 class Tf {
     #config /** @type {object} */
@@ -180,6 +181,15 @@ class Tf {
                 // This learns to weight the importance of each timestep
                 // Note: Expects input shape [batch, timesteps, features]
                 return new AttentionLayer()
+            }
+
+            case 'squeezeExcitation': {
+                // Squeeze-and-Excitation block for channel-wise attention
+                // Learns which feature channels are most important
+                // Note: Expects input shape [batch, timesteps, channels]
+                return new SqueezeExcitationLayer({
+                    reduction: layerConf.reduction || 16
+                })
             }
 
             default:
