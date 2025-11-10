@@ -47,7 +47,7 @@ const _loadConfig = async (modelName) => {
 
 const _loadCandles = async (config, firstCandleIndex) => {
     const requiredCandlesCount = config.candlesPerWindow + config.candlesPreambleCount
-    if (firstCandleIndex < 0) {
+    if ((firstCandleIndex === undefined) || (firstCandleIndex < 0)) {
         firstCandleIndex = Math.floor(Math.random() * (config.candlesMap.length - requiredCandlesCount))
     }
     const result = config.candlesMap.bulkGet(
@@ -61,8 +61,8 @@ const _loadCandles = async (config, firstCandleIndex) => {
     return result
 }
 
-const _createInputs = async (config) => {
-    const candlesInfo = await _loadCandles(config, -1)
+const _createInputs = async (config, firstCandleIndex) => {
+    const candlesInfo = await _loadCandles(config, firstCandleIndex)
     // normalize the candles
     Candle.normalize(candlesInfo.candles, config.normalizeAroundZero, config.normalizationFactor)
 

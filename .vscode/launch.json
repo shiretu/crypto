@@ -10,7 +10,7 @@
             "runtimeArgs": [
                 "run-script",
                 "ai:train",
-                "lstm"
+                "tpn"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
@@ -44,7 +44,7 @@
             "runtimeArgs": [
                 "run-script",
                 "ai:pred",
-                "clean"
+                "tpn"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
