@@ -107,8 +107,25 @@ const _createOutputs = async (config, fromTradeIndex) => {
     }
 
     const process = (order) => {
-        const result = Math.floor((1 - (order.isClosed ? (order.ageUs / maxHoldingTimeUs) : (lastGoodTradeTsUs - firstTrade.tsUs) / maxHoldingTimeUs)) * 100) / 100
-        return result * (order.isStopLossHit ? -1 : 1)
+        // Handle orders that never got entered
+        if (!order.enter || !order.last) return 0
+
+        // Calculate confidence based on how quickly the order closed/reached current time
+        const timeRatio = order.isClosed
+            ? (order.ageUs / maxHoldingTimeUs)
+            : ((lastGoodTradeTsUs - firstTrade.tsUs) / maxHoldingTimeUs)
+        const confidence = Math.floor((1 - timeRatio) * 1000) / 1000
+
+        // Determine direction based on outcome
+        const direction = (() => {
+            // Closed orders: use whether stop-loss or take-profit was hit
+            if (order.isClosed) { return order.isStopLossHit ? -1 : 1 }
+
+            // Open orders: use the sign of unrealized profit
+            return order.profitPercent >= 0 ? 1 : -1
+        })()
+
+        return confidence * direction
     }
 
     return [process(buyOrder), process(sellOrder)]
