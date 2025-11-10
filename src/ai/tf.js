@@ -2,18 +2,26 @@ const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 const path = require('path')
 const fs = require('fs').promises
+const Csv = require('../utils/Csv')
 
 class Tf {
     #config /** @type {object} */
     #model /** @type {tf.LayersModel} */
     #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
+    #logTrain /** @type {function(Object):void} */
 
     constructor (config) {
         this.#config = config
         this.#batch = []
         this.#config.modelRunFolder = path.resolve(this.#config.modelFolder, 'tf', `${this.#config.candlesPerWindow}x${this.#config.featuresPerCandle}`)
-        this.#config.modelTrainLogPath = path.resolve(this.#config.modelRunFolder, 'train.csv')
-        this.#config.modelPredLogPath = path.resolve(this.#config.modelRunFolder, 'pred.csv')
+        if (this.#config.logTrainEnabled) {
+            const csv = new Csv(path.resolve(this.#config.modelRunFolder, 'train.csv'), true)
+            this.#logTrain = (data) => {
+                csv.print(data)
+            }
+        } else {
+            this.#logTrain = (data) => {}
+        }
     }
 
     static async load (config) {
@@ -49,6 +57,9 @@ class Tf {
                 epochs: 1,
                 verbose: 0
             })
+
+            // do the logging
+            this.#logTrain({ outputArray, ...history.history })
 
             // Return training metrics
             return history.history

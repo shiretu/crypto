@@ -2,6 +2,8 @@
     "exchangeName": "binance",
     "symbol": "BTCUSDC",
     "autosaveIntervalSecs": 10,
+    "logTrainEnabled": true,
+    "logPredEnabled": true,
     "candleDurationMinutes": 1,
     "nnType": "tf",
     "candlesPerWindow": 120,

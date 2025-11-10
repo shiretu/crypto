@@ -1,11 +1,31 @@
+const fs = require('fs')
+const path = require('path')
 class Csv {
+    #filePath
+    #consoleOutput
     #printFnc
-    constructor () {
+
+    constructor (filePath, consoleOutput) {
+        this.#filePath = filePath
+        this.#consoleOutput = consoleOutput
         this.#printFnc = (data) => this.#printCsvWithColumns(data)
     }
 
     print (data) {
-        this.#printFnc(data)
+        this.#printFnc(Object.entries(data).reduce((result, [k, v]) => {
+            if (Array.isArray(v)) {
+                return { ...result, ...Csv.#flatArray(k, v) }
+            } else {
+                return { ...result, [k]: v }
+            }
+        }, {}))
+    }
+
+    static #flatArray (name, arr) {
+        return arr.reduce((result, current, index) => {
+            if (index > 10) return result
+            return { ...result, [`${name}_${index}`]: current }
+        }, {})
     }
 
     #printCsvWithoutColumns (data) {
@@ -18,14 +38,19 @@ class Csv {
                 return v
             }
         }).join(',')
-        console.log(line)
+        fs.appendFileSync(this.#filePath, line + '\n')
+        if (this.#consoleOutput) { console.log(line) }
     }
 
     #printCsvWithColumns (data) {
         const headers = Object.keys(data).join(',')
-        console.log(headers)
-        this.#printCsvWithoutColumns(data)
+        if (!fs.existsSync(this.#filePath)) {
+            fs.mkdirSync(path.dirname(this.#filePath), { recursive: true })
+            fs.writeFileSync(this.#filePath, headers + '\n')
+        }
+        if (this.#consoleOutput) { console.log(headers) }
         this.#printFnc = (data) => this.#printCsvWithoutColumns(data)
+        this.#printFnc(data)
     }
 }
 

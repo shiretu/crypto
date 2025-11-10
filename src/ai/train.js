@@ -1,9 +1,6 @@
-const Csv = require('../utils/Csv')
 const { loadConfig, loadNn, createInputs, createOutputs } = require('./common')
 
 const work = async () => {
-    const csv = new Csv()
-
     // Parse command line arguments
     const modelName = process.argv[2] || 'lstm'
 
@@ -31,11 +28,7 @@ const work = async () => {
         const outputs = await createOutputs(config, inputsInfo.nextTradeIndex)
 
         // do the training
-        const trainFeedback = await nn.train(inputsInfo.inputs, outputs)
-        if (trainFeedback === null) continue
-
-        // print the results
-        csv.print(trainFeedback)
+        await nn.train(inputsInfo.inputs, outputs)
     }
 }
 
