@@ -6,6 +6,7 @@
     "logPredEnabled": true,
     "candleDurationMinutes": 1,
     "nnType": "tf",
+    "candlesPreambleCount": 100,
     "candlesPerWindow": 120,
     "normalizeAroundZero": false,
     "normalizationFactor": 1,

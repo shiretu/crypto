@@ -25,12 +25,25 @@ const _loadConfig = async (modelName) => {
     result.modelArch = require(result.modelArchPath)
     const inputsInfo = await _createInputs(result)
     result.featuresPerCandle = inputsInfo.inputs[0].length
+
+    const particles = [
+        result.exchangeName,
+        result.symbol.id,
+        result.candlesPreambleCount,
+        result.candlesPerWindow,
+        result.normalizeAroundZero,
+        result.normalizationFactor,
+        result.featuresPerCandle,
+        (await _createOutputs(result, (await _createInputs(result)).nextTradeIndex)).length
+    ]
+
+    result.pregeneratedSamplesDataPath = path.join(result.dataFolder, `pregenerated_${particles.join('_')}.bin`)
+
     return result
 }
 
 const _loadCandles = async (config, firstCandleIndex) => {
-    const candlesPreambleCount = 100
-    const requiredCandlesCount = config.candlesPerWindow + candlesPreambleCount
+    const requiredCandlesCount = config.candlesPerWindow + config.candlesPreambleCount
     if (firstCandleIndex < 0) {
         firstCandleIndex = Math.floor(Math.random() * (config.candlesMap.length - requiredCandlesCount))
     }
@@ -86,7 +99,8 @@ const _createInputs = async (config) => {
                 macd[index].histogram
             ]
         }),
-        nextTradeIndex: candlesInfo.nextTradeIndex
+        nextTradeIndex: candlesInfo.nextTradeIndex,
+        firstCandleIndex: candlesInfo.firstCandleIndex
     }
 }
 
