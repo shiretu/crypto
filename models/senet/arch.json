@@ -138,8 +138,8 @@
         ]
     },
     "training": {
-        "batchSize": 64,
-        "epochs": 100,
+        "batchSize": 32,
+        "epochs": 1,
         "validationSplit": 0.2,
         "earlyStopping": {
             "monitor": "val_loss",

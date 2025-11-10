@@ -67,8 +67,8 @@
     {
       "type": "dense",
       "units": 2,
-      "activation": "tanh",
-      "description": "Output layer - 2 values: [p_buy, p_sell] with tanh for range [-1, 1]"
+      "activation": "linear",
+      "description": "Output layer - 2 values: [p_buy, p_sell] linear outputs"
     }
   ],
   "output": {
@@ -79,24 +79,25 @@
       "p_buy",
       "p_sell"
     ],
-    "description": "Continuous predictions for buy and sell quality, range [-1, 1]"
+    "description": "Continuous predictions for buy and sell quality"
   },
   "compilation": {
-    "loss": "meanAbsoluteError",
+    "loss": "meanSquaredError",
     "optimizer": {
       "type": "adam",
-      "learningRate": 0.001,
+      "learningRate": 0.0001,
       "beta1": 0.9,
       "beta2": 0.999,
-      "epsilon": 1e-07
+      "epsilon": 1e-07,
+      "clipNorm": 1.0
     },
     "metrics": [
       "mae"
     ]
   },
   "training": {
-    "batchSize": 64,
-    "epochs": 100,
+    "batchSize": 32,
+    "epochs": 1,
     "validationSplit": 0.2,
     "earlyStopping": {
       "monitor": "val_loss",

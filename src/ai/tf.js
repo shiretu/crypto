@@ -89,6 +89,37 @@ class Tf {
         }
     }
 
+    setupForInference () {
+        // CRITICAL: Manually disable dropout layers for inference
+        // TensorFlow.js doesn't reliably disable dropout with training=false
+        // Call this once before running predictions to avoid repeated layer filtering
+        const dropoutLayers = this.#model.layers.filter(layer => layer.getClassName() === 'Dropout')
+        dropoutLayers.forEach(layer => { layer.rate = 0 })
+    }
+
+    async predict (inputArray) {
+        // Convert input to tensor with shape [1, candlesPerWindow, featuresPerCandle]
+        const inputTensor = tf.tensor3d([inputArray])
+
+        try {
+            // Run prediction (dropout should already be disabled via setupForInference)
+            const outputTensor = this.#model.predict(inputTensor)
+
+            // Convert tensor to array
+            const prediction = await outputTensor.array()
+
+            // Clean up
+            inputTensor.dispose()
+            outputTensor.dispose()
+
+            // Return the prediction array (first batch item, which is the only one)
+            return prediction[0]
+        } catch (error) {
+            inputTensor.dispose()
+            throw error
+        }
+    }
+
     async #checkModelCollapse (inputBatch, outputBatch) {
         // Make predictions on the current batch
         const predictions = await this.#model.predict(inputBatch, { training: false }).array()
@@ -131,6 +162,15 @@ class Tf {
     async #load () {
         const modelPath = `file://${this.#config.modelRunFolder}/model.json`
         this.#model = await tf.loadLayersModel(modelPath)
+
+        // Recompile the model for inference (ensures proper configuration)
+        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
+        this.#model.compile({
+            optimizer,
+            loss: this.#config.modelArch.compilation.loss,
+            metrics: this.#config.modelArch.compilation.metrics
+        })
+
         console.log(`Loaded model from ${this.#config.modelRunFolder}`)
         this.#model.summary()
     }

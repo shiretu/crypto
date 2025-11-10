@@ -112,8 +112,8 @@
         {
             "type": "dense",
             "units": 2,
-            "activation": "tanh",
-            "description": "Output layer - [p_buy, p_sell] in range [-1, 1]"
+            "activation": "linear",
+            "description": "Output layer - [p_buy, p_sell] linear outputs"
         }
     ],
     "output": {
@@ -124,24 +124,25 @@
             "p_buy",
             "p_sell"
         ],
-        "description": "Continuous predictions for buy and sell confidence, range [-1, 1]"
+        "description": "Continuous predictions for buy and sell confidence"
     },
     "compilation": {
-        "loss": "meanAbsoluteError",
+        "loss": "meanSquaredError",
         "optimizer": {
             "type": "adam",
-            "learningRate": 0.0005,
+            "learningRate": 0.0001,
             "beta1": 0.9,
             "beta2": 0.999,
-            "epsilon": 1e-07
+            "epsilon": 1e-07,
+            "clipNorm": 1.0
         },
         "metrics": [
             "mae"
         ]
     },
     "training": {
-        "batchSize": 48,
-        "epochs": 120,
+        "batchSize": 32,
+        "epochs": 1,
         "validationSplit": 0.2,
         "earlyStopping": {
             "monitor": "val_loss",
