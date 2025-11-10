@@ -3,6 +3,7 @@ require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 const path = require('path')
 const fs = require('fs').promises
 const Csv = require('../utils/Csv')
+const AttentionLayer = require('./AttentionLayer')
 
 class Tf {
     #config /** @type {object} */
@@ -162,6 +163,23 @@ class Tf {
 
             case 'globalAveragePooling1d':
                 return tf.layers.globalAveragePooling1d()
+
+            case 'bidirectional': {
+                // Create the inner LSTM layer
+                const innerLayer = this.#createLayer(layerConf.layer, false)
+                return tf.layers.bidirectional({
+                    ...baseConfig,
+                    layer: innerLayer,
+                    mergeMode: 'concat' // Concatenate forward and backward outputs
+                })
+            }
+
+            case 'attention': {
+                // Simplified attention mechanism using time-distributed dense + softmax
+                // This learns to weight the importance of each timestep
+                // Note: Expects input shape [batch, timesteps, features]
+                return new AttentionLayer()
+            }
 
             default:
                 console.warn(`Unknown layer type: ${layerConf.type}`)
