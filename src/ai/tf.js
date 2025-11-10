@@ -12,10 +12,12 @@ class Tf {
     #model /** @type {tf.LayersModel} */
     #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
     #logTrain /** @type {function(Object):void} */
+    #batchCount /** @type {number} */
 
     constructor (config) {
         this.#config = config
         this.#batch = []
+        this.#batchCount = 0
         this.#config.modelRunFolder = path.resolve(this.#config.modelFolder, 'tf', `${this.#config.candlesPerWindow}x${this.#config.featuresPerCandle}`)
         if (this.#config.logTrainEnabled) {
             const csv = new Csv(path.resolve(this.#config.modelRunFolder, 'train.csv'), !this.#config.usePregeneratedSamples)
@@ -63,6 +65,7 @@ class Tf {
 
             // do the logging
             this.#logTrain({ outputArray, ...history.history })
+            this.#batchCount++
 
             // Return training metrics
             return history.history
@@ -80,8 +83,33 @@ class Tf {
         }
     }
 
-    pred (input) {
-        throw new Error('TensorFlow model prediction not implemented')
+    async #checkModelCollapse (inputBatch, outputBatch) {
+        // Make predictions on the current batch
+        const predictions = await this.#model.predict(inputBatch, { training: false }).array()
+
+        // Calculate stats on predictions
+        const flat = predictions.flat()
+        const mean = flat.reduce((a, b) => a + b, 0) / flat.length
+        const variance = flat.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / flat.length
+        const stdDev = Math.sqrt(variance)
+        const min = Math.min(...flat)
+        const max = Math.max(...flat)
+
+        // Get expected outputs for comparison
+        const expected = await outputBatch.array()
+        const expectedFlat = expected.flat()
+        const expectedMean = expectedFlat.reduce((a, b) => a + b, 0) / expectedFlat.length
+
+        console.log(`\n[Batch ${this.#batchCount}] Model Health Check:`)
+        console.log(`  Predictions   - Mean: ${mean.toFixed(4)}, StdDev: ${stdDev.toFixed(4)}, Range: [${min.toFixed(4)}, ${max.toFixed(4)}]`)
+        console.log(`  Expected      - Mean: ${expectedMean.toFixed(4)}`)
+        console.log(`  Sample Pred:  [${predictions[0].map(v => v.toFixed(4)).join(', ')}]`)
+        console.log(`  Sample Target: [${expected[0].map(v => v.toFixed(4)).join(', ')}]`)
+
+        // Warn if model is collapsing (very low variance)
+        if (stdDev < 0.01) {
+            console.log('  ⚠️  WARNING: Model may be collapsing (stdDev < 0.01)')
+        }
     }
 
     async #init () {
