@@ -141,12 +141,7 @@ class Tf {
         this.#model = await tf.loadLayersModel(modelPath)
 
         // Recompile the model for inference (ensures proper configuration)
-        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
-        this.#model.compile({
-            optimizer,
-            loss: this.#config.modelArch.compilation.loss,
-            metrics: this.#config.modelArch.compilation.metrics
-        })
+        this.#compileModel()
 
         console.log(`Loaded model from ${this.#config.modelRunFolder}`)
         this.#model.summary()
@@ -166,19 +161,13 @@ class Tf {
         const layers = this.#config.modelArch.layers.map((layer, index) => this.#createLayer(layer, index === 0)).filter(layer => layer !== null)
 
         // Create sequential model
-        const model = tf.sequential({ layers })
+        this.#model = tf.sequential({ layers })
 
         // Compile model
-        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
-        model.compile({
-            optimizer,
-            loss: this.#config.modelArch.compilation.loss,
-            metrics: this.#config.modelArch.compilation.metrics
-        })
+        this.#compileModel()
 
         console.log('Model created successfully')
-        model.summary()
-        this.#model = model
+        this.#model.summary()
         await this.save()
     }
 
@@ -212,19 +201,13 @@ class Tf {
         }
 
         // Create functional model
-        const model = tf.model({ inputs: input, outputs: merged })
+        this.#model = tf.model({ inputs: input, outputs: merged })
 
         // Compile model
-        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
-        model.compile({
-            optimizer,
-            loss: this.#config.modelArch.compilation.loss,
-            metrics: this.#config.modelArch.compilation.metrics
-        })
+        this.#compileModel()
 
         console.log('Ensemble model created successfully')
-        model.summary()
-        this.#model = model
+        this.#model.summary()
         await this.save()
     }
 
@@ -359,6 +342,15 @@ class Tf {
                 console.warn(`Unknown optimizer type: ${optimizerConf.type}, using adam`)
                 return tf.train.adam()
         }
+    }
+
+    #compileModel () {
+        const optimizer = this.#createOptimizer(this.#config.modelArch.compilation.optimizer)
+        this.#model.compile({
+            optimizer,
+            loss: this.#config.modelArch.compilation.loss,
+            metrics: this.#config.modelArch.compilation.metrics
+        })
     }
 }
 

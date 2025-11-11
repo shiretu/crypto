@@ -56,6 +56,8 @@ const work = async () => {
     }
 
     for (let i = startCandleIndex; i < endCandleIndex; i++) {
+        bar.update(i + 1 - startCandleIndex)
+
         const inputsInfo = await createInputs(config, i)
         const actual = nn.outputTransformation(await createOutputs(config, inputsInfo.nextTradeIndex))
         const predictionResult = await nn.predict(inputsInfo.inputs)
@@ -85,9 +87,6 @@ const work = async () => {
         stats.buyLosses += ((prediction[0] !== actual[0]) && (prediction[0] === 1)) ? 1 : 0
         stats.sellWins += ((prediction[1] === actual[1]) && (prediction[1] === 1)) ? 1 : 0
         stats.sellLosses += ((prediction[1] !== actual[1]) && (prediction[1] === 1)) ? 1 : 0
-
-        // Update progress bar
-        bar.update(i + 1 - startCandleIndex)
     }
 
     bar.stop()
