@@ -6,6 +6,7 @@ const Csv = require('../utils/Csv')
 const AttentionLayer = require('./AttentionLayer')
 const SqueezeExcitationLayer = require('./SqueezeExcitationLayer')
 const GatedResidualLayer = require('./GatedResidualLayer')
+const { binaryConverter } = require('./common')
 
 class Tf {
     #config /** @type {object} */
@@ -29,11 +30,7 @@ class Tf {
             this.#logTrain = (data) => {}
         }
         this.#outputTransformation = this.#config.modelArch.output.binary
-            ? (array) => {
-                // Winner-takes-all: highest value becomes 1, others become 0
-                const maxValue = Math.max(...array)
-                return array.map(value => value === maxValue ? 1 : 0)
-            }
+            ? binaryConverter
             : (array) => array
     }
 

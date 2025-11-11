@@ -1,5 +1,5 @@
 const Csv = require('../utils/Csv')
-const { loadConfig, loadNn, createInputs, createOutputs } = require('./common')
+const { loadConfig, loadNn, createInputs, createOutputs, binaryConverter } = require('./common')
 const cliProgress = require('cli-progress')
 const fs = require('fs')
 const path = require('path')
@@ -35,10 +35,7 @@ const work = async () => {
 
     // Apply winner-takes-all transformation to actual outputs
     const transformActual = config.modelArch.output.binary
-        ? (array) => {
-            const maxValue = Math.max(...array)
-            return array.map(value => value === maxValue ? 1 : 0)
-        }
+        ? binaryConverter
         : (array) => array
 
     // Delete old predictions.csv if it exists
@@ -56,7 +53,8 @@ const work = async () => {
     const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
     bar.start(totalSamples, 0)
 
-    for (let i = 0; i < totalSamples; i++) {
+    const start = 1822598 / 2
+    for (let i = start; i < start + totalSamples; i++) {
         const inputsInfo = await createInputs(config, i)
         const outputs = await createOutputs(config, inputsInfo.nextTradeIndex)
         const prediction = await nn.predict(inputsInfo.inputs)
@@ -88,7 +86,7 @@ const work = async () => {
         csv.print({ prediction, actual })
 
         // Update progress bar
-        bar.update(i + 1)
+        bar.update(i + 1 - start)
     }
 
     bar.stop()

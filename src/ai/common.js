@@ -190,5 +190,19 @@ module.exports = {
     },
     createInputs: _createInputs,
     createOutputs: _createOutputs,
-    loadPregenerated: _loadPregenerated
+    loadPregenerated: _loadPregenerated,
+    binaryConverter: (array) => {
+        // Binary transformation: 1 if > 0.5, else 0
+        // If both > 0.5 (suspicious), pick the bigger one
+        const binaryArray = array.map(value => value > 0.5 ? 1 : 0)
+        const onesCount = binaryArray.filter(v => v === 1).length
+
+        // If both are 1, keep only the bigger one
+        if (onesCount > 1) {
+            const maxValue = Math.max(...array)
+            return array.map(value => value === maxValue ? 1 : 0)
+        }
+
+        return binaryArray
+    }
 }
