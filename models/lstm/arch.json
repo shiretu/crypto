@@ -41,12 +41,12 @@
     {
       "type": "dense",
       "units": 2,
-      "activation": "linear",
-      "description": "Output layer - 2 values: [p_buy, p_sell] linear outputs"
+      "activation": "sigmoid",
+      "description": "Output layer - 2 values: [p_buy, p_sell] independent probabilities"
     }
   ],
   "output": {
-    "transformation": "none",
+    "transformation": "multiLabel",
     "shape": [
       2
     ],
@@ -54,10 +54,10 @@
       "p_buy",
       "p_sell"
     ],
-    "description": "Continuous predictions for buy and sell quality"
+    "description": "Multi-label classification: independent probabilities for buy and sell signals"
   },
   "compilation": {
-    "loss": "meanSquaredError",
+    "loss": "binaryCrossentropy",
     "optimizer": {
       "type": "adam",
       "learningRate": 0.0001,

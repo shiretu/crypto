@@ -51,7 +51,8 @@ class Tf {
     async train (inputArrays, outputArray) {
         // Convert input and output to tensors
         const input = tf.tensor(inputArrays)
-        const output = tf.tensor(this.#outputTransformation(outputArray))
+        const transformedOutput = this.#outputTransformation(outputArray)
+        const output = tf.tensor(transformedOutput)
 
         // Add to batch
         this.#batch.push({ input, output })
@@ -73,7 +74,7 @@ class Tf {
             this.#batchCount++
 
             // do the logging
-            this.#logTrain({ outputArray, ...history.history, batchIndex: this.#batchCount - 1 })
+            this.#logTrain({ outputArray, transformedOutput, ...history.history, batchIndex: this.#batchCount - 1 })
 
             // Return training metrics
             return history.history

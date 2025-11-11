@@ -51,12 +51,12 @@
         {
             "type": "dense",
             "units": 2,
-            "activation": "tanh",
-            "description": "Output layer - [p_buy, p_sell] in range [-1, 1]"
+            "activation": "sigmoid",
+            "description": "Output layer - [p_buy, p_sell] independent probabilities"
         }
     ],
     "output": {
-        "transformation": "none",
+        "transformation": "multiLabel",
         "shape": [
             2
         ],
@@ -64,10 +64,10 @@
             "p_buy",
             "p_sell"
         ],
-        "description": "Continuous predictions for buy and sell confidence, range [-1, 1]"
+        "description": "Multi-label classification: independent probabilities for buy and sell signals"
     },
     "compilation": {
-        "loss": "meanAbsoluteError",
+        "loss": "binaryCrossentropy",
         "optimizer": {
             "type": "adam",
             "learningRate": 0.0008,
