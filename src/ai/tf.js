@@ -73,11 +73,6 @@ class Tf {
             // do the logging
             this.#logTrain({ outputArray, ...history.history, batchIndex: this.#batchCount - 1 })
 
-            // Every 100 batches, check if model is collapsing
-            if (this.#batchCount % 100 === 0) {
-                await this.#checkModelCollapse(allInputs, allOutputs)
-            }
-
             // Return training metrics
             return history.history
         } finally {
@@ -125,35 +120,6 @@ class Tf {
         } catch (error) {
             inputTensor.dispose()
             throw error
-        }
-    }
-
-    async #checkModelCollapse (inputBatch, outputBatch) {
-        // Make predictions on the current batch
-        const predictions = await this.#model.predict(inputBatch, { training: false }).array()
-
-        // Calculate stats on predictions
-        const flat = predictions.flat()
-        const mean = flat.reduce((a, b) => a + b, 0) / flat.length
-        const variance = flat.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / flat.length
-        const stdDev = Math.sqrt(variance)
-        const min = Math.min(...flat)
-        const max = Math.max(...flat)
-
-        // Get expected outputs for comparison
-        const expected = await outputBatch.array()
-        const expectedFlat = expected.flat()
-        const expectedMean = expectedFlat.reduce((a, b) => a + b, 0) / expectedFlat.length
-
-        console.log(`\n[Batch ${this.#batchCount}] Model Health Check:`)
-        console.log(`  Predictions   - Mean: ${mean.toFixed(4)}, StdDev: ${stdDev.toFixed(4)}, Range: [${min.toFixed(4)}, ${max.toFixed(4)}]`)
-        console.log(`  Expected      - Mean: ${expectedMean.toFixed(4)}`)
-        console.log(`  Sample Pred:  [${predictions[0].map(v => v.toFixed(4)).join(', ')}]`)
-        console.log(`  Sample Target: [${expected[0].map(v => v.toFixed(4)).join(', ')}]`)
-
-        // Warn if model is collapsing (very low variance)
-        if (stdDev < 0.01) {
-            console.log('  ⚠️  WARNING: Model may be collapsing (stdDev < 0.01)')
         }
     }
 
