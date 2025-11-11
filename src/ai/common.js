@@ -204,6 +204,13 @@ module.exports = {
         multiLabel: (array) => {
             const threshold = 0.5
             return array.map(v => v >= threshold ? 1 : 0)
+        },
+        threeClass: (array) => {
+            // array is [p_buy, p_sell, p_hold]
+            // Return the class with highest probability as one-hot encoded
+            const maxIndex = array.indexOf(Math.max(...array))
+            return array.map((_, i) => i === maxIndex ? 1 : 0)
+        }
     },
     outputToThreeClass: (twoClassOutput) => {
         // Convert [buy_confidence, sell_confidence] to [p_buy, p_sell, p_hold]
