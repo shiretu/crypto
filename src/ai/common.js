@@ -204,6 +204,27 @@ module.exports = {
         multiLabel: (array) => {
             const threshold = 0.5
             return array.map(v => v >= threshold ? 1 : 0)
+    },
+    outputToThreeClass: (twoClassOutput) => {
+        // Convert [buy_confidence, sell_confidence] to [p_buy, p_sell, p_hold]
+        // If both are near zero, it's a hold. Otherwise, use the confidences.
+        const [buy, sell] = twoClassOutput
+        const buyAbs = Math.abs(buy)
+        const sellAbs = Math.abs(sell)
+
+        // If both signals are weak, classify as hold
+        if (buyAbs < 0.3 && sellAbs < 0.3) {
+            return [0, 0, 1] // hold
         }
+
+        // Otherwise, use softmax-like normalization on absolute values
+        const holdStrength = Math.max(0, 1 - buyAbs - sellAbs)
+        const total = buyAbs + sellAbs + holdStrength
+
+        return [
+            buyAbs / total, // buy probability
+            sellAbs / total, // sell probability
+            holdStrength / total // hold probability
+        ]
     }
 }
