@@ -111,22 +111,17 @@ class Tf {
             const outputTensor = this.#model.predict(inputTensor)
 
             // Convert tensor to array
-            const prediction = await outputTensor.array()
+            const originalOutput = await outputTensor.array()
 
             // Clean up
             inputTensor.dispose()
             outputTensor.dispose()
 
-            // Get the prediction array (first batch item, which is the only one)
-            let result = prediction[0]
-
-            // For binary classification with softmax, apply argmax to get discrete output
-            if (this.#config.modelArch.output.binary) {
-                const maxIndex = result.indexOf(Math.max(...result))
-                result = result.map((_, index) => index === maxIndex ? 1 : 0)
+            // done
+            return {
+                originalOutput: originalOutput[0],
+                nominalOutput: this.#outputTransformation(originalOutput[0])
             }
-
-            return result
         } catch (error) {
             inputTensor.dispose()
             throw error

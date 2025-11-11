@@ -191,11 +191,12 @@ module.exports = {
     createInputs: _createInputs,
     createOutputs: _createOutputs,
     loadPregenerated: _loadPregenerated,
-    binaryConverter: ([v1, v2]) => {
+    binaryConverter: (array) => {
         const threshold = 0.5
-        if (v1 > threshold && v2 > threshold) {
-            return v1 > v2 ? [1, 0] : [0, 1]
-        }
-        return [v1 > threshold ? 1 : 0, v2 > threshold ? 1 : 0]
+        const normalized = array.map(v => v >= threshold ? v : 0)
+        const max = Math.max(...normalized)
+        if (max === 0) return array.map(() => 0)
+        const maxIndex = normalized.findIndex(v => v === max)
+        return normalized.map((_, i) => i === maxIndex ? 1 : 0)
     }
 }

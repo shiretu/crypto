@@ -1,4 +1,3 @@
-const { math } = require('@tensorflow/tfjs')
 const Csv = require('../utils/Csv')
 const { loadConfig, loadNn, createInputs, createOutputs, binaryConverter } = require('./common')
 const cliProgress = require('cli-progress')
@@ -64,10 +63,18 @@ const work = async () => {
     for (let i = startCandleIndex; i < endCandleIndex; i++) {
         const inputsInfo = await createInputs(config, i)
         const actual = outputConverter(await createOutputs(config, inputsInfo.nextTradeIndex))
-        const prediction = outputConverter(await nn.predict(inputsInfo.inputs))
+        const predictionResult = await nn.predict(inputsInfo.inputs)
+
+        // Use nominalOutput for comparison and statistics
+        const prediction = predictionResult.nominalOutput
 
         const isError = (prediction[0] === 1) && (prediction[1] === 1)
-        csv.print({ prediction, actual, isError })
+        csv.print({
+            originalOutput: predictionResult.originalOutput,
+            prediction,
+            actual,
+            isError
+        })
         if (isError) {
             stats.errors += 1
             continue
