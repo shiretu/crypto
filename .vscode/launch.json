@@ -44,7 +44,7 @@
             "runtimeArgs": [
                 "run-script",
                 "ai:pred",
-                "tpn"
+                "simple-binary"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [

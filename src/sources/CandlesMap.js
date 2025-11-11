@@ -74,6 +74,48 @@ class CandlesMap {
         }
     }
 
+    /**
+     * Binary search to find an index based on a comparison function
+     * @param {BinanceRawReader} reader
+     * @param {function(Candle): number} compareFn - Returns -1 if too soon, 0 if exact, 1 if too late
+     * @returns {number} The index found (exact match or lower bound if not found)
+     */
+    findIndex (reader, compareFn) {
+        if (this.length === 0) {
+            throw new Error('CandlesMap is empty')
+        }
+        let left = 0
+        let right = this.length - 1
+
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2)
+            const candleInfo = this.get(reader, mid)
+            const comparison = compareFn(candleInfo.candle)
+
+            // exact match?
+            if (comparison === 0) { return mid }
+
+            // end of the rope?
+            if (right === left + 1) {
+                const leftCandle = this.get(reader, left).candle
+                const rightCandle = this.get(reader, right).candle
+                const leftDiff = Math.abs(compareFn(leftCandle))
+                const rightDiff = Math.abs(compareFn(rightCandle))
+                return leftDiff <= rightDiff ? left : right
+            }
+
+            // re-adjust
+            if (comparison < 0) {
+                left = mid
+            } else {
+                right = mid
+            }
+        }
+
+        // This should never be reached due to the "end of rope" check above
+        throw new Error('Binary search logic error: loop exited unexpectedly')
+    }
+
     async #init () {
         const mapFilePath = this.#config.tradesDataPath.replace('_trades.bin', `_candles_map_${this.#config.candleDurationMinutes}min.bin`)
         const fileExists = await fs.access(mapFilePath).then(() => true).catch(() => false)

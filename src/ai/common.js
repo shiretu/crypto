@@ -191,18 +191,11 @@ module.exports = {
     createInputs: _createInputs,
     createOutputs: _createOutputs,
     loadPregenerated: _loadPregenerated,
-    binaryConverter: (array) => {
-        // Binary transformation: 1 if > 0.5, else 0
-        // If both > 0.5 (suspicious), pick the bigger one
-        const binaryArray = array.map(value => value > 0.5 ? 1 : 0)
-        const onesCount = binaryArray.filter(v => v === 1).length
-
-        // If both are 1, keep only the bigger one
-        if (onesCount > 1) {
-            const maxValue = Math.max(...array)
-            return array.map(value => value === maxValue ? 1 : 0)
+    binaryConverter: ([v1, v2]) => {
+        const threshold = 0.5
+        if (v1 > threshold && v2 > threshold) {
+            return v1 > v2 ? [1, 0] : [0, 1]
         }
-
-        return binaryArray
+        return [v1 > threshold ? 1 : 0, v2 > threshold ? 1 : 0]
     }
 }
