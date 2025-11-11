@@ -1,6 +1,10 @@
 {
     "explorer.fileNesting.enabled": true,
     "eslint.format.enable": true,
+    "[json]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4
+    },
     "[javascript]": {
         "editor.defaultFormatter": "dbaeumer.vscode-eslint",
         "editor.acceptSuggestionOnCommitCharacter": false,

@@ -52,7 +52,7 @@
             "poolSize": 2,
             "strides": 2,
             "padding": "valid",
-            "description": "Downsample: 120 → 60"
+            "description": "Downsample: 120 -> 60"
         },
         {
             "type": "conv1d",
@@ -86,7 +86,7 @@
             "poolSize": 2,
             "strides": 2,
             "padding": "valid",
-            "description": "Downsample: 60 → 30"
+            "description": "Downsample: 60 -> 30"
         },
         {
             "type": "conv1d",
@@ -131,6 +131,7 @@
         }
     ],
     "output": {
+        "transformation": "none",
         "shape": [
             2
         ],

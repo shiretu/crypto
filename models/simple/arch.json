@@ -86,7 +86,7 @@
             "p_sell"
         ],
         "description": "Binary classification probabilities for buy and sell signals",
-        "binary": true
+        "transformation": "singleLabel"
     },
     "compilation": {
         "loss": "categoricalCrossentropy",

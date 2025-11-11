@@ -72,6 +72,7 @@
     }
   ],
   "output": {
+    "transformation": "none",
     "shape": [
       2
     ],
@@ -88,8 +89,8 @@
       "learningRate": 0.0001,
       "beta1": 0.9,
       "beta2": 0.999,
-      "epsilon": 1e-07,
-      "clipNorm": 1.0
+      "epsilon": 1e-7,
+      "clipNorm": 1
     },
     "metrics": [
       "mae"

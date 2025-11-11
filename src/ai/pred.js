@@ -17,11 +17,6 @@ const work = async () => {
     // Setup for inference (disable dropout layers once)
     nn.setupForInference()
 
-    // Apply winner-takes-all transformation to actual outputs
-    const outputConverter = config.modelArch.output.binary
-        ? binaryConverter
-        : (array) => array
-
     // establish the limits
     const dayLengthUs = 24 * 3600 * 1000000
     const lastCandle = config.candlesMap.get(config.tradesReader, config.candlesMap.length - 1).candle
@@ -62,7 +57,7 @@ const work = async () => {
 
     for (let i = startCandleIndex; i < endCandleIndex; i++) {
         const inputsInfo = await createInputs(config, i)
-        const actual = outputConverter(await createOutputs(config, inputsInfo.nextTradeIndex))
+        const actual = nn.outputTransformation(await createOutputs(config, inputsInfo.nextTradeIndex))
         const predictionResult = await nn.predict(inputsInfo.inputs)
 
         // Use nominalOutput for comparison and statistics

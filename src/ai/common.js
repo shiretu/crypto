@@ -191,12 +191,19 @@ module.exports = {
     createInputs: _createInputs,
     createOutputs: _createOutputs,
     loadPregenerated: _loadPregenerated,
-    binaryConverter: (array) => {
-        const threshold = 0.5
-        const normalized = array.map(v => v >= threshold ? v : 0)
-        const max = Math.max(...normalized)
-        if (max === 0) return array.map(() => 0)
-        const maxIndex = normalized.findIndex(v => v === max)
-        return normalized.map((_, i) => i === maxIndex ? 1 : 0)
+    outputTransformations: {
+        none: (array) => array,
+        singleLabel: (array) => {
+            const threshold = 0.5
+            const normalized = array.map(v => v >= threshold ? v : 0)
+            const max = Math.max(...normalized)
+            if (max === 0) return array.map(() => 0)
+            const maxIndex = normalized.findIndex(v => v === max)
+            return normalized.map((_, i) => i === maxIndex ? 1 : 0)
+        },
+        multiLabel: (array) => {
+            const threshold = 0.5
+            return array.map(v => v >= threshold ? 1 : 0)
+        }
     }
 }

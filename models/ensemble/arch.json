@@ -127,6 +127,7 @@
         }
     ],
     "output": {
+        "transformation": "none",
         "shape": [
             2
         ],

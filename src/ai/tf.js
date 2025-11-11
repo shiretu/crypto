@@ -6,7 +6,7 @@ const Csv = require('../utils/Csv')
 const AttentionLayer = require('./AttentionLayer')
 const SqueezeExcitationLayer = require('./SqueezeExcitationLayer')
 const GatedResidualLayer = require('./GatedResidualLayer')
-const { binaryConverter } = require('./common')
+const { outputTransformations } = require('./common')
 
 class Tf {
     #config /** @type {object} */
@@ -29,9 +29,11 @@ class Tf {
         } else {
             this.#logTrain = (data) => {}
         }
-        this.#outputTransformation = this.#config.modelArch.output.binary
-            ? binaryConverter
-            : (array) => array
+        this.#outputTransformation = outputTransformations[this.#config.modelArch.output.transformation]
+    }
+
+    get outputTransformation () {
+        return this.#outputTransformation
     }
 
     static async load (config) {
