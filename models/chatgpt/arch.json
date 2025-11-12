@@ -1,0 +1,120 @@
+{
+    "name": "BN-MLP v2 (tfjs-safe)",
+    "description": "Deeper MLP with BatchNorm + ReLU; conservative dropout",
+    "layers": [
+        {
+            "type": "flatten",
+            "description": "Flatten [120,15] -> [1800]"
+        },
+        {
+            "type": "dense",
+            "units": 384,
+            "activation": "linear",
+            "kernelInitializer": "heNormal"
+        },
+        {
+            "type": "batchNormalization"
+        },
+        {
+            "type": "activation",
+            "activation": "relu"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.20
+        },
+        {
+            "type": "dense",
+            "units": 256,
+            "activation": "linear",
+            "kernelInitializer": "heNormal"
+        },
+        {
+            "type": "batchNormalization"
+        },
+        {
+            "type": "activation",
+            "activation": "relu"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.20
+        },
+        {
+            "type": "dense",
+            "units": 128,
+            "activation": "linear",
+            "kernelInitializer": "heNormal"
+        },
+        {
+            "type": "batchNormalization"
+        },
+        {
+            "type": "activation",
+            "activation": "relu"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.15
+        },
+        {
+            "type": "dense",
+            "units": 64,
+            "activation": "linear",
+            "kernelInitializer": "heNormal"
+        },
+        {
+            "type": "batchNormalization"
+        },
+        {
+            "type": "activation",
+            "activation": "relu"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.10
+        },
+        {
+            "type": "dense",
+            "units": 3,
+            "activation": "softmax",
+            "kernelInitializer": "glorotNormal",
+            "description": "Output: [p_buy, p_sell, p_hold]"
+        }
+    ],
+    "output": {
+        "shape": [
+            3
+        ],
+        "values": [
+            "p_buy",
+            "p_sell",
+            "p_hold"
+        ],
+        "transformation": "threeClass"
+    },
+    "compilation": {
+        "loss": "categoricalCrossentropy",
+        "optimizer": {
+            "type": "adam",
+            "learningRate": 0.00003,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-7
+        },
+        "metrics": [
+            "accuracy",
+            "mse"
+        ]
+    },
+    "training": {
+        "batchSize": 64,
+        "epochs": 60,
+        "validationSplit": 0.2,
+        "earlyStopping": {
+            "monitor": "val_loss",
+            "patience": 10,
+            "restoreBestWeights": true
+        }
+    }
+}

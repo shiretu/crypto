@@ -15,5 +15,5 @@
     "stopLossPercent": 0.005,
     "takeProfitPercent": 0.01,
     "predStartTimeDays": -180,
-    "predDurationDays": 0.5
+    "predDurationDays": 2
 }
