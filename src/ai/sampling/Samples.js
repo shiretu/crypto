@@ -3,8 +3,8 @@ const paths = require('./paths')
 const fs = require('fs').promises
 const { cache } = require('./Cache')
 const Sample = require('./Sample')
-const cliProgress = require('cli-progress')
 const { readFullFile } = require('./readFullFile')
+const { progressBar } = require('./progressBar')
 
 class Samples {
     static #version = 1
@@ -59,11 +59,10 @@ class Samples {
         })()
 
         const filePath = paths.samples(config)
-        console.log(`Generating ${metadata.length} samples to ${filePath}...`)
         await fs.mkdir(path.dirname(filePath), { recursive: true })
         await fs.writeFile(filePath, Float64Array.from([metadataBuffer.length])) // create empty file
         await fs.appendFile(filePath, metadataBuffer)
-        const bar = new cliProgress.SingleBar()
+        const bar = progressBar(`Generating ${metadata.length} samples to ${filePath}...`)
         bar.start(metadata.length, 0)
         for (let i = 0; i < metadata.length; i++) {
             const sample = await Sample.compute(config, i + startCandleIndex)

@@ -1,11 +1,10 @@
 const { loadConfig, loadNn, createInputs, createOutputs, loadPregenerated } = require('./common')
-const cliProgress = require('cli-progress')
+const { progressBar } = require('./sampling/progressBar')
 
 const pregeneratedFeed = async (config, onSample, onSave) => {
     const pregenerated = await loadPregenerated(config)
     if (pregenerated) {
-        console.log(`Feeding ${pregenerated.length} samples...`)
-        const bar = new cliProgress.SingleBar()
+        const bar = progressBar(`Feeding ${pregenerated.length} samples...`)
         bar.start(pregenerated.length, 0)
         for (let i = 0; i < pregenerated.length; i++) {
             await onSample(pregenerated[i].inputs, pregenerated[i].outputs)

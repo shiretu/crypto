@@ -1,7 +1,7 @@
 const CandlesGenerator = require('../core/CandlesGenerator')
 const BinanceRawReader = require('./BinanceRawReader')
 const fs = require('fs').promises
-const cliProgress = require('cli-progress')
+const { progressBar } = require('../ai/sampling/progressBar')
 const Candle = require('../core/Candle')
 
 class CandlesMap {
@@ -126,8 +126,7 @@ class CandlesMap {
         }
         const candlesMap = []
         const candlesGenerator = new CandlesGenerator(null, this.#config.exchangeName, this.#config.symbol, this.#config.candleDurationMinutes)
-        const bar = new cliProgress.SingleBar()
-        console.log('Generating candles map...')
+        const bar = progressBar('Generating candles map...')
         bar.start(this.#config.tradesReader.info.recordsCount, 0)
         for (let i = 0; i < this.#config.tradesReader.info.recordsCount; i++) {
             if ((i % 10000) === 0) { bar.update(i + 1) }

@@ -9,7 +9,7 @@ const Trade = require('../core/Trade')
 const Order = require('../core/Order')
 const Csv = require('../utils/Csv')
 const fs = require('fs').promises
-const cliProgress = require('cli-progress')
+const { progressBar } = require('./sampling/progressBar')
 
 const _loadConfig = async (modelName) => {
     const result = { modelName }
@@ -160,8 +160,7 @@ const _loadPregenerated = async (config) => {
     }
     const recordsCount = raw.length / recordSize
     const result = []
-    console.log(`Loading ${recordsCount} samples...`)
-    const bar = new cliProgress.SingleBar()
+    const bar = progressBar(`Loading ${recordsCount} samples...`)
     bar.start(recordsCount, 0)
     for (let i = 0; i < recordsCount; i++) {
         result.push({

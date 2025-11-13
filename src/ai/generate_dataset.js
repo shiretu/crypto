@@ -1,5 +1,4 @@
 const { loadConfig, createInputs, createOutputs } = require('./common')
-const cliProgress = require('cli-progress')
 const Samples = require('./sampling/Samples')
 const path = require('path')
 const Symbol = require('../core/Symbol')
@@ -7,6 +6,7 @@ const Sample = require('./sampling/Sample')
 const Trade = require('../core/Trade')
 const paths = require('./sampling/paths')
 const { cache } = require('./sampling/Cache')
+const { progressBar } = require('./sampling/progressBar')
 const fs = require('fs').promises
 
 const work = async () => {
@@ -17,8 +17,7 @@ const work = async () => {
     const config = await loadConfig('lstm')
 
     // create the UI progress bar
-    console.log(`Creating ${sampleCount} samples to ${config.pregeneratedSamplesDataPath}...`)
-    const bar = new cliProgress.SingleBar()
+    const bar = progressBar(`Creating ${sampleCount} samples to ${config.pregeneratedSamplesDataPath}...`)
     bar.start(sampleCount, 0)
 
     // do the damage
@@ -191,4 +190,4 @@ const work3 = async () => {
     console.log('\nOutputs:', Array.from(sample.rawOutputs))
 }
 
-work3()
+work2()

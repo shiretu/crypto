@@ -1,10 +1,10 @@
 const CandlesGenerator = require('../../core/CandlesGenerator')
 const { cache } = require('./Cache')
-const cliProgress = require('cli-progress')
 const paths = require('./paths')
 const path = require('path')
 const Candle = require('../../core/Candle')
 const { readFullFile } = require('./readFullFile')
+const { progressBar } = require('./progressBar')
 const fs = require('fs').promises
 
 class Candles {
@@ -110,8 +110,7 @@ class Candles {
         const candlesGenerator = new CandlesGenerator(null, this.#config.data.exchange.name, this.#config.data.symbol, this.#config.candle.periodSec / 60)
         const candles = []
 
-        const bar = new cliProgress.SingleBar()
-        console.log('Generating candles ...')
+        const bar = progressBar('Generating candles ...')
         bar.start(trades.length, 0)
         for (let i = 0; i < trades.length; i++) {
             const trade = trades.read(i)

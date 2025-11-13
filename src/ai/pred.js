@@ -1,6 +1,6 @@
 const Csv = require('../utils/Csv')
 const { loadConfig, loadNn, createInputs, createOutputs, binaryConverter } = require('./common')
-const cliProgress = require('cli-progress')
+const { progressBar } = require('./sampling/progressBar')
 const fs = require('fs')
 const path = require('path')
 
@@ -32,7 +32,7 @@ const work = async () => {
     console.log('Total Samples to Predict     : ', totalSamples)
 
     // Create progress bar
-    const bar = new cliProgress.SingleBar()
+    const bar = progressBar()
     bar.start(totalSamples, 0)
 
     // Delete old predictions.csv if it exists

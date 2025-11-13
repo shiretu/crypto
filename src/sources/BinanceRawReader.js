@@ -1,6 +1,6 @@
 const fs = require('fs')
 const Trade = require('../core/Trade')
-const cliProgress = require('cli-progress')
+const { progressBar } = require('../ai/sampling/progressBar')
 
 class BinanceRawReader {
     static #RECORD_SIZE = 40 // 8+8+8+8+8 bytes per record
@@ -122,8 +122,7 @@ class BinanceRawReader {
                 let totalBytesRead = 0
                 let fileOffset = 0
 
-                const bar = new cliProgress.SingleBar()
-                console.log(`Loading trades (${fileSize} bytes)...`)
+                const bar = progressBar(`Loading trades (${fileSize} bytes)...`)
                 bar.start(fileSize, 0)
                 while (totalBytesRead < fileSize) {
                     const remainingBytes = fileSize - totalBytesRead
