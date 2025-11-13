@@ -4,10 +4,17 @@ const path = require('path')
 const Trades = require('../src/ai/sampling/Trades')
 const Trade = require('../src/core/Trade')
 const Symbol = require('../src/core/Symbol')
+const paths = require('../src/ai/sampling/paths')
 
 describe('Trades', () => {
-    const testDataDir = path.join(__dirname, 'fixtures', 'trades')
-    const testFilePath = path.join(testDataDir, 'binance', 'btc', 'usdc', 'trades.bin')
+    const config = {
+        data: {
+            folder: path.join(__dirname, 'fixtures', 'trades'),
+            exchange: { name: 'binance' },
+            symbol: Symbol.find('BTCUSDC')
+        }
+    }
+    const testFilePath = paths.trades(config)
 
     // Test data: 50 trades with known values
     const testTrades = []
@@ -52,32 +59,16 @@ describe('Trades', () => {
 
     after(async () => {
         // Clean up test files
-        await fs.rm(testDataDir, { recursive: true, force: true })
+        await fs.rm(config.data.folder, { recursive: true, force: true })
     })
 
     describe('File loading and basic properties', () => {
         it('should load trades from binary file', async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
-
             const trades = await Trades.create(config)
             assert.strictEqual(trades.length, 50, 'Should have 50 trades')
         })
 
         it('should calculate correct length from file size', async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
-
             const trades = await Trades.create(config)
             const stats = await fs.stat(testFilePath)
             assert.strictEqual(stats.size, 50 * 40, 'File should be 2000 bytes')
@@ -89,13 +80,6 @@ describe('Trades', () => {
         let trades
 
         before(async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
             trades = await Trades.create(config)
         })
 
@@ -168,13 +152,6 @@ describe('Trades', () => {
         let trades
 
         before(async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
             trades = await Trades.create(config)
         })
 
@@ -236,13 +213,6 @@ describe('Trades', () => {
         let trades
 
         before(async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
             trades = await Trades.create(config)
         })
 
@@ -280,13 +250,6 @@ describe('Trades', () => {
         let trades
 
         before(async () => {
-            const config = {
-                data: {
-                    folder: path.join(__dirname, 'fixtures', 'trades'),
-                    exchange: { name: 'binance' },
-                    symbol: Symbol.find('BTCUSDC')
-                }
-            }
             trades = await Trades.create(config)
         })
 
