@@ -51,8 +51,8 @@ class Sample {
     async #prepareInputs (config, startCandleIndex) {
         const candles = await cache.candles(config)
         const requiredCandlesCount = config.train.candlesWindowCount + config.train.candlesPreambleCount
-        if ((startCandleIndex === undefined) || (startCandleIndex < 0)) {
-            startCandleIndex = Math.floor(Math.random() * (config.candlesMap.length - requiredCandlesCount))
+        if ((startCandleIndex == null) || (startCandleIndex < 0)) {
+            startCandleIndex = Math.floor(Math.random() * (candles.length - requiredCandlesCount))
         }
 
         const candlesInfo = await candles.readBulk(startCandleIndex, requiredCandlesCount)

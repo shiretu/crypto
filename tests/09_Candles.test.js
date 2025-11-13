@@ -17,15 +17,16 @@ describe('Candles', () => {
     // Align to candle boundary: round up to next multiple of 60M microseconds
     const baseTime = Math.ceil(1700000000000000 / 60000000) * 60000000
 
+    // Test configuration
+    const namespace = '09_Candles'
     const config = {
+        namespace,
         data: {
-            folder: path.join(__dirname, 'fixtures', 'candles'),
+            folder: path.join(__dirname, 'fixtures', namespace),
             exchange: { name: 'binance' },
             symbol: Symbol.find('BTCUSDC')
         },
-        candle: {
-            periodSec: candlePeriodSec
-        }
+        candle: { periodSec: candlePeriodSec }
     }
     const tradesFilePath = paths.trades(config)
     const candlesFilePath = paths.candles(config)

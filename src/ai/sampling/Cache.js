@@ -34,6 +34,30 @@ class Cache {
     }
 }
 
+class NamespacedCache {
+    #caches = new Map()
+
+    async trades (config) {
+        return this.#getCache(config).trades(config)
+    }
+
+    async candles (config) {
+        return this.#getCache(config).candles(config)
+    }
+
+    async samples (config) {
+        return this.#getCache(config).samples(config)
+    }
+
+    #getCache (config) {
+        const namespace = config.namespace ?? 'default'
+        if (!this.#caches.has(namespace)) {
+            this.#caches.set(namespace, new Cache())
+        }
+        return this.#caches.get(namespace)
+    }
+}
+
 module.exports = {
-    cache: new Cache()
+    cache: new NamespacedCache()
 }

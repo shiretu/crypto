@@ -7,9 +7,11 @@ const Symbol = require('../src/core/Symbol')
 const paths = require('../src/ai/sampling/paths')
 
 describe('Trades', () => {
+    const namespace = '08_Trades'
     const config = {
+        namespace,
         data: {
-            folder: path.join(__dirname, 'fixtures', 'trades'),
+            folder: path.join(__dirname, 'fixtures', namespace),
             exchange: { name: 'binance' },
             symbol: Symbol.find('BTCUSDC')
         }
