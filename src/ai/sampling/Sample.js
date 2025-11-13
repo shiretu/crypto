@@ -29,7 +29,7 @@ class Sample {
         await this.#prepareOutputs(config, payload)
         const inputs = payload.inputs.flat()
         this.#rawAll = Float64Array.from([...inputs, ...payload.outputs.flatMap(order => [
-            order.kind.value,
+            order.kind,
             order.isClosed ? 1 : 0,
             order.isStopLossHit ? 1 : 0,
             order.profit,

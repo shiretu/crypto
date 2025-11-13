@@ -297,6 +297,102 @@ describe('10 Sample', () => {
         })
     })
 
+    describe('Sample values verification with small window', () => {
+        // Use a very small config to make verification manageable
+        const smallConfig = {
+            namespace: '10_Sample_small',
+            data: {
+                folder: path.join(baseFolder, 'small'),
+                exchange,
+                symbol
+            },
+            candle: { periodSec },
+            train: {
+                candlesWindowCount: 5, // Just 5 candles = 75 values (5 * 15)
+                candlesPreambleCount: 50, // Still need preamble for MACD warmup
+                normalizeAroundZero: false,
+                normalizationFactor: 1.0
+            },
+            trade: {
+                maxDurationSec: 300,
+                tpPercent: 1.0,
+                slPercent: 0.5
+            }
+        }
+        const tradesFilePath = paths.trades(smallConfig)
+
+        before(async function () {
+            this.timeout(0) // 10 seconds for file generation
+            await generateTradesFile(tradesFilePath)
+        })
+
+        it('should compute correct sample with 5 candles (75 input values)', async function () {
+            this.timeout(0) // 10 seconds for sample computation
+            const sample = await Sample.compute(smallConfig, 0)
+
+            // Verify structure
+            assert.strictEqual(sample.rawInputs.length, 75, 'Should have 75 input values (5 candles * 15 features)')
+            assert.strictEqual(sample.rawOutputs.length, 18, 'Should have 18 output values (2 orders * 9 values)')
+
+            // Verify all input values are numbers and not NaN
+            for (let i = 0; i < sample.rawInputs.length; i++) {
+                assert(!isNaN(sample.rawInputs[i]), `Input value at index ${i} should not be NaN`)
+                assert(typeof sample.rawInputs[i] === 'number', `Input value at index ${i} should be a number`)
+            }
+
+            // Verify all output values are numbers and not NaN
+            for (let i = 0; i < sample.rawOutputs.length; i++) {
+                assert(!isNaN(sample.rawOutputs[i]), `Output value at index ${i} (value: ${sample.rawOutputs[i]}) should not be NaN`)
+                assert(typeof sample.rawOutputs[i] === 'number', `Output value at index ${i} should be a number`)
+            }
+
+            // Verify first candle's features (15 values)
+            const firstCandle = sample.rawInputs.slice(0, 15)
+            // [0-3]: OHLC prices (normalized, should be close to 1.0 since first candle)
+            assert(firstCandle[0] > 0 && firstCandle[0] < 2, 'Open price should be normalized')
+            assert(firstCandle[1] > 0 && firstCandle[1] < 2, 'High price should be normalized')
+            assert(firstCandle[2] > 0 && firstCandle[2] < 2, 'Low price should be normalized')
+            assert(firstCandle[3] > 0 && firstCandle[3] < 2, 'Close price should be normalized')
+
+            // [4]: Normalized quote volume (should be positive)
+            assert(firstCandle[4] > 0, 'Quote volume should be positive')
+
+            // [5]: Normalized minute of day (0-1440 for minutes, or normalized 0-1)
+            assert(firstCandle[5] >= 0, 'Minute of day should be non-negative')
+
+            // [6]: Direction (-1, 0, or 1)
+            assert([-1, 0, 1].includes(firstCandle[6]), 'Direction should be -1, 0, or 1')
+
+            // [7]: Normalized height (should be positive)
+            assert(firstCandle[7] >= 0, 'Height should be non-negative')
+
+            // [8]: Normalized trades count (should be non-negative)
+            assert(firstCandle[8] >= 0, 'Trades count should be non-negative')
+
+            // [9]: Day of week (0-6)
+            assert(firstCandle[9] >= 0 && firstCandle[9] <= 6, 'Day of week should be 0-6')
+            assert(Number.isInteger(firstCandle[9]), 'Day of week should be integer')
+
+            // [10-14]: MACD values (should all be numbers, can be negative)
+            for (let i = 10; i < 15; i++) {
+                assert(typeof firstCandle[i] === 'number', `MACD value at ${i} should be number`)
+                assert(!isNaN(firstCandle[i]), `MACD value at ${i} should not be NaN`)
+            }
+        })
+
+        it('should have consistent values across multiple reads', async () => {
+            const sample1 = await Sample.compute(smallConfig, 0)
+            const sample2 = await Sample.compute(smallConfig, 0)
+
+            // Same start index should produce identical results
+            assert.strictEqual(sample1.rawInputs.length, sample2.rawInputs.length)
+            for (let i = 0; i < sample1.rawInputs.length; i++) {
+                assert.strictEqual(sample1.rawInputs[i], sample2.rawInputs[i],
+                    `Input value at index ${i} should match`)
+            }
+        })
+    })
+
     describe('Random sample generation', () => {
         const config = createConfig('random')
         const tradesFilePath = paths.trades(config)
