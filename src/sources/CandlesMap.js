@@ -126,7 +126,7 @@ class CandlesMap {
         }
         const candlesMap = []
         const candlesGenerator = new CandlesGenerator(null, this.#config.exchangeName, this.#config.symbol, this.#config.candleDurationMinutes)
-        const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+        const bar = new cliProgress.SingleBar()
         console.log('Generating candles map...')
         bar.start(this.#config.tradesReader.info.recordsCount, 0)
         for (let i = 0; i < this.#config.tradesReader.info.recordsCount; i++) {

@@ -33,6 +33,7 @@ class Order {
     get kind () { return this.#kind }
     get enter () { return this.#enter }
     get last () { return this.#last }
+
     get profit () {
         if (!this.#last) { return null }
         return this.#profitFnc()

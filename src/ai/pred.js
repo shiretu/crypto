@@ -32,7 +32,7 @@ const work = async () => {
     console.log('Total Samples to Predict     : ', totalSamples)
 
     // Create progress bar
-    const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+    const bar = new cliProgress.SingleBar()
     bar.start(totalSamples, 0)
 
     // Delete old predictions.csv if it exists

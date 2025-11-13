@@ -161,7 +161,7 @@ const _loadPregenerated = async (config) => {
     const recordsCount = raw.length / recordSize
     const result = []
     console.log(`Loading ${recordsCount} samples...`)
-    const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+    const bar = new cliProgress.SingleBar()
     bar.start(recordsCount, 0)
     for (let i = 0; i < recordsCount; i++) {
         result.push({

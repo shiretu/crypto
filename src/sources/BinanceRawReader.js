@@ -122,7 +122,7 @@ class BinanceRawReader {
                 let totalBytesRead = 0
                 let fileOffset = 0
 
-                const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+                const bar = new cliProgress.SingleBar()
                 console.log(`Loading trades (${fileSize} bytes)...`)
                 bar.start(fileSize, 0)
                 while (totalBytesRead < fileSize) {

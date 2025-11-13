@@ -5,7 +5,7 @@ const pregeneratedFeed = async (config, onSample, onSave) => {
     const pregenerated = await loadPregenerated(config)
     if (pregenerated) {
         console.log(`Feeding ${pregenerated.length} samples...`)
-        const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+        const bar = new cliProgress.SingleBar()
         bar.start(pregenerated.length, 0)
         for (let i = 0; i < pregenerated.length; i++) {
             await onSample(pregenerated[i].inputs, pregenerated[i].outputs)
