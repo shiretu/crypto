@@ -6,7 +6,14 @@ const Candles = require('../src/ai/sampling/Candles')
 const Trades = require('../src/ai/sampling/Trades')
 const Symbol = require('../src/core/Symbol')
 const TradeKind = require('../src/core/TradeKind')
+const Trade = require('../src/core/Trade')
 const paths = require('../src/ai/sampling/paths')
+
+// Helper for floating point comparison
+const assertClose = (actual, expected, tolerance, message) => {
+    const diff = Math.abs(actual - expected)
+    assert(diff <= tolerance, `${message}: expected ${expected}, got ${actual}, diff ${diff} > ${tolerance}`)
+}
 
 describe('10 Sample', () => {
     // Base namespace and configuration
@@ -83,6 +90,322 @@ describe('10 Sample', () => {
 
     after(async () => {
         await fs.rm(baseFolder, { recursive: true, force: true })
+    })
+
+    describe('Sample with hand-crafted predictable data', () => {
+        // This test uses hand-crafted, predictable trade data to verify exact computed values
+        // The data generation and expected values are documented and verified manually
+        const verifiedConfig = {
+            namespace: '10_Sample_verified',
+            data: {
+                folder: path.join(baseFolder, 'verified'),
+                exchange,
+                symbol
+            },
+            candle: { periodSec },
+            train: {
+                candlesWindowCount: 3, // Training window: 3 candles
+                candlesPreambleCount: 100, // Warmup: 100 candles for indicators
+                normalizeAroundZero: false,
+                normalizationFactor: 1
+            },
+            trade: {
+                maxDurationSec: 3600, // 1 hour
+                tpPercent: 0.01, // 1% take profit
+                slPercent: 0.005 // 0.5% stop loss
+            }
+        }
+
+        const tradesFilePath = paths.trades(verifiedConfig)
+
+        before(async () => {
+            // Generate predictable trade data
+            // Pattern: 104 candles (0-103), 3 trades per candle at 0s, 15s, 30s
+            // Price formula: 10000 + candleIndex*1000 + tradeIndex*100*oscillation
+            // Oscillation: [0, +100, -200] creates down movement within each candle
+            // All candles close lower than they open (direction = -1)
+
+            await fs.mkdir(path.dirname(tradesFilePath), { recursive: true })
+
+            const totalCandlesCount = 103 + 1 // +1 for closing trade
+            const tradesPerCandle = 3
+            const totalTrades = totalCandlesCount * tradesPerCandle
+            const buffer = Buffer.allocUnsafe(totalTrades * 40)
+
+            // Base timestamp: 2024-01-01 00:00:00 UTC (Monday)
+            const baseTimeUs = new Date('2024-01-01T00:00:00.000Z').getTime() * 1000
+
+            let tradeIndex = 0
+            for (let candleIndex = 0; candleIndex < totalCandlesCount; candleIndex++) {
+                const candleStartUs = baseTimeUs + candleIndex * 60 * 1000000
+
+                for (let tradeInCandleIndex = 0; tradeInCandleIndex < tradesPerCandle; tradeInCandleIndex++) {
+                    const offset = tradeIndex * 40
+
+                    // Trade timestamp: 0s, 15s, 30s within the minute
+                    const tsUs = candleStartUs + tradeInCandleIndex * 15 * 1000000
+
+                    // Price pattern: base + candleIndex*1000 + within-candle oscillation
+                    // Oscillation creates pattern: base, +100, -200 (ends lower)
+                    const oscillation = tradeInCandleIndex === 0 ? 0 : (tradeInCandleIndex === 1 ? 100 : -200)
+                    const price = 10000 + candleIndex * 1000 + oscillation
+
+                    const baseQty = price / 100
+                    const quoteQty = baseQty * price
+
+                    // Alternate buyer/seller flags (1 = buyer is maker, 2 = seller is maker)
+                    const flags = (tradeInCandleIndex % 2) === 0 ? 2 : 1
+                    const idWithFlags = BigInt(tradeIndex) | (BigInt(flags) << 62n)
+
+                    buffer.writeBigUInt64LE(idWithFlags, offset)
+                    buffer.writeBigUInt64LE(BigInt(tsUs), offset + 8)
+                    buffer.writeDoubleLE(price, offset + 16)
+                    buffer.writeDoubleLE(baseQty, offset + 24)
+                    buffer.writeDoubleLE(quoteQty, offset + 32)
+
+                    tradeIndex++
+                }
+            }
+
+            await fs.writeFile(tradesFilePath, buffer)
+        })
+
+        it('should compute sample with verified input values', async () => {
+            const sample = await Sample.compute(verifiedConfig, 0)
+
+            // Expected global normalization ranges (computed across all 103 candles):
+            // Price: min=9800 (candle 0 low), max=112100 (candle 102 high), range=102300
+            // Volume: min=2980500, max=376096500, range=373116000
+            // Height: all=300, range=0 (normalized to 0)
+            // TradesCount: all=3, range=0 (normalized to 0)
+
+            // Verify structure
+            assert.strictEqual(sample.rawInputs.length, 45, 'Should have 45 input values (3 candles × 15 features)')
+            assert.strictEqual(sample.rawOutputs.length, 18, 'Should have 18 output values (2 orders × 9 values)')
+
+            // Training candles are 100, 101, 102
+            // Candle 100: O=110000, H=110100, L=109800, C=109800, V=362780500
+            // Candle 101: O=111000, H=111100, L=110800, C=110800, V=369408500
+            // Candle 102: O=112000, H=112100, L=111800, C=111800, V=376096500
+
+            const tolerance = 1e-10 // Floating point tolerance
+
+            // ============ CANDLE 100 (indices 0-14) ============
+            // Open: (110000 - 9800) / 102300 = 0.9794721407624634
+            assertClose(sample.rawInputs[0], 0.9794721407624634, tolerance, 'Candle 100 Open')
+
+            // High: (110100 - 9800) / 102300 = 0.9804496578690127
+            assertClose(sample.rawInputs[1], 0.9804496578690127, tolerance, 'Candle 100 High')
+
+            // Low: (109800 - 9800) / 102300 = 0.9775171065493646
+            assertClose(sample.rawInputs[2], 0.9775171065493646, tolerance, 'Candle 100 Low')
+
+            // Close: (109800 - 9800) / 102300 = 0.9775171065493646
+            assertClose(sample.rawInputs[3], 0.9775171065493646, tolerance, 'Candle 100 Close')
+
+            // Volume: (362780500 - 2980500) / 373116000 = 0.9643113669743458
+            assertClose(sample.rawInputs[4], 0.9643113669743458, tolerance, 'Candle 100 Volume')
+
+            // MinuteOfDay: 100 (candle at 01:40)
+            assert.strictEqual(sample.rawInputs[5], 100, 'Candle 100 MinuteOfDay')
+
+            // Direction: -1 (close < open)
+            assert.strictEqual(sample.rawInputs[6], -1, 'Candle 100 Direction')
+
+            // Height: 0 (all heights same, range=0)
+            assert.strictEqual(sample.rawInputs[7], 0, 'Candle 100 Height')
+
+            // TradesCount: 0 (all counts same, range=0)
+            assert.strictEqual(sample.rawInputs[8], 0, 'Candle 100 TradesCount')
+
+            // DayOfWeek: 1 (Monday)
+            assert.strictEqual(sample.rawInputs[9], 1, 'Candle 100 DayOfWeek')
+
+            // MACD Short EMA (12-period)
+            assertClose(sample.rawInputs[10], 0.9237536656891496, tolerance, 'Candle 100 MACD Short')
+
+            // MACD Long EMA (26-period)
+            assertClose(sample.rawInputs[11], 0.8553274682306939, tolerance, 'Candle 100 MACD Long')
+
+            // MACD Line (short - long)
+            assertClose(sample.rawInputs[12], 0.06842619745845568, tolerance, 'Candle 100 MACD Line')
+
+            // MACD Signal (9-period EMA of MACD)
+            assertClose(sample.rawInputs[13], 0.06842619745845559, tolerance, 'Candle 100 MACD Signal')
+
+            // MACD Histogram (MACD - Signal) - essentially zero
+            assertClose(sample.rawInputs[14], 0, 1e-15, 'Candle 100 MACD Histogram')
+
+            // ============ CANDLE 101 (indices 15-29) ============
+            // Open: (111000 - 9800) / 102300 = 0.989247311827957
+            assertClose(sample.rawInputs[15], 0.989247311827957, tolerance, 'Candle 101 Open')
+
+            // High: (111100 - 9800) / 102300 = 0.9902248289345064
+            assertClose(sample.rawInputs[16], 0.9902248289345064, tolerance, 'Candle 101 High')
+
+            // Low: (110800 - 9800) / 102300 = 0.9872922776148583
+            assertClose(sample.rawInputs[17], 0.9872922776148583, tolerance, 'Candle 101 Low')
+
+            // Close: (110800 - 9800) / 102300 = 0.9872922776148583
+            assertClose(sample.rawInputs[18], 0.9872922776148583, tolerance, 'Candle 101 Close')
+
+            // Volume: (369408500 - 2980500) / 373116000 = 0.9820752795377309
+            assertClose(sample.rawInputs[19], 0.9820752795377309, tolerance, 'Candle 101 Volume')
+
+            // MinuteOfDay: 101 (candle at 01:41)
+            assert.strictEqual(sample.rawInputs[20], 101, 'Candle 101 MinuteOfDay')
+
+            // Direction: -1 (close < open)
+            assert.strictEqual(sample.rawInputs[21], -1, 'Candle 101 Direction')
+
+            // Height: 0
+            assert.strictEqual(sample.rawInputs[22], 0, 'Candle 101 Height')
+
+            // TradesCount: 0
+            assert.strictEqual(sample.rawInputs[23], 0, 'Candle 101 TradesCount')
+
+            // DayOfWeek: 1 (Monday)
+            assert.strictEqual(sample.rawInputs[24], 1, 'Candle 101 DayOfWeek')
+
+            // MACD values
+            assertClose(sample.rawInputs[25], 0.9335288367546433, tolerance, 'Candle 101 MACD Short')
+            assertClose(sample.rawInputs[26], 0.8651026392961876, tolerance, 'Candle 101 MACD Long')
+            assertClose(sample.rawInputs[27], 0.06842619745845568, tolerance, 'Candle 101 MACD Line')
+            assertClose(sample.rawInputs[28], 0.06842619745845561, tolerance, 'Candle 101 MACD Signal')
+            assertClose(sample.rawInputs[29], 0, 1e-15, 'Candle 101 MACD Histogram')
+
+            // ============ CANDLE 102 (indices 30-44) ============
+            // Open: (112000 - 9800) / 102300 = 0.9990224828934506
+            assertClose(sample.rawInputs[30], 0.9990224828934506, tolerance, 'Candle 102 Open')
+
+            // High: (112100 - 9800) / 102300 = 1.0
+            assertClose(sample.rawInputs[31], 1.0, tolerance, 'Candle 102 High')
+
+            // Low: (111800 - 9800) / 102300 = 0.9970674486803519
+            assertClose(sample.rawInputs[32], 0.9970674486803519, tolerance, 'Candle 102 Low')
+
+            // Close: (111800 - 9800) / 102300 = 0.9970674486803519
+            assertClose(sample.rawInputs[33], 0.9970674486803519, tolerance, 'Candle 102 Close')
+
+            // Volume: (376096500 - 2980500) / 373116000 = 1.0
+            assertClose(sample.rawInputs[34], 1.0, tolerance, 'Candle 102 Volume')
+
+            // MinuteOfDay: 102 (candle at 01:42)
+            assert.strictEqual(sample.rawInputs[35], 102, 'Candle 102 MinuteOfDay')
+
+            // Direction: -1 (close < open)
+            assert.strictEqual(sample.rawInputs[36], -1, 'Candle 102 Direction')
+
+            // Height: 0
+            assert.strictEqual(sample.rawInputs[37], 0, 'Candle 102 Height')
+
+            // TradesCount: 0
+            assert.strictEqual(sample.rawInputs[38], 0, 'Candle 102 TradesCount')
+
+            // DayOfWeek: 1 (Monday)
+            assert.strictEqual(sample.rawInputs[39], 1, 'Candle 102 DayOfWeek')
+
+            // MACD values
+            assertClose(sample.rawInputs[40], 0.9433040078201369, tolerance, 'Candle 102 MACD Short')
+            assertClose(sample.rawInputs[41], 0.8748778103616812, tolerance, 'Candle 102 MACD Long')
+            assertClose(sample.rawInputs[42], 0.06842619745845568, tolerance, 'Candle 102 MACD Line')
+            assertClose(sample.rawInputs[43], 0.06842619745845563, tolerance, 'Candle 102 MACD Signal')
+            assertClose(sample.rawInputs[44], 0, 1e-15, 'Candle 102 MACD Histogram')
+        })
+
+        it('should compute sample with verified output values', async () => {
+            const sample = await Sample.compute(verifiedConfig, 0)
+
+            // Output structure: [buy_order (9 values), sell_order (9 values)]
+            // Each order: [kind, isClosed, isStopLossHit, profit, enterPrice, ageUs, maxAgeUs, profitPercent, confidence]
+
+            const tolerance = 1e-10
+
+            // ============ BUY ORDER (indices 0-8) ============
+            // Kind: 1 (buy)
+            assert.strictEqual(sample.rawOutputs[0], 1, 'Buy order kind')
+
+            // isClosed: 0 (not closed within maxDuration)
+            assert.strictEqual(sample.rawOutputs[1], 0, 'Buy order isClosed')
+
+            // isStopLossHit: 0 (stop loss not hit)
+            assert.strictEqual(sample.rawOutputs[2], 0, 'Buy order isStopLossHit')
+
+            // Profit: -200 (entered at 113000, current at 112800 after 30s)
+            assert.strictEqual(sample.rawOutputs[3], -200, 'Buy order profit')
+
+            // EnterPrice: 113000 (first trade of candle 103)
+            assert.strictEqual(sample.rawOutputs[4], 113000, 'Buy order enterPrice')
+
+            // AgeUs: 30000000 (30 seconds = 2 trades × 15s)
+            assert.strictEqual(sample.rawOutputs[5], 30000000, 'Buy order ageUs')
+
+            // MaxAgeUs: 3600000000 (1 hour = maxDurationSec)
+            assert.strictEqual(sample.rawOutputs[6], 3600000000, 'Buy order maxAgeUs')
+
+            // ProfitPercent: -200/113000 = -0.00177
+            assertClose(sample.rawOutputs[7], -0.0017699115044247787, tolerance, 'Buy order profitPercent')
+
+            // Confidence: -0.991 (negative because not closed, scaled by remaining time)
+            assertClose(sample.rawOutputs[8], -0.991, 0.001, 'Buy order confidence')
+
+            // ============ SELL ORDER (indices 9-17) ============
+            // Kind: 2 (sell)
+            assert.strictEqual(sample.rawOutputs[9], 2, 'Sell order kind')
+
+            // isClosed: 0
+            assert.strictEqual(sample.rawOutputs[10], 0, 'Sell order isClosed')
+
+            // isStopLossHit: 0
+            assert.strictEqual(sample.rawOutputs[11], 0, 'Sell order isStopLossHit')
+
+            // Profit: 0 (entered at 113100, no favorable movement yet)
+            assert.strictEqual(sample.rawOutputs[12], 0, 'Sell order profit')
+
+            // EnterPrice: 113100 (second trade of candle 103)
+            assert.strictEqual(sample.rawOutputs[13], 113100, 'Sell order enterPrice')
+
+            // AgeUs: 0 (just entered, at the last trade)
+            assert.strictEqual(sample.rawOutputs[14], 0, 'Sell order ageUs')
+
+            // MaxAgeUs: 3600000000
+            assert.strictEqual(sample.rawOutputs[15], 3600000000, 'Sell order maxAgeUs')
+
+            // ProfitPercent: 0
+            assert.strictEqual(sample.rawOutputs[16], 0, 'Sell order profitPercent')
+
+            // Confidence: 0.991 (positive, not closed, scaled)
+            assertClose(sample.rawOutputs[17], 0.991, 0.001, 'Sell order confidence')
+        })
+
+        it('should have Output objects correctly accessing buy and sell order data', async () => {
+            const sample = await Sample.compute(verifiedConfig, 0)
+            const outputs = sample.outputs
+
+            assert.strictEqual(outputs.length, 2, 'Should have 2 output objects')
+
+            // Output[0] should read from indices 0-8 (buy order data)
+            assert.strictEqual(outputs[0].kind, TradeKind.buy, 'Buy order kind')
+            assert.strictEqual(outputs[0].isClosed, false, 'Buy order isClosed')
+            assert.strictEqual(outputs[0].isStopLossHit, false, 'Buy order isStopLossHit')
+            assert.strictEqual(outputs[0].profit, -200, 'Buy order profit')
+            assert.strictEqual(outputs[0].enterPrice, 113000, 'Buy order enterPrice')
+            assert.strictEqual(outputs[0].ageUs, 30000000, 'Buy order ageUs')
+            assert.strictEqual(outputs[0].maxAgeUs, 3600000000, 'Buy order maxAgeUs')
+            assertClose(outputs[0].profitPercent, -0.0017699115044247787, 1e-10, 'Buy order profitPercent')
+            assertClose(outputs[0].confidence, -0.991, 0.001, 'Buy order confidence')
+
+            // Output[1] should read from indices 9-17 (sell order data)
+            assert.strictEqual(outputs[1].kind, TradeKind.sell, 'Sell order kind')
+            assert.strictEqual(outputs[1].isClosed, false, 'Sell order isClosed')
+            assert.strictEqual(outputs[1].isStopLossHit, false, 'Sell order isStopLossHit')
+            assert.strictEqual(outputs[1].profit, 0, 'Sell order profit')
+            assert.strictEqual(outputs[1].enterPrice, 113100, 'Sell order enterPrice')
+            assert.strictEqual(outputs[1].ageUs, 0, 'Sell order ageUs')
+            assert.strictEqual(outputs[1].maxAgeUs, 3600000000, 'Sell order maxAgeUs')
+            assert.strictEqual(outputs[1].profitPercent, 0, 'Sell order profitPercent')
+            assertClose(outputs[1].confidence, 0.991, 0.001, 'Sell order confidence')
+        })
     })
 
     describe('Sample.compute()', () => {

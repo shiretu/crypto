@@ -46,7 +46,7 @@ class Sample {
     get rawAll () { return this.#rawAll }
     get rawInputs () { return this.#rawInputs }
     get rawOutputs () { return this.#rawOutputs }
-    get outputs () { return [Output.createFromRaw(this.#rawOutputs, 0), Output.createFromRaw(this.#rawOutputs, this.#rawOutputs.length / 2)] }
+    get outputs () { return [Output.createFromRaw(this.#rawOutputs.subarray(0, this.#rawOutputs.length / 2)), Output.createFromRaw(this.#rawOutputs.subarray(this.#rawOutputs.length / 2))] }
 
     async #prepareInputs (config, startCandleIndex) {
         const candles = await cache.candles(config)

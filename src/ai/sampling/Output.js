@@ -11,7 +11,7 @@ class Output {
         return new Output(raw)
     }
 
-    get kind () { return (this.#raw[0] === TradeKind.hold.value) ? TradeKind.hold : (this.#raw[0] === TradeKind.buy.value ? TradeKind.buy : TradeKind.sell) }
+    get kind () { return (this.#raw[0] === 0) ? TradeKind.hold : (this.#raw[0] === 1 ? TradeKind.buy : TradeKind.sell) }
     get isClosed () { return this.#raw[1] === 1 }
     get isStopLossHit () { return this.#raw[2] === 1 }
     get profit () { return this.#raw[3] }
