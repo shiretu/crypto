@@ -9,7 +9,7 @@ const _instrument = ({
         baseAssetName,
         quoteAssetName
     }
-}) => path.resolve(folder, name, baseAssetName, quoteAssetName)
+}) => path.resolve(folder, 'data', name, baseAssetName, quoteAssetName)
 
 const _trades = ({ data }) => path.resolve(_instrument(data), 'trades.bin')
 
@@ -35,8 +35,11 @@ const _samples = ({
     }
 }) => path.resolve(_candlesBase({ data, candle }), `${candlesWindowCount}`, `${maxDurationSec}`, `${tpPercent}`, `${slPercent}`, 'samples.bin')
 
+const _model = ({ folder, model: { name } }) => path.resolve(folder, 'models', name, 'arch.json')
+
 module.exports = {
     trades: _trades,
     candles: _candles,
-    samples: _samples
+    samples: _samples,
+    model: _model
 }

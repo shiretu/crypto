@@ -110,7 +110,8 @@ class Candles {
         const candlesGenerator = new CandlesGenerator(null, this.#config.data.exchange.name, this.#config.data.symbol, this.#config.candle.periodSec / 60)
         const candles = []
 
-        const bar = progressBar('Generating candles ...')
+        const filePath = paths.candles(this.#config)
+        const bar = progressBar(`Generating candles into ${filePath}...`)
         bar.start(trades.length, 0)
         for (let i = 0; i < trades.length; i++) {
             const trade = trades.read(i)
@@ -124,7 +125,6 @@ class Candles {
         bar.stop()
         const data = new Uint32Array(candles)
         const buf = Buffer.from(data.buffer)
-        const filePath = paths.candles(this.#config)
         await fs.mkdir(path.dirname(filePath), { recursive: true })
         await fs.writeFile(filePath, buf)
     }

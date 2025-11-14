@@ -15,7 +15,7 @@ describe('paths', () => {
             }
 
             const result = paths.trades(config)
-            const expected = path.join('/data', 'binance', 'btc', 'usdc', 'trades.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', 'trades.bin')
 
             assert.strictEqual(result, expected, 'Should generate correct trades path')
         })
@@ -30,7 +30,7 @@ describe('paths', () => {
             }
 
             const result = paths.trades(config)
-            const expected = path.join('/data', 'kraken', 'btc', 'usdc', 'trades.bin')
+            const expected = path.join('/data', 'data', 'kraken', 'btc', 'usdc', 'trades.bin')
 
             assert.strictEqual(result, expected)
         })
@@ -45,7 +45,7 @@ describe('paths', () => {
             }
 
             const result = paths.trades(config)
-            const expected = path.join('/data', 'binance', 'eth', 'usdc', 'trades.bin')
+            const expected = path.join('/data', 'data', 'binance', 'eth', 'usdc', 'trades.bin')
 
             assert.strictEqual(result, expected, 'Should use lowercase for symbol')
         })
@@ -65,7 +65,7 @@ describe('paths', () => {
             }
 
             const result = paths.candles(config)
-            const expected = path.join('/data', 'binance', 'btc', 'usdc', '60', 'candles.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', 'candles.bin')
 
             assert.strictEqual(result, expected, 'Should include period in path')
         })
@@ -83,7 +83,7 @@ describe('paths', () => {
             }
 
             const result = paths.candles(config)
-            const expected = path.join('/data', 'binance', 'btc', 'usdc', '300', 'candles.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '300', 'candles.bin')
 
             assert.strictEqual(result, expected)
         })
@@ -101,7 +101,51 @@ describe('paths', () => {
             }
 
             const result = paths.candles(config)
-            const expected = path.join('/data', 'binance', 'eth', 'usdc', '60', 'candles.bin')
+            const expected = path.join('/data', 'data', 'binance', 'eth', 'usdc', '60', 'candles.bin')
+
+            assert.strictEqual(result, expected)
+        })
+    })
+
+    describe('model', () => {
+        it('should generate correct model path', () => {
+            const config = {
+                folder: '/data',
+                model: {
+                    name: 'simple'
+                }
+            }
+
+            const result = paths.model(config)
+            const expected = path.join('/data', 'models', 'simple', 'arch.json')
+
+            assert.strictEqual(result, expected, 'Should generate correct model path')
+        })
+
+        it('should handle different model names', () => {
+            const config = {
+                folder: '/data',
+                model: {
+                    name: 'lstm'
+                }
+            }
+
+            const result = paths.model(config)
+            const expected = path.join('/data', 'models', 'lstm', 'arch.json')
+
+            assert.strictEqual(result, expected)
+        })
+
+        it('should work with complex model names', () => {
+            const config = {
+                folder: '/workspace',
+                model: {
+                    name: 'cnn-deep'
+                }
+            }
+
+            const result = paths.model(config)
+            const expected = path.join('/workspace', 'models', 'cnn-deep', 'arch.json')
 
             assert.strictEqual(result, expected)
         })
@@ -129,7 +173,7 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'binance', 'btc', 'usdc', '60', '120', '3600', '1.5', '0.75', 'samples.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', '120', '3600', '1.5', '0.75', 'samples.bin')
 
             assert.strictEqual(result, expected, 'Should include all training parameters')
         })
@@ -155,7 +199,7 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'binance', 'btc', 'usdc', '60', '240', '7200', '2', '1', 'samples.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', '240', '7200', '2', '1', 'samples.bin')
 
             assert.strictEqual(result, expected)
         })
@@ -181,7 +225,7 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'kraken', 'eth', 'usdc', '300', '120', '3600', '1.5', '0.75', 'samples.bin')
+            const expected = path.join('/data', 'data', 'kraken', 'eth', 'usdc', '300', '120', '3600', '1.5', '0.75', 'samples.bin')
 
             assert.strictEqual(result, expected)
         })

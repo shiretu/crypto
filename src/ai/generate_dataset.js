@@ -58,7 +58,7 @@ const work = async () => {
 const work2 = async () => {
     const config = {
         data: {
-            folder: path.resolve(__dirname, '..', '..', 'data'),
+            folder: path.resolve(__dirname, '..', '..', 'persistent'),
             exchange: {
                 name: 'binance'
             },

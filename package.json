@@ -10,10 +10,8 @@
     "test": "mocha tests/**/*.test.js",
     "test:watch": "mocha --watch tests/**/*.test.js",
     "lint": "eslint src/ --fix --fix-type suggestion,layout",
-    "ai:train": "UV_THREADPOOL_SIZE=16 node src/ai/train.js",
-    "ai:gds": "UV_THREADPOOL_SIZE=16 node src/ai/generate_dataset.js",
-    "ai:pred": "UV_THREADPOOL_SIZE=16 node src/ai/pred.js",
-    "ai:train:debug": "UV_THREADPOOL_SIZE=16 node src/ai/train.js --debug"
+    "ai:train": "UV_THREADPOOL_SIZE=16 node src/ai/apps/train.js",
+    "ai:pred": "UV_THREADPOOL_SIZE=16 node src/ai/apps/pred.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.21.0",
