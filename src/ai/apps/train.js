@@ -27,8 +27,19 @@ const work = async () => {
     const bar = progressBar(`Training on ${trainingCount} samples...`, !csv.consoleOutput)
     bar.start(trainingCount, 0)
 
+    // prepare time tracking for saving the model every minute
+    let lastSavedTime = Date.now()
+
     // do the damage
     for (let i = 0; i < randomizedIndices.length; i++) {
+        // autosave the model at intervals
+        const now = Date.now()
+        if ((now - lastSavedTime) >= 60 * 1000) {
+            await model.save()
+            lastSavedTime = now
+        }
+
+        // read and train
         const sample = samples.read(randomizedIndices[i])
         const res = await model.train(sample)
         if (res) {
@@ -40,6 +51,9 @@ const work = async () => {
         bar.update(i + 1)
     }
     bar.stop()
+
+    // final save
+    await model.save()
 }
 
 work()

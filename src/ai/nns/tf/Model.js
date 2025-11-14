@@ -98,7 +98,11 @@ class Model {
     }
 
     async save () {
-        throw new Error('Not implemented yet')
+        const destFolder = paths.modelRunnerFolder(this.#config)
+        await fs.mkdir(destFolder, { recursive: true })
+        const saveUrl = `file://${destFolder}`
+        await this.#model.save(saveUrl)
+        console.log(`Model saved to ${destFolder}`)
     }
 
     #createModel () {
@@ -245,7 +249,9 @@ class Model {
     }
 
     async #loadModel (modelPath) {
-        throw new Error('Not implemented yet')
+        const loadUrl = 'file://' + modelPath
+        this.#model = await tf.loadLayersModel(loadUrl)
+        console.log(`Model loaded from ${modelPath}`)
     }
 }
 
