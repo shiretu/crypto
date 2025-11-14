@@ -1,5 +1,5 @@
 const Csv = require('../../utils/Csv')
-const Samples = require('../common/Samples')
+const { cache } = require('../common/Cache')
 const paths = require('../common/paths')
 const { progressBar } = require('../common/progressBar')
 const { loadConfig } = require('../config')
@@ -8,7 +8,7 @@ const { createModel } = require('../nns/createModel')
 const work = async () => {
     // prepare the data and the model
     const config = loadConfig('simple')
-    const samples = await Samples.create(config)
+    const samples = await cache.samples(config)
     const model = await createModel({ ...config, samplesMetadata: samples.metadata })
     console.log(model.summary.initModel)
 

@@ -62,7 +62,15 @@ class Samples {
 
         const metadata = {
             version: Samples.#version,
-            length
+            length,
+            start: {
+                index: startCandleIndex,
+                tsUs: candles.read(startCandleIndex).candle.tsUs.open
+            },
+            end: {
+                index: endCandleIndex - 1,
+                tsUs: candles.read(endCandleIndex - 1).candle.tsUs.open
+            }
         }
         const metadataBuffer = await (async () => {
             const sample = await Sample.compute(config, startCandleIndex)
