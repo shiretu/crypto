@@ -35,11 +35,12 @@ const _samples = ({
     }
 }) => path.resolve(_candlesBase({ data, candle }), `${candlesWindowCount}`, `${maxDurationSec}`, `${tpPercent}`, `${slPercent}`, 'samples.bin')
 
-const _model = ({ folder, model: { name } }) => path.resolve(folder, 'models', name, 'arch.json')
+const _model = ({ data: { folder }, model: { name } }) => path.resolve(folder, 'models', name, 'arch.json')
 
 module.exports = {
     trades: _trades,
     candles: _candles,
     samples: _samples,
-    model: _model
+    model: _model,
+    config: (name) => path.resolve(__dirname, '..', '..', '..', 'configs', `${name}.json`)
 }

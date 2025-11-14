@@ -1,0 +1,28 @@
+{
+    "data": {
+        "folder": "persistent",
+        "exchange": {
+            "name": "binance"
+        },
+        "symbol": "btcusdc",
+        "candle": {
+            "periodSec": 60
+        }
+    },
+    "train": {
+        "candlesWindowCount": 120,
+        "candlesPreambleCount": 100,
+        "startTimestamp": "2024-01-01T00:00:00Z",
+        "endTimestamp": "2024-12-31T23:59:59Z",
+        "normalizeAroundZero": false,
+        "normalizationFactor": 1
+    },
+    "candle": {
+        "periodSec": 60
+    },
+    "trade": {
+        "maxDurationSec": 3600,
+        "tpPercent": 1,
+        "slPercent": 0.5
+    }
+}

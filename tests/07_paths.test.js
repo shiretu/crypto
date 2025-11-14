@@ -107,10 +107,35 @@ describe('paths', () => {
         })
     })
 
+    describe('config', () => {
+        it('should generate correct config path', () => {
+            const result = paths.config('simple')
+            const expected = path.resolve(__dirname, '..', 'configs', 'simple.json')
+
+            assert.strictEqual(result, expected, 'Should generate correct config path')
+        })
+
+        it('should handle different config names', () => {
+            const result = paths.config('lstm')
+            const expected = path.resolve(__dirname, '..', 'configs', 'lstm.json')
+
+            assert.strictEqual(result, expected)
+        })
+
+        it('should work with hyphenated config names', () => {
+            const result = paths.config('cnn-deep')
+            const expected = path.resolve(__dirname, '..', 'configs', 'cnn-deep.json')
+
+            assert.strictEqual(result, expected)
+        })
+    })
+
     describe('model', () => {
         it('should generate correct model path', () => {
             const config = {
-                folder: '/data',
+                data: {
+                    folder: '/data'
+                },
                 model: {
                     name: 'simple'
                 }
@@ -124,7 +149,9 @@ describe('paths', () => {
 
         it('should handle different model names', () => {
             const config = {
-                folder: '/data',
+                data: {
+                    folder: '/data'
+                },
                 model: {
                     name: 'lstm'
                 }
@@ -138,7 +165,9 @@ describe('paths', () => {
 
         it('should work with complex model names', () => {
             const config = {
-                folder: '/workspace',
+                data: {
+                    folder: '/workspace'
+                },
                 model: {
                     name: 'cnn-deep'
                 }
