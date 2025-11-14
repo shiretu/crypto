@@ -1,9 +1,9 @@
 const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
-const paths = require('../../sampling/paths')
+const paths = require('../../common/paths')
 const fs = require('fs').promises
 const path = require('path')
-const outputTransformations = require('../../sampling/outputTransformations')
+const outputTransformations = require('../../common/outputTransformations')
 
 class Model {
     #config /** @type {object} The config object */

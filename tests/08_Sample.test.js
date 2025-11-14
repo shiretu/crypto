@@ -1,13 +1,13 @@
 const assert = require('assert')
 const path = require('path')
 const fs = require('fs').promises
-const Sample = require('../src/ai/sampling/Sample')
-const Candles = require('../src/ai/sampling/Candles')
-const Trades = require('../src/ai/sampling/Trades')
+const Sample = require('../src/ai/common/Sample')
+const Candles = require('../src/ai/common/Candles')
+const Trades = require('../src/ai/common/Trades')
 const Symbol = require('../src/core/Symbol')
 const TradeKind = require('../src/core/TradeKind')
 const Trade = require('../src/core/Trade')
-const paths = require('../src/ai/sampling/paths')
+const paths = require('../src/ai/common/paths')
 
 // Helper for floating point comparison
 const assertClose = (actual, expected, tolerance, message) => {

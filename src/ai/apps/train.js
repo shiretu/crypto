@@ -1,10 +1,10 @@
 const Csv = require('../../utils/Csv')
 const { loadConfig } = require('../config')
 const { createModel } = require('../nns/createModel')
-const paths = require('../sampling/paths')
-const { progressBar } = require('../sampling/progressBar')
-const { randomIndices } = require('../sampling/randomIndices')
-const Samples = require('../sampling/Samples')
+const paths = require('../common/paths')
+const { progressBar } = require('../common/progressBar')
+const { randomIndices } = require('../common/randomIndices')
+const Samples = require('../common/Samples')
 
 const work = async () => {
     // prepare the data and the model

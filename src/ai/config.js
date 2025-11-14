@@ -1,5 +1,5 @@
 const Symbol = require('../core/Symbol')
-const paths = require('./sampling/paths')
+const paths = require('./common/paths')
 const fs = require('fs')
 
 const _loadConfig = (filePathOrConfName) => {
