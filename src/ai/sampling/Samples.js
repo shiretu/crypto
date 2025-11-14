@@ -17,6 +17,25 @@ class Samples {
         return result
     }
 
+    get length () {
+        return this.#metadata.length
+    }
+
+    get inputsLength () {
+        return this.#metadata.inputsLength
+    }
+
+    get outputsLength () {
+        return this.#metadata.outputsLength
+    }
+
+    read (index) {
+        const start = index * (this.inputsLength + this.outputsLength)
+        const end = start + this.inputsLength + this.outputsLength
+        const sampleData = this.#data.subarray(start, end)
+        return Sample.load(sampleData, this.inputsLength)
+    }
+
     async #init (config) {
         try {
             await this.#load(config)
@@ -43,7 +62,7 @@ class Samples {
         const candles = await cache.candles(config)
         const startCandleIndex = candles.find(c => c.tsUs.open - (config.train.startTimestamp.getTime() * 1000))
         const endCandleIndex = candles.find(c => c.tsUs.open - (config.train.endTimestamp.getTime() * 1000))
-        const length = Math.min(endCandleIndex - startCandleIndex, config.train.samplesCount || Infinity)
+        const length = endCandleIndex - startCandleIndex
 
         const metadata = {
             version: Samples.#version,

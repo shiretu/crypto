@@ -15,7 +15,8 @@
         "startTimestamp": "2024-01-01T00:00:00Z",
         "endTimestamp": "2024-12-31T23:59:59Z",
         "normalizeAroundZero": false,
-        "normalizationFactor": 1
+        "normalizationFactor": 1,
+        "samplesCount": 100000
     },
     "candle": {
         "periodSec": 60
@@ -24,5 +25,9 @@
         "maxDurationSec": 3600,
         "tpPercent": 1,
         "slPercent": 0.5
+    },
+    "model": {
+        "runner": "tf",
+        "name": "simple"
     }
 }
