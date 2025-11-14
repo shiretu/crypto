@@ -39,6 +39,7 @@ const _modelBase = ({ data: { folder }, model: { name } }) => path.resolve(folde
 const _modelArch = (config) => path.resolve(_modelBase(config), 'arch.json')
 const _modelRunnerFolder = ({ data: { folder }, model: { name, runner } }) => path.resolve(_modelBase({ data: { folder }, model: { name, runner } }), runner)
 const _modelTrainLog = ({ data: { folder }, model: { name, runner } }) => path.resolve(_modelRunnerFolder({ data: { folder }, model: { name, runner } }), 'train.csv')
+const _modelPredLog = ({ data: { folder }, model: { name, runner } }) => path.resolve(_modelRunnerFolder({ data: { folder }, model: { name, runner } }), 'pred.csv')
 
 module.exports = {
     config: (name) => path.resolve(__dirname, '..', '..', '..', 'configs', `${name}.json`),
@@ -47,5 +48,6 @@ module.exports = {
     samples: _samples,
     modelArch: _modelArch,
     modelRunnerFolder: _modelRunnerFolder,
-    modelTrainLog: _modelTrainLog
+    modelTrainLog: _modelTrainLog,
+    modelPredLog: _modelPredLog
 }

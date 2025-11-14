@@ -93,8 +93,26 @@ class Model {
         }
     }
 
-    async inference (inputs) {
-        throw new Error('Not implemented yet')
+    async inference (sample) {
+        // Convert input to tensor with shape [1, candlesWindowCount, featuresPerCandle]
+        // Note: Convert to Float32Array because TensorFlow.js Node doesn't recognize Float64Array
+        const input = tf.tensor3d(new Float32Array(sample.rawInputs), [1, ...this.#inputShape])
+
+        try {
+            // Run prediction
+            const prediction = this.#model.predict(input)
+
+            // Convert tensor to array
+            const predictionArray = await prediction.array()
+
+            // Clean up
+            prediction.dispose()
+
+            // Return the first (and only) prediction
+            return predictionArray[0]
+        } finally {
+            input.dispose()
+        }
     }
 
     async save () {

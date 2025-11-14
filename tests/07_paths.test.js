@@ -440,4 +440,92 @@ describe('paths', () => {
             assert(trainLog.endsWith('train.csv'), 'Train log should be named train.csv')
         })
     })
+
+    describe('modelPredLog', () => {
+        it('should generate correct model prediction log path', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'simple',
+                    runner: 'tf'
+                }
+            }
+
+            const result = paths.modelPredLog(config)
+            const expected = path.join('/data', 'models', 'simple', 'tf', 'pred.csv')
+
+            assert.strictEqual(result, expected, 'Should generate correct pred log path')
+        })
+
+        it('should handle different runners', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'lstm',
+                    runner: 'pt'
+                }
+            }
+
+            const result = paths.modelPredLog(config)
+            const expected = path.join('/data', 'models', 'lstm', 'pt', 'pred.csv')
+
+            assert.strictEqual(result, expected)
+        })
+
+        it('should be in the runner folder', () => {
+            const config = {
+                data: {
+                    folder: '/workspace'
+                },
+                model: {
+                    name: 'cnn-deep',
+                    runner: 'tf'
+                }
+            }
+
+            const runnerFolder = paths.modelRunnerFolder(config)
+            const predLog = paths.modelPredLog(config)
+
+            assert(predLog.startsWith(runnerFolder), 'Pred log should be in runner folder')
+            assert(predLog.endsWith('pred.csv'), 'Pred log should be named pred.csv')
+        })
+
+        it('should be alongside train log', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'simple',
+                    runner: 'tf'
+                }
+            }
+
+            const trainLog = paths.modelTrainLog(config)
+            const predLog = paths.modelPredLog(config)
+
+            assert.strictEqual(path.dirname(trainLog), path.dirname(predLog), 'Train and pred logs should be in same directory')
+        })
+
+        it('should work with different model names', () => {
+            const config = {
+                data: {
+                    folder: '/workspace'
+                },
+                model: {
+                    name: 'bilstm',
+                    runner: 'tf'
+                }
+            }
+
+            const result = paths.modelPredLog(config)
+            const expected = path.join('/workspace', 'models', 'bilstm', 'tf', 'pred.csv')
+
+            assert.strictEqual(result, expected)
+        })
+    })
 })
