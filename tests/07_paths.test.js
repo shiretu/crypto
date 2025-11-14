@@ -386,4 +386,58 @@ describe('paths', () => {
             assert(samplesPath.includes('0.75'), 'Should include SL percent')
         })
     })
+
+    describe('modelTrainLog', () => {
+        it('should generate correct model train log path', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'simple',
+                    runner: 'tf'
+                }
+            }
+
+            const result = paths.modelTrainLog(config)
+            const expected = path.join('/data', 'models', 'simple', 'tf', 'train.csv')
+
+            assert.strictEqual(result, expected, 'Should generate correct train log path')
+        })
+
+        it('should handle different runners', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'lstm',
+                    runner: 'pt'
+                }
+            }
+
+            const result = paths.modelTrainLog(config)
+            const expected = path.join('/data', 'models', 'lstm', 'pt', 'train.csv')
+
+            assert.strictEqual(result, expected)
+        })
+
+        it('should be in the runner folder', () => {
+            const config = {
+                data: {
+                    folder: '/workspace'
+                },
+                model: {
+                    name: 'cnn-deep',
+                    runner: 'tf'
+                }
+            }
+
+            const runnerFolder = paths.modelRunnerFolder(config)
+            const trainLog = paths.modelTrainLog(config)
+
+            assert(trainLog.startsWith(runnerFolder), 'Train log should be in runner folder')
+            assert(trainLog.endsWith('train.csv'), 'Train log should be named train.csv')
+        })
+    })
 })

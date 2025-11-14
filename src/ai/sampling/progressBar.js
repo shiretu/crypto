@@ -42,12 +42,12 @@ class ProgressBar {
  * @param {string} [message] - Optional message to log before the progress bar
  * @returns {ProgressBar} Configured progress bar instance
  */
-const progressBar = (message) => {
+const progressBar = (message, enabled = true) => {
     // Detect if running in test environment
     const isTest = process.env.NODE_ENV === 'test' ||
                    (typeof global.it === 'function' && typeof global.describe === 'function')
 
-    if (isTest) {
+    if (isTest || (!enabled)) {
         return new ProgressBar(new NoOpProgressBar())
     }
 

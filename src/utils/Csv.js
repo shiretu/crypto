@@ -11,6 +11,8 @@ class Csv {
         this.#printFnc = (data) => this.#printCsvWithColumns(data)
     }
 
+    get consoleOutput () { return this.#consoleOutput }
+
     print (data) {
         this.#printFnc(Object.entries(data).reduce((result, [k, v]) => {
             if (Array.isArray(v)) {

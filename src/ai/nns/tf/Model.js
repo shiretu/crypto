@@ -42,6 +42,11 @@ class Model {
             this.#createModel()
         }
         this.#compileModel()
+
+        // Capture model summary
+        const summaryLines = []
+        this.#model.summary(null, null, (line) => summaryLines.push(line))
+        this.#summary.initModel = summaryLines.join('\n')
     }
 
     async train (sample) {
@@ -61,7 +66,31 @@ class Model {
             return null
         }
 
-        throw new Error('Not implemented yet')
+        // Batch is full, train the model
+        let inputs, outputs
+        try {
+            // Stack all inputs and outputs into single tensors
+            inputs = tf.stack(this.#batch.map(item => item.input))
+            outputs = tf.stack(this.#batch.map(item => item.output))
+
+            // Train on the batch
+            const history = await this.#model.fit(inputs, outputs, {
+                epochs: this.#arch.training.epochs,
+                verbose: 0
+            })
+
+            // Return training metrics (arrays with one value per epoch)
+            return history.history
+        } finally {
+            // Clean up tensors to prevent memory leaks
+            this.#batch.forEach(item => {
+                item.input.dispose()
+                item.output.dispose()
+            })
+            inputs?.dispose()
+            outputs?.dispose()
+            this.#batch = []
+        }
     }
 
     async inference (inputs) {
