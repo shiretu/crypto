@@ -1,18 +1,63 @@
 const cliProgress = require('cli-progress')
 
 /**
+ * Dummy progress bar that does nothing (used in tests)
+ */
+class NoOpProgressBar {
+    start () {}
+    update () {}
+    increment () {}
+    stop () {}
+}
+
+/**
+ * Wrapper around cli-progress SingleBar with standardized interface
+ */
+class ProgressBar {
+    #bar
+
+    constructor (bar) {
+        this.#bar = bar
+    }
+
+    start (total, startValue = 0) {
+        this.#bar.start(total, startValue)
+    }
+
+    update (value) {
+        this.#bar.update(value)
+    }
+
+    increment (delta = 1) {
+        this.#bar.increment(delta)
+    }
+
+    stop () {
+        this.#bar.stop()
+    }
+}
+
+/**
  * Creates a configured progress bar with proper ETA estimation
  * @param {string} [message] - Optional message to log before the progress bar
- * @returns {cliProgress.SingleBar} Configured progress bar instance
+ * @returns {ProgressBar} Configured progress bar instance
  */
 const progressBar = (message) => {
+    // Detect if running in test environment
+    const isTest = process.env.NODE_ENV === 'test' ||
+                   (typeof global.it === 'function' && typeof global.describe === 'function')
+
+    if (isTest) {
+        return new ProgressBar(new NoOpProgressBar())
+    }
+
     if (message) {
         console.log(message)
     }
 
     const startTime = Date.now()
 
-    return new cliProgress.SingleBar({
+    const bar = new cliProgress.SingleBar({
         format: (options, params, payload) => {
             const bar = options.barCompleteString.substring(0, Math.round(params.progress * options.barsize)) +
                        options.barIncompleteString.substring(0, Math.round((1 - params.progress) * options.barsize))
@@ -26,6 +71,8 @@ const progressBar = (message) => {
         hideCursor: true,
         barsize: 40
     })
+
+    return new ProgressBar(bar)
 }
 
 module.exports = { progressBar }

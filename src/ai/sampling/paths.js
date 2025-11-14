@@ -36,7 +36,6 @@ const _samples = ({
 }) => path.resolve(_candlesBase({ data, candle }), `${candlesWindowCount}`, `${maxDurationSec}`, `${tpPercent}`, `${slPercent}`, 'samples.bin')
 
 module.exports = {
-    instrument: _instrument,
     trades: _trades,
     candles: _candles,
     samples: _samples
