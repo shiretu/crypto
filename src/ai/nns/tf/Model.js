@@ -3,15 +3,20 @@ require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 const paths = require('../../sampling/paths')
 const fs = require('fs').promises
 const path = require('path')
+const outputTransformations = require('../../sampling/outputTransformations')
 
 class Model {
     #config /** @type {object} The config object */
     #arch /** @type {object} The architecture of the model */
     #model /** @type {tf.LayersModel} The TensorFlow model */
+    #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
     #summary = { runner: 'tf' } /** @type {object} The summary of the model */
+    #outputTransformation /** @type {function} The output transformation function */
+    #inputShape /** @type {number[]} The input shape [candlesWindowCount, featuresPerCandle] */
 
     constructor (config) {
         this.#config = config
+        this.#batch = []
     }
 
     static async create (config) {
@@ -24,6 +29,11 @@ class Model {
 
     async #init () {
         this.#arch = JSON.parse(await fs.readFile(paths.modelArch(this.#config), 'utf-8'))
+        this.#outputTransformation = outputTransformations[this.#arch.output.transformation]
+        this.#inputShape = [
+            this.#config.samplesMetadata.inputs.length / this.#config.samplesMetadata.inputs.stride,
+            this.#config.samplesMetadata.inputs.stride
+        ]
         const savedModelPath = path.resolve(paths.modelRunnerFolder(this.#config), 'model.json')
         const stats = await fs.stat(savedModelPath).catch(() => null)
         if (stats) {
@@ -35,6 +45,22 @@ class Model {
     }
 
     async train (sample) {
+        // Convert input to tensor with shape [candlesWindowCount, featuresPerCandle]
+        // Note: Convert to Float32Array because TensorFlow.js Node doesn't recognize Float64Array
+        const input = tf.tensor2d(new Float32Array(sample.rawInputs), this.#inputShape)
+
+        // Transform and convert output to tensor
+        const transformedOutput = this.#outputTransformation(sample)
+        const output = tf.tensor1d(transformedOutput)
+
+        // Add to batch
+        this.#batch.push({ input, output })
+
+        // Check if batch is full
+        if (this.#batch.length < this.#arch.training.batchSize) {
+            return null
+        }
+
         throw new Error('Not implemented yet')
     }
 
@@ -58,22 +84,14 @@ class Model {
         const model = tf.sequential()
 
         for (let i = 0; i < this.#arch.layers.length; i++) {
-            const layer = this.#createLayer(this.#arch.layers[i], i === 0)
-            model.add(layer)
+            model.add(this.#createLayer(this.#arch.layers[i], i === 0))
         }
 
         this.#model = model
     }
 
     #createLayer (layerConfig, isFirstLayer) {
-        const baseConfig = isFirstLayer
-            ? {
-                inputShape: [
-                    this.#config.samplesMetadata.inputs.length / this.#config.samplesMetadata.inputs.stride,
-                    this.#config.samplesMetadata.inputs.stride
-                ]
-            }
-            : {}
+        const baseConfig = isFirstLayer ? { inputShape: this.#inputShape } : {}
 
         switch (layerConfig.type) {
             case 'lstm':
