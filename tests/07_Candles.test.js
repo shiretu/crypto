@@ -1,11 +1,12 @@
 const assert = require('assert')
 const fs = require('fs').promises
 const path = require('path')
+
 const Candles = require('../src/ai/common/Candles')
+const paths = require('../src/ai/common/paths')
 const Trades = require('../src/ai/common/Trades')
 const Candle = require('../src/core/Candle')
 const Symbol = require('../src/core/Symbol')
-const paths = require('../src/ai/common/paths')
 
 describe('Candles', () => {
     // We'll create 1000 trades, but only 99 candles will be generated

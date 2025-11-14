@@ -1,6 +1,7 @@
 const fs = require('fs')
+
+const { progressBar } = require('../ai/common/progressBar')
 const Trade = require('../core/Trade')
-const { progressBar } = require('../ai/sampling/progressBar')
 
 class BinanceRawReader {
     static #RECORD_SIZE = 40 // 8+8+8+8+8 bytes per record

@@ -1,10 +1,11 @@
 const assert = require('assert')
 const fs = require('fs').promises
 const path = require('path')
-const Trades = require('../src/ai/common/Trades')
-const Trade = require('../src/core/Trade')
-const Symbol = require('../src/core/Symbol')
+
 const paths = require('../src/ai/common/paths')
+const Trades = require('../src/ai/common/Trades')
+const Symbol = require('../src/core/Symbol')
+const Trade = require('../src/core/Trade')
 
 describe('Trades', () => {
     const namespace = '08_Trades'

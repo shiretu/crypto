@@ -1,5 +1,6 @@
 const assert = require('assert')
 const path = require('path')
+
 const paths = require('../src/ai/common/paths')
 const Symbol = require('../src/core/Symbol')
 

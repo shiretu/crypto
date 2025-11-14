@@ -1,10 +1,11 @@
-const path = require('path')
-const paths = require('./paths')
 const fs = require('fs').promises
+const path = require('path')
+
 const { cache } = require('./Cache')
-const Sample = require('./Sample')
-const { readFullFile } = require('./readFullFile')
 const { progressBar } = require('./progressBar')
+const paths = require('./paths')
+const { readFullFile } = require('./readFullFile')
+const Sample = require('./Sample')
 
 class Samples {
     static #version = 1

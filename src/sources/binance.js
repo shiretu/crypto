@@ -1,12 +1,14 @@
 /* eslint-disable no-unused-vars */
-const Symbol = require('../core/Symbol')
-const { createClient } = require('@clickhouse/client')
-const https = require('https')
 const http = require('http')
+const https = require('https')
+
+const { createClient } = require('@clickhouse/client')
 const unzipper = require('unzipper')
-const Trade = require('../core/Trade')
+
 const CandlesGenerator = require('../core/CandlesGenerator')
 const EventName = require('../core/EventName')
+const Symbol = require('../core/Symbol')
+const Trade = require('../core/Trade')
 /* eslint-enable no-unused-vars */
 
 class Binance {

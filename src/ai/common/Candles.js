@@ -1,11 +1,12 @@
+const fs = require('fs').promises
+const path = require('path')
+
+const Candle = require('../../core/Candle')
 const CandlesGenerator = require('../../core/CandlesGenerator')
 const { cache } = require('./Cache')
 const paths = require('./paths')
-const path = require('path')
-const Candle = require('../../core/Candle')
-const { readFullFile } = require('./readFullFile')
 const { progressBar } = require('./progressBar')
-const fs = require('fs').promises
+const { readFullFile } = require('./readFullFile')
 
 class Candles {
     #config /** @type {object} */

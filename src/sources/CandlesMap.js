@@ -1,8 +1,9 @@
+const fs = require('fs').promises
+
+const { progressBar } = require('../ai/common/progressBar')
+const Candle = require('../core/Candle')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const BinanceRawReader = require('./BinanceRawReader')
-const fs = require('fs').promises
-const { progressBar } = require('../ai/sampling/progressBar')
-const Candle = require('../core/Candle')
 
 class CandlesMap {
     #config /** @type {object} */

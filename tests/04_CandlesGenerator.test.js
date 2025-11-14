@@ -1,8 +1,9 @@
 /* eslint-env mocha */
 const assert = require('assert')
 const EventEmitter = require('events')
-const CandlesGenerator = require('../src/core/CandlesGenerator')
+
 const Candle = require('../src/core/Candle')
+const CandlesGenerator = require('../src/core/CandlesGenerator')
 const Symbol = require('../src/core/Symbol')
 const Trade = require('../src/core/Trade')
 

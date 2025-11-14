@@ -1,5 +1,5 @@
-const EventName = require('../core/EventName')
 const Ema = require('../instruments/ema')
+const EventName = require('../core/EventName')
 
 class SimpleEMA {
     #events /** @type {EventEmitter} */
