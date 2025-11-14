@@ -1,9 +1,10 @@
+const tf = require('@tensorflow/tfjs')
+require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 const paths = require('../../sampling/paths')
-
 const fs = require('fs').promises
 
 class Model {
-    #architecture /** @type {object} The architecture of the model */
+    #arch /** @type {object} The architecture of the model */
     #summary = { runner: 'tf' } /** @type {object} The summary of the model */
 
     static async create (config) {
@@ -15,7 +16,7 @@ class Model {
     get summary () { return this.#summary }
 
     async #init (config) {
-        this.#architecture = JSON.parse(await fs.readFile(paths.model(config), 'utf-8'))
+        this.#arch = JSON.parse(await fs.readFile(paths.modelArch(config), 'utf-8'))
     }
 
     async train (sample) {

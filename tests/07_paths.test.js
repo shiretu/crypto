@@ -130,8 +130,8 @@ describe('paths', () => {
         })
     })
 
-    describe('model', () => {
-        it('should generate correct model path', () => {
+    describe('modelArch', () => {
+        it('should generate correct model architecture path', () => {
             const config = {
                 data: {
                     folder: '/data'
@@ -141,7 +141,7 @@ describe('paths', () => {
                 }
             }
 
-            const result = paths.model(config)
+            const result = paths.modelArch(config)
             const expected = path.join('/data', 'models', 'simple', 'arch.json')
 
             assert.strictEqual(result, expected, 'Should generate correct model path')
@@ -157,7 +157,7 @@ describe('paths', () => {
                 }
             }
 
-            const result = paths.model(config)
+            const result = paths.modelArch(config)
             const expected = path.join('/data', 'models', 'lstm', 'arch.json')
 
             assert.strictEqual(result, expected)
@@ -173,7 +173,7 @@ describe('paths', () => {
                 }
             }
 
-            const result = paths.model(config)
+            const result = paths.modelArch(config)
             const expected = path.join('/workspace', 'models', 'cnn-deep', 'arch.json')
 
             assert.strictEqual(result, expected)

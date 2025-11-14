@@ -119,9 +119,9 @@ describe('config', () => {
                 // Test config has samplesCount: 1000
                 assert.strictEqual(config.train.samplesCount, 1000)
 
-                // Load simple config which doesn't have samplesCount, should default to null
+                // Simple config has samplesCount: 100000
                 const simpleConfig = loadConfig('simple')
-                assert.strictEqual(simpleConfig.train.samplesCount, null)
+                assert.strictEqual(simpleConfig.train.samplesCount, 100000)
             })
         })
 
