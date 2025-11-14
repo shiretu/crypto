@@ -3,9 +3,9 @@ require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 const path = require('path')
 const fs = require('fs').promises
 const Csv = require('../utils/Csv')
-const AttentionLayer = require('./AttentionLayer')
-const SqueezeExcitationLayer = require('./SqueezeExcitationLayer')
-const GatedResidualLayer = require('./GatedResidualLayer')
+const AttentionLayer = require('./nns/tf/AttentionLayer')
+const SqueezeExcitationLayer = require('./nns/tf/SqueezeExcitationLayer')
+const GatedResidualLayer = require('./nns/tf/GatedResidualLayer')
 const { outputTransformations } = require('./common')
 
 class Tf {

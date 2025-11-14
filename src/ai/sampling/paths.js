@@ -37,11 +37,13 @@ const _samples = ({
 
 const _modelBase = ({ data: { folder }, model: { name } }) => path.resolve(folder, 'models', name)
 const _modelArch = (config) => path.resolve(_modelBase(config), 'arch.json')
+const _modelRunnerFolder = ({ data: { folder }, model: { name, runner } }) => path.resolve(_modelBase({ data: { folder }, model: { name, runner } }), runner)
 
 module.exports = {
     config: (name) => path.resolve(__dirname, '..', '..', '..', 'configs', `${name}.json`),
     trades: _trades,
     candles: _candles,
     samples: _samples,
-    modelArch: _modelArch
+    modelArch: _modelArch,
+    modelRunnerFolder: _modelRunnerFolder
 }

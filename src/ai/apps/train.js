@@ -6,8 +6,8 @@ const Samples = require('../sampling/Samples')
 
 const work = async () => {
     const config = loadConfig('simple')
-    const model = await createModel(config)
     const samples = await Samples.create(config)
+    const model = await createModel({ ...config, samplesMetadata: samples.metadata })
     const trainingCount = Math.min(config.train.samplesCount || samples.length, samples.length)
     const randomizedIndices = randomIndices(0, samples.length - 1, trainingCount)
     const bar = progressBar(`Training on ${trainingCount} samples...`)

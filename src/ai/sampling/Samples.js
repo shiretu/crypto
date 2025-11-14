@@ -17,17 +17,12 @@ class Samples {
         return result
     }
 
-    get length () {
-        return this.#metadata.length
-    }
-
-    get inputsLength () {
-        return this.#metadata.inputsLength
-    }
-
-    get outputsLength () {
-        return this.#metadata.outputsLength
-    }
+    get length () { return this.#metadata.length }
+    get inputsLength () { return this.#metadata.inputs.length }
+    get inputsStride () { return this.#metadata.inputs.stride }
+    get outputsLength () { return this.#metadata.outputs.length }
+    get outputsStride () { return this.#metadata.outputs.stride }
+    get metadata () { return this.#metadata }
 
     read (index) {
         const start = index * (this.inputsLength + this.outputsLength)
@@ -53,7 +48,7 @@ class Samples {
             throw new Error(`Samples version mismatch: expected ${Samples.#version}, got ${this.#metadata.version}`)
         }
         this.#data = data.subarray(1 + (Number(data[0]) / 8))
-        if (this.#data.length !== this.#metadata.length * (this.#metadata.inputsLength + this.#metadata.outputsLength)) {
+        if (this.#data.length !== this.#metadata.length * (this.#metadata.inputs.length + this.#metadata.outputs.length)) {
             throw new Error('Samples data size does not match metadata')
         }
     }
@@ -70,8 +65,14 @@ class Samples {
         }
         const metadataBuffer = await (async () => {
             const sample = await Sample.compute(config, startCandleIndex)
-            metadata.inputsLength = sample.rawInputs.length
-            metadata.outputsLength = sample.rawOutputs.length
+            metadata.inputs = {
+                length: sample.rawInputs.length,
+                stride: sample.rawInputs.length / config.train.candlesWindowCount
+            }
+            metadata.outputs = {
+                length: sample.rawOutputs.length,
+                stride: sample.rawOutputs.length / 2
+            }
             const result = JSON.stringify(metadata)
             const padSize = Math.ceil(Buffer.byteLength(result) / 8) * 8
             return Buffer.from(result + ' '.repeat(padSize - Buffer.byteLength(result)), 'utf-8')

@@ -180,6 +180,59 @@ describe('paths', () => {
         })
     })
 
+    describe('modelRunnerFolder', () => {
+        it('should generate correct model runner folder path', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'simple',
+                    runner: 'tf'
+                }
+            }
+
+            const result = paths.modelRunnerFolder(config)
+            const expected = path.join('/data', 'models', 'simple', 'tf')
+
+            assert.strictEqual(result, expected, 'Should generate correct runner folder path')
+        })
+
+        it('should handle different runners', () => {
+            const config = {
+                data: {
+                    folder: '/data'
+                },
+                model: {
+                    name: 'lstm',
+                    runner: 'pt'
+                }
+            }
+
+            const result = paths.modelRunnerFolder(config)
+            const expected = path.join('/data', 'models', 'lstm', 'pt')
+
+            assert.strictEqual(result, expected)
+        })
+
+        it('should work with complex model names and runners', () => {
+            const config = {
+                data: {
+                    folder: '/workspace'
+                },
+                model: {
+                    name: 'cnn-deep',
+                    runner: 'tf'
+                }
+            }
+
+            const result = paths.modelRunnerFolder(config)
+            const expected = path.join('/workspace', 'models', 'cnn-deep', 'tf')
+
+            assert.strictEqual(result, expected)
+        })
+    })
+
     describe('samples', () => {
         it('should generate correct samples path', () => {
             const config = {
