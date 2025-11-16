@@ -236,6 +236,9 @@ describe('paths', () => {
 
     describe('samples', () => {
         it('should generate correct samples path', () => {
+            const startTimestamp = new Date('2024-01-01T00:00:00Z')
+            const endTimestamp = new Date('2024-12-31T23:59:59Z')
+
             const config = {
                 data: {
                     folder: '/data',
@@ -246,7 +249,9 @@ describe('paths', () => {
                     periodSec: 60
                 },
                 train: {
-                    candlesWindowCount: 120
+                    candlesWindowCount: 120,
+                    startTimestamp,
+                    endTimestamp
                 },
                 trade: {
                     maxDurationSec: 3600,
@@ -256,12 +261,15 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', '120', '3600', '1.5', '0.75', 'samples.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', `samples_120_3600_1.5_0.75_${startTimestamp.getTime()}_${endTimestamp.getTime()}.bin`)
 
-            assert.strictEqual(result, expected, 'Should include all training parameters')
+            assert.strictEqual(result, expected, 'Should include all training parameters and timestamps')
         })
 
         it('should handle different training parameters', () => {
+            const startTimestamp = new Date('2024-06-01T00:00:00Z')
+            const endTimestamp = new Date('2024-06-30T23:59:59Z')
+
             const config = {
                 data: {
                     folder: '/data',
@@ -272,7 +280,9 @@ describe('paths', () => {
                     periodSec: 60
                 },
                 train: {
-                    candlesWindowCount: 240
+                    candlesWindowCount: 240,
+                    startTimestamp,
+                    endTimestamp
                 },
                 trade: {
                     maxDurationSec: 7200,
@@ -282,12 +292,15 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', '240', '7200', '2', '1', 'samples.bin')
+            const expected = path.join('/data', 'data', 'binance', 'btc', 'usdc', '60', `samples_240_7200_2_1_${startTimestamp.getTime()}_${endTimestamp.getTime()}.bin`)
 
             assert.strictEqual(result, expected)
         })
 
         it('should work with different periods and symbols', () => {
+            const startTimestamp = new Date('2024-03-01T00:00:00Z')
+            const endTimestamp = new Date('2024-03-31T23:59:59Z')
+
             const config = {
                 data: {
                     folder: '/data',
@@ -298,7 +311,9 @@ describe('paths', () => {
                     periodSec: 300
                 },
                 train: {
-                    candlesWindowCount: 120
+                    candlesWindowCount: 120,
+                    startTimestamp,
+                    endTimestamp
                 },
                 trade: {
                     maxDurationSec: 3600,
@@ -308,7 +323,7 @@ describe('paths', () => {
             }
 
             const result = paths.samples(config)
-            const expected = path.join('/data', 'data', 'kraken', 'eth', 'usdc', '300', '120', '3600', '1.5', '0.75', 'samples.bin')
+            const expected = path.join('/data', 'data', 'kraken', 'eth', 'usdc', '300', `samples_120_3600_1.5_0.75_${startTimestamp.getTime()}_${endTimestamp.getTime()}.bin`)
 
             assert.strictEqual(result, expected)
         })
@@ -326,7 +341,9 @@ describe('paths', () => {
                     periodSec: 60
                 },
                 train: {
-                    candlesWindowCount: 120
+                    candlesWindowCount: 120,
+                    startTimestamp: new Date('2024-01-01T00:00:00Z'),
+                    endTimestamp: new Date('2024-12-31T23:59:59Z')
                 },
                 trade: {
                     maxDurationSec: 3600,
@@ -349,6 +366,9 @@ describe('paths', () => {
         })
 
         it('should create proper directory hierarchy', () => {
+            const startTimestamp = new Date('2024-01-01T00:00:00Z')
+            const endTimestamp = new Date('2024-12-31T23:59:59Z')
+
             const config = {
                 data: {
                     folder: '/data',
@@ -359,7 +379,9 @@ describe('paths', () => {
                     periodSec: 60
                 },
                 train: {
-                    candlesWindowCount: 120
+                    candlesWindowCount: 120,
+                    startTimestamp,
+                    endTimestamp
                 },
                 trade: {
                     maxDurationSec: 3600,
@@ -385,6 +407,8 @@ describe('paths', () => {
             assert(samplesPath.includes('3600'), 'Should include max duration')
             assert(samplesPath.includes('1.5'), 'Should include TP percent')
             assert(samplesPath.includes('0.75'), 'Should include SL percent')
+            assert(samplesPath.includes(startTimestamp.getTime().toString()), 'Should include start timestamp')
+            assert(samplesPath.includes(endTimestamp.getTime().toString()), 'Should include end timestamp')
         })
     })
 

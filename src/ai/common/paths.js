@@ -26,14 +26,16 @@ const _samples = ({
     data,
     candle,
     train: {
-        candlesWindowCount
+        candlesWindowCount,
+        startTimestamp,
+        endTimestamp
     },
     trade: {
         maxDurationSec,
         tpPercent,
         slPercent
     }
-}) => path.resolve(_candlesBase({ data, candle }), `${candlesWindowCount}`, `${maxDurationSec}`, `${tpPercent}`, `${slPercent}`, 'samples.bin')
+}) => path.resolve(_candlesBase({ data, candle }), `samples_${candlesWindowCount}_${maxDurationSec}_${tpPercent}_${slPercent}_${startTimestamp.getTime()}_${endTimestamp.getTime()}.bin`)
 
 const _modelBase = ({ data: { folder }, model: { name } }) => path.resolve(folder, 'models', name)
 const _modelArch = (config) => path.resolve(_modelBase(config), 'arch.json')
