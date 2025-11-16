@@ -11,7 +11,8 @@
     "test:watch": "mocha --watch tests/**/*.test.js",
     "lint": "eslint src/ --fix --fix-type suggestion,layout",
     "ai:train": "UV_THREADPOOL_SIZE=16 node src/ai/apps/train.js",
-    "ai:pred": "UV_THREADPOOL_SIZE=16 node src/ai/apps/pred.js"
+    "ai:pred": "UV_THREADPOOL_SIZE=16 node src/ai/apps/pred.js",
+    "ai:ss": "UV_THREADPOOL_SIZE=16 node src/ai/apps/ss.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.21.0",

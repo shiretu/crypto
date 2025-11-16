@@ -5,6 +5,7 @@ const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 
 const outputTransformations = require('../../common/outputTransformations')
+const samplesFilters = require('../../common/samplesFilters')
 const paths = require('../../common/paths')
 
 class Model {
@@ -14,11 +15,14 @@ class Model {
     #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
     #summary = { runner: 'tf' } /** @type {object} The summary of the model */
     #outputTransformation /** @type {function} The output transformation function */
+    #samplesFilter /** @type {function} The sample filter function */
+    #filterContext /** @type {object} Opaque context object for filter state */
     #inputShape /** @type {number[]} The input shape [candlesWindowCount, featuresPerCandle] */
 
     constructor (config) {
         this.#config = config
         this.#batch = []
+        this.#filterContext = {}
     }
 
     static async create (config) {
@@ -32,6 +36,14 @@ class Model {
     async #init () {
         this.#arch = JSON.parse(await fs.readFile(paths.modelArch(this.#config), 'utf-8'))
         this.#outputTransformation = outputTransformations[this.#arch.output.transformation]
+
+        // Initialize sample filter
+        const filterName = this.#arch.training.filtering || 'none'
+        this.#samplesFilter = samplesFilters[filterName]
+
+        // Set up filter context with batch size
+        this.#filterContext.batchSize = this.#arch.training.batchSize
+
         this.#inputShape = [
             this.#config.samplesMetadata.inputs.length / this.#config.samplesMetadata.inputs.stride,
             this.#config.samplesMetadata.inputs.stride
@@ -52,6 +64,11 @@ class Model {
     }
 
     async train (sample) {
+        // Apply sample filter with context
+        if (!this.#samplesFilter(this.#filterContext, sample)) {
+            return null
+        }
+
         // Convert input to tensor with shape [candlesWindowCount, featuresPerCandle]
         // Note: Convert to Float32Array because TensorFlow.js Node doesn't recognize Float64Array
         const input = tf.tensor2d(new Float32Array(sample.rawInputs), this.#inputShape)
@@ -110,8 +127,11 @@ class Model {
             // Clean up
             prediction.dispose()
 
-            // Return the first (and only) prediction
-            return predictionArray[0]
+            // Return both the prediction and the transformed actual outputs
+            return {
+                prediction: predictionArray[0],
+                actual: this.#outputTransformation(sample)
+            }
         } finally {
             input.dispose()
         }

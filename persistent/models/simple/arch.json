@@ -71,14 +71,14 @@
         },
         {
             "type": "dense",
-            "units": 2,
+            "units": 3,
             "activation": "softmax",
             "kernelInitializer": "glorotNormal",
-            "description": "Output: [p_buy, p_sell] classification probabilities that sum to 1"
+            "description": "Output: [p_buy, p_sell, p_hold] classification probabilities that sum to 1"
         }
     ],
     "output": {
-        "transformation": "confidenceSingleLabel"
+        "transformation": "confidenceThreeClass"
     },
     "compilation": {
         "loss": "categoricalCrossentropy",
@@ -97,6 +97,7 @@
     },
     "training": {
         "batchSize": 32,
-        "epochs": 2
+        "epochs": 2,
+        "filtering": "balanceBuySellHold"
     }
 }
