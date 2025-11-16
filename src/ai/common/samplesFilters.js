@@ -68,7 +68,80 @@ const balanceBuySellHold = (context, sample) => {
     return true
 }
 
+/**
+ * Balance by signal strength (6 classes) to equal representation (~16.67% each) globally
+ * Classifies samples by BOTH operation type AND signal quality:
+ * - BUY_STRONG: buy confidence > 0.5 (successful, fast)
+ * - BUY_WEAK: buy confidence -0.5 to 0.5 (uncertain, slow, or didn't enter)
+ * - BUY_FAILED: buy confidence < -0.5 (failed badly, fast stop-loss)
+ * - SELL_STRONG: sell confidence > 0.5 (successful, fast)
+ * - SELL_WEAK: sell confidence -0.5 to 0.5 (uncertain, slow, or didn't enter)
+ * - SELL_FAILED: sell confidence < -0.5 (failed badly, fast stop-loss)
+ *
+ * This ensures the model learns from all types of outcomes:
+ * - What strong signals look like (positive outcomes)
+ * - What weak/noisy signals look like (uncertain outcomes)
+ * - What failed signals look like (negative outcomes)
+ *
+ * @param {object} context - Context object to store state
+ * @param {Sample} sample - The sample to evaluate
+ * @returns {boolean} True to accept, false to skip
+ */
+const balanceBySignalStrength = (context, sample) => {
+    const buyConfidence = sample.outputs[0].confidence
+    const sellConfidence = sample.outputs[1].confidence
+
+    // Classify buy signal strength
+    let buyClass
+    if (buyConfidence > 0.5) {
+        buyClass = 0 // BUY_STRONG
+    } else if (buyConfidence < -0.5) {
+        buyClass = 1 // BUY_FAILED
+    } else {
+        buyClass = 2 // BUY_WEAK
+    }
+
+    // Classify sell signal strength
+    let sellClass
+    if (sellConfidence > 0.5) {
+        sellClass = 3 // SELL_STRONG
+    } else if (sellConfidence < -0.5) {
+        sellClass = 4 // SELL_FAILED
+    } else {
+        sellClass = 5 // SELL_WEAK
+    }
+
+    // Pick the class with stronger absolute confidence
+    const sampleClass = Math.abs(buyConfidence) >= Math.abs(sellConfidence) ? buyClass : sellClass
+
+    if (!context.classCounts) {
+        context.classCounts = [0, 0, 0, 0, 0, 0] // [buy_strong, buy_failed, buy_weak, sell_strong, sell_failed, sell_weak]
+        context.classCounts[sampleClass]++
+        context.totalSamples = 1
+        return true
+    }
+
+    // Calculate current percentage for this class
+    const currentPercentage = context.classCounts[sampleClass] / context.totalSamples
+
+    // Target is 16.67% for each of 6 classes
+    const targetPercentage = 1 / 6
+    const drift = currentPercentage - targetPercentage
+
+    // Skip if this class is over-represented by more than 5%
+    if (drift > 0.05) {
+        return false
+    }
+
+    // Accept sample and update global counts
+    context.classCounts[sampleClass]++
+    context.totalSamples++
+
+    return true
+}
+
 module.exports = {
     none,
-    balanceBuySellHold
+    balanceBuySellHold,
+    balanceBySignalStrength
 }

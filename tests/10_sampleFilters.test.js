@@ -163,4 +163,144 @@ describe('sampleFilters', () => {
             expect(context.totalSamples).to.equal(2)
         })
     })
+
+    describe('balanceBySignalStrength', () => {
+        // Helper to create a sample with specific confidence values
+        const createSample = (buyConfidence, sellConfidence) => ({
+            outputs: [
+                { confidence: buyConfidence },
+                { confidence: sellConfidence }
+            ]
+        })
+
+        it('should accept first sample and initialize context with 6 classes', () => {
+            const context = {}
+            const sample = createSample(0.8, -0.2) // BUY_STRONG
+
+            const result = sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(result).to.equal(true)
+            expect(context.classCounts).to.deep.equal([1, 0, 0, 0, 0, 0]) // BUY_STRONG
+            expect(context.totalSamples).to.equal(1)
+        })
+
+        it('should classify BUY_STRONG (confidence > 0.5)', () => {
+            const context = {}
+            const sample = createSample(0.8, 0.2)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[0]).to.equal(1) // BUY_STRONG
+        })
+
+        it('should classify BUY_FAILED (confidence < -0.5)', () => {
+            const context = {}
+            const sample = createSample(-0.8, 0.2)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[1]).to.equal(1) // BUY_FAILED
+        })
+
+        it('should classify BUY_WEAK (-0.5 to 0.5)', () => {
+            const context = {}
+            const sample = createSample(0.3, 0.1)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[2]).to.equal(1) // BUY_WEAK
+        })
+
+        it('should classify SELL_STRONG (confidence > 0.5)', () => {
+            const context = {}
+            const sample = createSample(0.2, 0.9)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[3]).to.equal(1) // SELL_STRONG
+        })
+
+        it('should classify SELL_FAILED (confidence < -0.5)', () => {
+            const context = {}
+            const sample = createSample(0.1, -0.8)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[4]).to.equal(1) // SELL_FAILED
+        })
+
+        it('should classify SELL_WEAK (-0.5 to 0.5)', () => {
+            const context = {}
+            const sample = createSample(0.1, 0.2)
+
+            sampleFilters.balanceBySignalStrength(context, sample)
+
+            expect(context.classCounts[5]).to.equal(1) // SELL_WEAK
+        })
+
+        it('should pick class based on stronger absolute confidence', () => {
+            const context = {}
+
+            // BUY has stronger absolute confidence
+            sampleFilters.balanceBySignalStrength(context, createSample(0.8, 0.3))
+            expect(context.classCounts[0]).to.equal(1) // BUY_STRONG
+
+            // SELL has stronger absolute confidence
+            sampleFilters.balanceBySignalStrength(context, createSample(0.3, -0.9))
+            expect(context.classCounts[4]).to.equal(1) // SELL_FAILED
+        })
+
+        it('should balance samples across 6 signal strength classes', () => {
+            const context = {}
+
+            // Feed round-robin samples with some imbalance
+            const samples = []
+            // Create samples in balanced order but with extras of BUY_STRONG
+            for (let round = 0; round < 20; round++) {
+                samples.push(createSample(0.8, 0.2)) // BUY_STRONG
+                samples.push(createSample(0.8, 0.2)) // BUY_STRONG (extra)
+                samples.push(createSample(-0.8, 0.2)) // BUY_FAILED
+                samples.push(createSample(0.3, 0.1)) // BUY_WEAK
+                samples.push(createSample(0.2, 0.9)) // SELL_STRONG
+                samples.push(createSample(0.1, -0.8)) // SELL_FAILED
+                samples.push(createSample(0.1, 0.2)) // SELL_WEAK
+            }
+
+            samples.forEach(sample => {
+                sampleFilters.balanceBySignalStrength(context, sample)
+            })
+
+            // Should have accepted samples
+            expect(context.totalSamples).to.be.greaterThan(20)
+
+            // All 6 classes should have some representation
+            context.classCounts.forEach((count, i) => {
+                expect(count).to.be.greaterThan(0, `Class ${i} should have at least one sample`)
+            })
+
+            // Check that balancing is attempting to maintain distribution
+            // (with 6 classes, perfect balance is harder to achieve with small samples)
+            const targetPct = 1 / 6
+            const drifts = context.classCounts.map(count =>
+                Math.abs((count / context.totalSamples) - targetPct)
+            )
+            const maxDrift = Math.max(...drifts)
+            expect(maxDrift).to.be.lessThan(0.25, 'Max drift from target should be reasonable')
+        })
+
+        it('should reject over-represented class', () => {
+            const context = {
+                classCounts: [20, 5, 5, 5, 5, 5], // BUY_STRONG over-represented
+                totalSamples: 45
+            }
+
+            // BUY_STRONG is at 20/45 = 44% vs 16.67% target = 27% drift > 5%
+            const buyStrongSample = createSample(0.8, 0.2)
+            expect(sampleFilters.balanceBySignalStrength(context, buyStrongSample)).to.equal(false)
+
+            // SELL_STRONG is at 5/45 = 11% vs 16.67% target = -6% drift (under-represented)
+            const sellStrongSample = createSample(0.2, 0.9)
+            expect(sampleFilters.balanceBySignalStrength(context, sellStrongSample)).to.equal(true)
+        })
+    })
 })
