@@ -48,6 +48,45 @@ class Sample {
     get rawOutputs () { return this.#rawOutputs }
     get outputs () { return [Output.createFromRaw(this.#rawOutputs.subarray(0, this.#rawOutputs.length / 2)), Output.createFromRaw(this.#rawOutputs.subarray(this.#rawOutputs.length / 2))] }
 
+    /**
+     * Get the signal category based on confidence values
+     * Returns an integer 0-5 representing:
+     * 0: BUY_STRONG (buy confidence > 0.5)
+     * 1: BUY_FAILED (buy confidence < -0.5)
+     * 2: BUY_WEAK (buy confidence -0.5 to 0.5)
+     * 3: SELL_STRONG (sell confidence > 0.5)
+     * 4: SELL_FAILED (sell confidence < -0.5)
+     * 5: SELL_WEAK (sell confidence -0.5 to 0.5)
+     * @returns {number} Signal category index (0-5)
+     */
+    get signalCategory () {
+        const buyConfidence = this.outputs[0].confidence
+        const sellConfidence = this.outputs[1].confidence
+
+        // Classify buy signal strength
+        let buyClass
+        if (buyConfidence > 0.5) {
+            buyClass = 0 // BUY_STRONG
+        } else if (buyConfidence < -0.5) {
+            buyClass = 1 // BUY_FAILED
+        } else {
+            buyClass = 2 // BUY_WEAK
+        }
+
+        // Classify sell signal strength
+        let sellClass
+        if (sellConfidence > 0.5) {
+            sellClass = 3 // SELL_STRONG
+        } else if (sellConfidence < -0.5) {
+            sellClass = 4 // SELL_FAILED
+        } else {
+            sellClass = 5 // SELL_WEAK
+        }
+
+        // Pick the class with stronger absolute confidence
+        return Math.abs(buyConfidence) >= Math.abs(sellConfidence) ? buyClass : sellClass
+    }
+
     async #prepareInputs (config, startCandleIndex) {
         const candles = await cache.candles(config)
         const requiredCandlesCount = config.train.candlesWindowCount + config.train.candlesPreambleCount

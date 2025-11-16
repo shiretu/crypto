@@ -166,12 +166,47 @@ describe('sampleFilters', () => {
 
     describe('balanceBySignalStrength', () => {
         // Helper to create a sample with specific confidence values
-        const createSample = (buyConfidence, sellConfidence) => ({
-            outputs: [
-                { confidence: buyConfidence },
-                { confidence: sellConfidence }
-            ]
-        })
+        const createSample = (buyConfidence, sellConfidence) => {
+            const sample = {
+                outputs: [
+                    { confidence: buyConfidence },
+                    { confidence: sellConfidence }
+                ]
+            }
+
+            // Add signalCategory getter to match Sample class behavior
+            Object.defineProperty(sample, 'signalCategory', {
+                get: function () {
+                    const buyConf = this.outputs[0].confidence
+                    const sellConf = this.outputs[1].confidence
+
+                    // Classify buy signal strength
+                    let buyClass
+                    if (buyConf > 0.5) {
+                        buyClass = 0 // BUY_STRONG
+                    } else if (buyConf < -0.5) {
+                        buyClass = 1 // BUY_FAILED
+                    } else {
+                        buyClass = 2 // BUY_WEAK
+                    }
+
+                    // Classify sell signal strength
+                    let sellClass
+                    if (sellConf > 0.5) {
+                        sellClass = 3 // SELL_STRONG
+                    } else if (sellConf < -0.5) {
+                        sellClass = 4 // SELL_FAILED
+                    } else {
+                        sellClass = 5 // SELL_WEAK
+                    }
+
+                    // Pick the class with stronger absolute confidence
+                    return Math.abs(buyConf) >= Math.abs(sellConf) ? buyClass : sellClass
+                }
+            })
+
+            return sample
+        }
 
         it('should accept first sample and initialize context with 6 classes', () => {
             const context = {}

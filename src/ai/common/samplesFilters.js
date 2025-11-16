@@ -70,7 +70,7 @@ const balanceBuySellHold = (context, sample) => {
 
 /**
  * Balance by signal strength (6 classes) to equal representation (~16.67% each) globally
- * Classifies samples by BOTH operation type AND signal quality:
+ * Uses sample.signalCategory to classify samples by BOTH operation type AND signal quality:
  * - BUY_STRONG: buy confidence > 0.5 (successful, fast)
  * - BUY_WEAK: buy confidence -0.5 to 0.5 (uncertain, slow, or didn't enter)
  * - BUY_FAILED: buy confidence < -0.5 (failed badly, fast stop-loss)
@@ -88,31 +88,7 @@ const balanceBuySellHold = (context, sample) => {
  * @returns {boolean} True to accept, false to skip
  */
 const balanceBySignalStrength = (context, sample) => {
-    const buyConfidence = sample.outputs[0].confidence
-    const sellConfidence = sample.outputs[1].confidence
-
-    // Classify buy signal strength
-    let buyClass
-    if (buyConfidence > 0.5) {
-        buyClass = 0 // BUY_STRONG
-    } else if (buyConfidence < -0.5) {
-        buyClass = 1 // BUY_FAILED
-    } else {
-        buyClass = 2 // BUY_WEAK
-    }
-
-    // Classify sell signal strength
-    let sellClass
-    if (sellConfidence > 0.5) {
-        sellClass = 3 // SELL_STRONG
-    } else if (sellConfidence < -0.5) {
-        sellClass = 4 // SELL_FAILED
-    } else {
-        sellClass = 5 // SELL_WEAK
-    }
-
-    // Pick the class with stronger absolute confidence
-    const sampleClass = Math.abs(buyConfidence) >= Math.abs(sellConfidence) ? buyClass : sellClass
+    const sampleClass = sample.signalCategory
 
     if (!context.classCounts) {
         context.classCounts = [0, 0, 0, 0, 0, 0] // [buy_strong, buy_failed, buy_weak, sell_strong, sell_failed, sell_weak]
