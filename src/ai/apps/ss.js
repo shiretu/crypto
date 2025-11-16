@@ -74,7 +74,7 @@ const work = async () => {
     // Print statistics for each category
     const printCategoryStats = (name, categoryStats) => {
         console.log(`\n--- ${name} ---`)
-        console.log(`Samples: ${categoryStats.count.toLocaleString()} (${(categoryStats.count / samples.length * 100).toFixed(2)}% of total)`)
+        console.log(`Samples: ${categoryStats.count.toLocaleString()} (${(categoryStats.count / samples.length * 100).toFixed(2)}% of ${samples.length.toLocaleString()})`)
 
         if (categoryStats.entered > 0) {
             console.log(`Entered: ${categoryStats.entered.toLocaleString()} (${(categoryStats.entered / categoryStats.count * 100).toFixed(2)}%)`)

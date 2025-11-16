@@ -23,8 +23,8 @@
     },
     "trade": {
         "maxDurationSec": 3600,
-        "tpPercent": 1,
-        "slPercent": 0.5
+        "tpPercent": 0.4,
+        "slPercent": 0.4
     },
     "model": {
         "runner": "tf",
