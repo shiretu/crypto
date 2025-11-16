@@ -97,7 +97,7 @@
     },
     "training": {
         "batchSize": 32,
-        "epochs": 2,
-        "filtering": "balanceBuySellHold"
+        "epochs": 20,
+        "filtering": "balanceBySignalStrength"
     }
 }
