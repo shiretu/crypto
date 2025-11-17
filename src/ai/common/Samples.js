@@ -55,10 +55,11 @@ class Samples {
     }
 
     async #generate (config) {
+        const requiredCandlesCount = config.train.candlesWindowCount + config.train.candlesPreambleCount
         const candles = await cache.candles(config)
         const startCandleIndex = candles.find(c => c.tsUs.open - (config.train.startTimestamp.getTime() * 1000))
         const endCandleIndex = candles.find(c => c.tsUs.open - (config.train.endTimestamp.getTime() * 1000))
-        const length = endCandleIndex - startCandleIndex
+        const length = endCandleIndex - startCandleIndex - requiredCandlesCount
 
         const metadata = {
             version: Samples.#version,

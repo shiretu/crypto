@@ -26,8 +26,7 @@
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
-                "ai:gds",
-                "100000"
+                "ai:ss"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
