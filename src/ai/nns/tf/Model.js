@@ -38,7 +38,7 @@ class Model {
     async #init () {
         this.#arch = JSON.parse(await fs.readFile(paths.modelArch(this.#config), 'utf-8'))
         this.#trainOutputTransformation = outputTransformations[this.#arch.training.outputTransformation]
-        this.#inferenceOutputTransformation = inferenceTransformations[this.#arch.inference.outputTransformation]
+        this.#inferenceOutputTransformation = inferenceTransformations[this.#arch.inference.inferenceTransformation]
 
         // Initialize sample filter
         const filterName = this.#arch.training.filtering || 'none'

@@ -4,18 +4,35 @@
  * the model is confident enough to make a trade decision vs holding.
  *
  * All transformations take the prediction array (e.g., [p_buy, p_sell, p_hold]) and return
- * the predicted class index (0=BUY, 1=SELL, 2=HOLD).
+ * the predicted class index (0=BUY, 1=SELL, 2=HOLD) or the raw value for regression.
  */
 
 module.exports = {
     /**
+     * Identity - returns the raw predicted value unchanged.
+     * For regression models that predict a continuous value (e.g., profit percentage).
+     *
+     * @param {number[]} prediction - Model output (e.g., [2.35])
+     * @returns {number} The raw predicted value
+     */
+    identity: (prediction) => {
+        return prediction[0]
+    },
+
+    /**
      * Simple argmax - picks the class with highest probability.
      * No confidence filtering - always returns a winner even if probabilities are close.
+     * For binary models with single output: returns 1 if > 0.5, else 0
      *
-     * @param {number[]} prediction - Probability distribution from NN (e.g., [0.4, 0.4, 0.2])
-     * @returns {number} Predicted class index (0=BUY, 1=SELL, 2=HOLD)
+     * @param {number[]} prediction - Probability distribution from NN (e.g., [0.4, 0.4, 0.2] or [0.7])
+     * @returns {number} Predicted class index (0=BUY, 1=SELL, 2=HOLD) or binary (0/1)
      */
     argmax: (prediction) => {
+        // Binary model: single output value
+        if (prediction.length === 1) {
+            return prediction[0] > 0.5 ? 1 : 0
+        }
+        // Multi-class: argmax
         return prediction.indexOf(Math.max(...prediction))
     },
 

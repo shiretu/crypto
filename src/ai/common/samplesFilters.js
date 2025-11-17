@@ -116,8 +116,47 @@ const balanceBySignalStrength = (context, sample) => {
     return true
 }
 
+/**
+ * Balance binary classification (YES/NO or 1/0) to 50/50 representation globally
+ * For binary models that output a single value [0] or [1]
+ * Classifies based on first output's confidence > 0.5
+ * @param {object} context - Context object to store state
+ * @param {Sample} sample - The sample to evaluate
+ * @returns {boolean} True to accept, false to skip
+ */
+const balanceBinary = (context, sample) => {
+    // Determine class: 1 if first output confidence > 0.5, else 0
+    const sampleClass = sample.outputs[0].confidence > 0.5 ? 1 : 0
+
+    if (!context.classCounts) {
+        context.classCounts = [0, 0] // [no, yes]
+        context.classCounts[sampleClass]++
+        context.totalSamples = 1
+        return true
+    }
+
+    // Calculate current percentage for this class
+    const currentPercentage = context.classCounts[sampleClass] / context.totalSamples
+
+    // Target is 50% for each class
+    const targetPercentage = 0.5
+    const drift = currentPercentage - targetPercentage
+
+    // Skip if this class is over-represented by more than 5%
+    if (drift > 0.05) {
+        return false
+    }
+
+    // Accept sample and update global counts
+    context.classCounts[sampleClass]++
+    context.totalSamples++
+
+    return true
+}
+
 module.exports = {
     none,
     balanceBuySellHold,
-    balanceBySignalStrength
+    balanceBySignalStrength,
+    balanceBinary
 }

@@ -7,7 +7,7 @@ const { createModel } = require('../nns/createModel')
 
 const work = async () => {
     // prepare the data and the model
-    const config = loadConfig('simple')
+    const config = loadConfig(process.argv[2] || 'simple')
     const samples = await cache.samples(config)
     const model = await createModel({ ...config, samplesMetadata: samples.metadata })
     console.log(model.summary.initModel)

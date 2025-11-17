@@ -56,5 +56,28 @@ module.exports = {
      */
     profitPercent: (sample) => {
         return sample.outputs.map(output => output.profitPercent)
+    },
+
+    /**
+     * Binary classification for BUY only: [should_buy]
+     * Returns 1 if BUY confidence > 0.5 (strong positive signal), 0 otherwise
+     * Used for training a dedicated BUY model
+     * @param {Sample} sample - The sample with outputs containing confidence values
+     * @returns {number[]} Single element array [1] or [0]
+     */
+    confidenceBuyBinary: (sample) => {
+        const buyConfidence = sample.outputs[0].confidence
+        return [buyConfidence > 0.5 ? 1 : 0]
+    },
+
+    /**
+     * Regression for BUY profit prediction: [buy_profit_percent]
+     * Returns the actual profit percentage if BUY was executed
+     * Positive = profit, negative = loss
+     * @param {Sample} sample - The sample with outputs containing profitPercent values
+     * @returns {number[]} Single element array with BUY profit percentage
+     */
+    profitPercentBuy: (sample) => {
+        return [sample.outputs[0].profitPercent]
     }
 }
