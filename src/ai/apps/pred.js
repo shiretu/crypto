@@ -26,12 +26,8 @@ const work = async () => {
     bar.start(predictionCount, 0)
 
     // accuracy tracking
-    const stats = {
-        total: 0,
-        correctClass: 0,
-        strongPredictions: 0,
-        strongCorrect: 0
-    }
+    const all = { count: 0, correct: 0 }
+    const perClass = [{ count: 0, correct: 0 }, { count: 0, correct: 0 }, { count: 0, correct: 0 }]
 
     // do the damage
     for (let i = 0; i < predictionCount; i++) {
@@ -46,27 +42,15 @@ const work = async () => {
             actual: outputs.map(output => output.confidence)
         })
 
-        // Calculate accuracy metrics
-        const prediction = result.prediction // [buy_prob, sell_prob, hold_prob]
-        const actual = result.actual // [buy_label, sell_label, hold_label] after transformation
+        // Calculate accuracy metrics using inference transformation
+        const predClass = result.predictedClass // Determined by inference transformation
+        const actualClass = result.actual.indexOf(Math.max(...result.actual))
 
-        // Find predicted and actual classes
-        const predClass = prediction.indexOf(Math.max(...prediction))
-        const actualClass = actual.indexOf(Math.max(...actual))
+        all.count++
+        all.correct += (predClass === actualClass ? 1 : 0)
 
-        stats.total++
-        if (predClass === actualClass) {
-            stats.correctClass++
-        }
-
-        // Track strong predictions (max probability > 0.5)
-        const maxPredProb = Math.max(...prediction)
-        if (maxPredProb > 0.5) {
-            stats.strongPredictions++
-            if (predClass === actualClass) {
-                stats.strongCorrect++
-            }
-        }
+        perClass[predClass].count++
+        perClass[predClass].correct += (predClass === actualClass ? 1 : 0)
 
         bar.update(i + 1)
     }
@@ -74,12 +58,17 @@ const work = async () => {
 
     // Print accuracy summary
     console.log('\n=== Accuracy Metrics ===')
-    console.log(`Total samples: ${stats.total.toLocaleString()}`)
-    console.log(`Overall accuracy: ${(stats.correctClass / stats.total * 100).toFixed(2)}%`)
-    console.log(`Strong predictions (prob > 0.5): ${stats.strongPredictions.toLocaleString()} (${(stats.strongPredictions / stats.total * 100).toFixed(2)}%)`)
-    if (stats.strongPredictions > 0) {
-        console.log(`Strong prediction accuracy: ${(stats.strongCorrect / stats.strongPredictions * 100).toFixed(2)}%`)
-    }
+    console.log(`Total samples: ${all.count.toLocaleString()}`)
+    console.log(`Overall accuracy: ${(all.correct / all.count * 100).toFixed(2)}%`)
+    console.log('')
+
+    const classNames = ['BUY', 'SELL', 'HOLD']
+    classNames.forEach((name, idx) => {
+        const classStats = perClass[idx]
+        const percentage = (classStats.count / all.count * 100).toFixed(2)
+        const accuracy = classStats.count > 0 ? (classStats.correct / classStats.count * 100).toFixed(2) : '0.00'
+        console.log(`${name}: ${classStats.count.toLocaleString()} predictions (${percentage}%) - ${accuracy}% accuracy`)
+    })
 
     console.log(`\nPredictions saved to ${csvPath}`)
 }

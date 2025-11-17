@@ -5,6 +5,7 @@ const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 
 const outputTransformations = require('../../common/outputTransformations')
+const inferenceTransformations = require('../../common/inferenceTransformations')
 const samplesFilters = require('../../common/samplesFilters')
 const paths = require('../../common/paths')
 
@@ -14,15 +15,16 @@ class Model {
     #model /** @type {tf.LayersModel} The TensorFlow model */
     #batch /** @type {Array<{input: tf.Tensor, output: tf.Tensor}>} */
     #summary = { runner: 'tf' } /** @type {object} The summary of the model */
-    #outputTransformation /** @type {function} The output transformation function */
-    #samplesFilter /** @type {function} The sample filter function */
-    #filterContext /** @type {object} Opaque context object for filter state */
+    #trainSamplesFilterContext /** @type {object} Opaque context object for filter state */
+    #trainSamplesFilter /** @type {function} The sample filter function */
+    #trainOutputTransformation /** @type {function} The output transformation function */
+    #inferenceOutputTransformation /** @type {function} The inference transformation function */
     #inputShape /** @type {number[]} The input shape [candlesWindowCount, featuresPerCandle] */
 
     constructor (config) {
         this.#config = config
         this.#batch = []
-        this.#filterContext = {}
+        this.#trainSamplesFilterContext = {}
     }
 
     static async create (config) {
@@ -35,14 +37,15 @@ class Model {
 
     async #init () {
         this.#arch = JSON.parse(await fs.readFile(paths.modelArch(this.#config), 'utf-8'))
-        this.#outputTransformation = outputTransformations[this.#arch.output.transformation]
+        this.#trainOutputTransformation = outputTransformations[this.#arch.training.outputTransformation]
+        this.#inferenceOutputTransformation = inferenceTransformations[this.#arch.inference.outputTransformation]
 
         // Initialize sample filter
         const filterName = this.#arch.training.filtering || 'none'
-        this.#samplesFilter = samplesFilters[filterName]
+        this.#trainSamplesFilter = samplesFilters[filterName]
 
         // Set up filter context with batch size
-        this.#filterContext.batchSize = this.#arch.training.batchSize
+        this.#trainSamplesFilterContext.batchSize = this.#arch.training.batchSize
 
         this.#inputShape = [
             this.#config.samplesMetadata.inputs.length / this.#config.samplesMetadata.inputs.stride,
@@ -65,7 +68,7 @@ class Model {
 
     async train (sample) {
         // Apply sample filter with context
-        if (!this.#samplesFilter(this.#filterContext, sample)) {
+        if (!this.#trainSamplesFilter(this.#trainSamplesFilterContext, sample)) {
             return null
         }
 
@@ -74,7 +77,7 @@ class Model {
         const input = tf.tensor2d(new Float32Array(sample.rawInputs), this.#inputShape)
 
         // Transform and convert output to tensor
-        const transformedOutput = this.#outputTransformation(sample)
+        const transformedOutput = this.#trainOutputTransformation(sample)
         const output = tf.tensor1d(transformedOutput)
 
         // Add to batch
@@ -130,7 +133,8 @@ class Model {
             // Return both the prediction and the transformed actual outputs
             return {
                 prediction: predictionArray[0],
-                actual: this.#outputTransformation(sample)
+                actual: this.#trainOutputTransformation(sample),
+                predictedClass: this.#inferenceOutputTransformation(predictionArray[0])
             }
         } finally {
             input.dispose()

@@ -77,9 +77,6 @@
             "description": "Output: [p_buy, p_sell, p_hold] classification probabilities that sum to 1"
         }
     ],
-    "output": {
-        "transformation": "confidenceThreeClass"
-    },
     "compilation": {
         "loss": "categoricalCrossentropy",
         "optimizer": {
@@ -97,7 +94,11 @@
     },
     "training": {
         "batchSize": 32,
-        "epochs": 20,
-        "filtering": "balanceBySignalStrength"
+        "epochs": 24,
+        "filtering": "balanceBySignalStrength",
+        "outputTransformation": "confidenceThreeClass"
+    },
+    "inference": {
+        "outputTransformation": "argmax"
     }
 }

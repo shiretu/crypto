@@ -50,7 +50,7 @@ class Samples {
         }
         this.#data = data.subarray(1 + (Number(data[0]) / 8))
         if (this.#data.length !== this.#metadata.length * (this.#metadata.inputs.length + this.#metadata.outputs.length)) {
-            throw new Error('Samples data size does not match metadata')
+            throw new Error(`Samples data size does not match metadata: ${this.#data.length} != ${this.#metadata.length} * (${this.#metadata.inputs.length} + ${this.#metadata.outputs.length})`)
         }
     }
 
