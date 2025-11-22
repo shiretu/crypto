@@ -1,0 +1,63 @@
+{
+    "name": "hybrid-inception-se-gres-bilstm-attention",
+    "description": "Maximum-accuracy hybrid multi-head crypto predictor",
+    "branches": {
+        "shared": [
+            { "type": "conv1d", "filters": 128, "kernelSize": 3, "strides": 1, "padding": "same", "activation": "relu" },
+            { "type": "conv1d", "filters": 128, "kernelSize": 5, "strides": 1, "padding": "same", "activation": "relu" },
+            { "type": "conv1d", "filters": 128, "kernelSize": 8, "strides": 1, "padding": "same", "activation": "relu" },
+            { "type": "merge", "mode": "concat" },
+
+            { "type": "batchNormalization" },
+            { "type": "squeezeExcitation", "reduction": 16 },
+
+            { "type": "gatedResidual", "filters": 256 },
+            { "type": "conv1d", "filters": 256, "kernelSize": 3, "strides": 1, "padding": "same", "activation": "relu" },
+            { "type": "batchNormalization" },
+            { "type": "dropout", "rate": 0.2 }
+        ],
+
+        "classification": [
+            { "type": "bidirectional",
+              "layer": { "type": "lstm", "units": 192, "returnSequences": false }
+            },
+            { "type": "dense", "units": 128, "activation": "relu" },
+            { "type": "dropout", "rate": 0.3 },
+            { "type": "dense", "units": 3, "activation": "softmax" }
+        ],
+
+        "regression": [
+            { "type": "attention" },
+            { "type": "dense", "units": 128, "activation": "relu" },
+            { "type": "dropout", "rate": 0.3 },
+            { "type": "dense", "units": 2, "activation": "linear" }
+        ]
+    },
+
+    "compilation": {
+        "optimizer": {
+            "type": "adam",
+            "learningRate": 0.00001,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-07,
+            "clipNorm": 1.0
+        },
+        "loss": {
+            "classification": "categoricalCrossentropy",
+            "regression": "meanSquaredError"
+        },
+        "metrics": ["mse", "mae"]
+    },
+
+    "training": {
+        "batchSize": 32,
+        "epochs": 12,
+        "filtering": "balanceBySignalStrength",
+        "outputTransformation": "hybridTwoHead"
+    },
+
+    "inference": {
+        "inferenceTransformation": "hybridDecisionRule"
+    }
+}

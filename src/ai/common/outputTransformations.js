@@ -79,5 +79,12 @@ module.exports = {
      */
     profitPercentBuy: (sample) => {
         return [sample.outputs[0].profitPercent]
+    },
+
+    hybridTwoHead: (sample) => {
+        return {
+            classification: module.exports.confidenceThreeClass(sample),
+            regression: module.exports.profitPercent(sample)
+        }
     }
 }

@@ -28,6 +28,6 @@
     },
     "model": {
         "runner": "tf",
-        "name": "simple"
+        "name": "hmhtn"
     }
 }

@@ -9,8 +9,7 @@
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
-                "ai:train",
-                "tpn"
+                "ai:train"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
