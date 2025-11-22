@@ -39,8 +39,8 @@ class SqueezeExcitationLayer extends tf.layers.Layer {
         this.dense2.build([null, reducedChannels])
 
         // Register trainable weights
-        this._trainableWeights.push(...this.dense1.trainableWeights)
-        this._trainableWeights.push(...this.dense2.trainableWeights)
+        // this._trainableWeights.push(...this.dense1.trainableWeights)
+        // this._trainableWeights.push(...this.dense2.trainableWeights)
 
         super.build(inputShape)
     }

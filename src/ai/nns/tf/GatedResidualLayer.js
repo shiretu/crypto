@@ -63,7 +63,7 @@ class GatedResidualLayer extends tf.layers.Layer {
                 name: 'projection'
             })
             this.projection.build(inputShape)
-            this._trainableWeights.push(...this.projection.trainableWeights)
+            // this._trainableWeights.push(...this.projection.trainableWeights)
         }
 
         // Build layers
@@ -72,9 +72,9 @@ class GatedResidualLayer extends tf.layers.Layer {
         this.gateConv.build([inputShape[0], inputShape[1], this.filters])
 
         // Register trainable weights
-        this._trainableWeights.push(...this.conv1.trainableWeights)
-        this._trainableWeights.push(...this.conv2.trainableWeights)
-        this._trainableWeights.push(...this.gateConv.trainableWeights)
+        // this._trainableWeights.push(...this.conv1.trainableWeights)
+        // this._trainableWeights.push(...this.conv2.trainableWeights)
+        // this._trainableWeights.push(...this.gateConv.trainableWeights)
 
         super.build(inputShape)
     }

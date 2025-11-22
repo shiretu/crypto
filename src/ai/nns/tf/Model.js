@@ -4,6 +4,11 @@ const path = require('path')
 const tf = require('@tensorflow/tfjs')
 require('@tensorflow/tfjs-node') // Enable Node.js backend for file operations
 
+// Ensure custom layers are registered before loading/saving models
+require('./AttentionLayer')
+require('./SqueezeExcitationLayer')
+require('./GatedResidualLayer')
+
 const outputTransformations = require('../../common/outputTransformations')
 const inferenceTransformations = require('../../common/inferenceTransformations')
 const samplesFilters = require('../../common/samplesFilters')
@@ -20,11 +25,13 @@ class Model {
     #trainOutputTransformation /** @type {function} The output transformation function */
     #inferenceOutputTransformation /** @type {function} The inference transformation function */
     #inputShape /** @type {number[]} The input shape [candlesWindowCount, featuresPerCandle] */
+    #branchNames /** @type {string[]|null} Cached branch names for branched models */
 
     constructor (config) {
         this.#config = config
         this.#batch = []
         this.#trainSamplesFilterContext = {}
+        this.#branchNames = null
     }
 
     static async create (config) {
@@ -37,6 +44,10 @@ class Model {
 
     async #init () {
         this.#arch = JSON.parse(await fs.readFile(paths.modelArch(this.#config), 'utf-8'))
+        if (this.#arch.branches) {
+            this.#branchNames = Object.keys(this.#arch.branches)
+                .filter(name => name !== 'shared')
+        }
         this.#trainOutputTransformation = outputTransformations[this.#arch.training.outputTransformation]
         this.#inferenceOutputTransformation = inferenceTransformations[this.#arch.inference.inferenceTransformation]
 
@@ -76,12 +87,20 @@ class Model {
         // Note: Convert to Float32Array because TensorFlow.js Node doesn't recognize Float64Array
         const input = tf.tensor2d(new Float32Array(sample.rawInputs), this.#inputShape)
 
-        // Transform and convert output to tensor
+        // Transform outputs for training
         const transformedOutput = this.#trainOutputTransformation(sample)
-        const output = tf.tensor1d(transformedOutput)
 
-        // Add to batch
-        this.#batch.push({ input, output })
+        // For sequential/single-output models we expect a flat array of numbers.
+        // For branched/multi-output models we expect an object keyed by branch name,
+        // each value being an array of numbers (one label vector per branch).
+        if (this.#arch.branches) {
+            // Multi-output: keep outputs as an object keyed by branch
+            this.#batch.push({ input, output: transformedOutput })
+        } else {
+            // Single-output: classic 1D label
+            const output = tf.tensor1d(transformedOutput)
+            this.#batch.push({ input, output })
+        }
 
         // Check if batch is full
         if (this.#batch.length < this.#arch.training.batchSize) {
@@ -89,11 +108,33 @@ class Model {
         }
 
         // Batch is full, train the model
-        let inputs, outputs
+        let inputs
+        let outputs
+
         try {
-            // Stack all inputs and outputs into single tensors
+            // Stack all inputs into a single tensor
             inputs = tf.stack(this.#batch.map(item => item.input))
-            outputs = tf.stack(this.#batch.map(item => item.output))
+
+            if (this.#arch.branches) {
+                outputs = this.#branchNames.map(branchName => {
+                    // For this branch, build a tensor per sample in the batch
+                    const tensors = this.#batch.map(item => {
+                        const label = item.output[branchName]
+                        return tf.tensor1d(label)
+                    })
+
+                    // Stack into a single [batchSize, labelDim] tensor
+                    const stacked = tf.stack(tensors)
+
+                    // Dispose per-sample tensors now that they are stacked
+                    tensors.forEach(t => t.dispose())
+
+                    return stacked
+                })
+            } else {
+                // Single-output case
+                outputs = tf.stack(this.#batch.map(item => item.output))
+            }
 
             // Train on the batch
             const history = await this.#model.fit(inputs, outputs, {
@@ -107,10 +148,26 @@ class Model {
             // Clean up tensors to prevent memory leaks
             this.#batch.forEach(item => {
                 item.input.dispose()
-                item.output.dispose()
+                if (!this.#arch.branches) {
+                    // Single-output case: stored output is a tensor and must be disposed.
+                    item.output.dispose?.()
+                }
+                // For branched models, item.output is a plain object with raw labels;
+                // the per-branch tensors are created and disposed around stacking above.
             })
+
             inputs?.dispose()
-            outputs?.dispose()
+
+            if (outputs) {
+                if (this.#arch.branches && Array.isArray(outputs)) {
+                    // Multi-output: outputs is an array of tensors
+                    outputs.forEach(t => t.dispose())
+                } else if (!this.#arch.branches) {
+                    // Single-output: outputs is a single tensor
+                    outputs.dispose()
+                }
+            }
+
             this.#batch = []
         }
     }
@@ -124,17 +181,40 @@ class Model {
             // Run prediction
             const prediction = this.#model.predict(input)
 
-            // Convert tensor to array
-            const predictionArray = await prediction.array()
+            // Handle single-output and multi-output models
+            if (Array.isArray(prediction)) {
+                // Multi-output: prediction is an array of tensors
+                const arrays = []
+                for (const t of prediction) {
+                    arrays.push(await t.array())
+                    t.dispose()
+                }
 
-            // Clean up
-            prediction.dispose()
+                const branchNames = this.#branchNames
+                const predictionObj = {}
 
-            // Return both the prediction and the transformed actual outputs
-            return {
-                prediction: predictionArray[0],
-                actual: this.#trainOutputTransformation(sample),
-                predictedClass: this.#inferenceOutputTransformation(predictionArray[0])
+                branchNames.forEach((name, idx) => {
+                    // arrays[idx] is [ [ ...values... ] ] because of batch dimension
+                    predictionObj[name] = arrays[idx][0]
+                })
+
+                const actual = this.#trainOutputTransformation(sample)
+
+                return {
+                    prediction: predictionObj,
+                    actual,
+                    predictedClass: this.#inferenceOutputTransformation(predictionObj)
+                }
+            } else {
+                // Single-output: prediction is a single tensor
+                const predictionArray = await prediction.array()
+                prediction.dispose()
+
+                return {
+                    prediction: predictionArray[0],
+                    actual: this.#trainOutputTransformation(sample),
+                    predictedClass: this.#inferenceOutputTransformation(predictionArray[0])
+                }
             }
         } finally {
             input.dispose()
@@ -171,6 +251,17 @@ class Model {
         const baseConfig = isFirstLayer ? { inputShape: this.#inputShape } : {}
 
         switch (layerConfig.type) {
+            case 'merge':
+                // Currently we only support "concat"-style merge at the architecture level.
+                // The present implementation does not model true multi-input merging inside
+                // the shared trunk; instead, we treat "merge" as an identity operation.
+                // This lets architectures that include a "merge" placeholder (e.g. after
+                // multiple Conv1D blocks) compile and run, while effectively behaving as
+                // a no-op. If/when we add true intra-trunk branching with multiple tensors,
+                // this case can be extended to use tf.layers.concatenate() with multiple inputs.
+                return tf.layers.activation({
+                    activation: 'linear'
+                })
             case 'lstm':
                 return tf.layers.lstm({
                     ...baseConfig,
@@ -227,9 +318,10 @@ class Model {
                 return tf.layers.globalAveragePooling1d()
 
             case 'bidirectional': {
-                const innerLayer = this.#createLayer(layerConfig.layer, false)
+                // Propagate isFirstLayer to the inner layer so that inputShape
+                // (when needed) is applied to the wrapped RNN, not the wrapper.
+                const innerLayer = this.#createLayer(layerConfig.layer, isFirstLayer)
                 return tf.layers.bidirectional({
-                    ...baseConfig,
                     layer: innerLayer,
                     mergeMode: 'concat'
                 })
@@ -262,14 +354,57 @@ class Model {
     }
 
     #createBranchedModel () {
-        throw new Error('Not implemented yet')
+        const input = tf.input({ shape: this.#inputShape })
+        let shared = input
+
+        // 1. Shared trunk
+        for (const layerConf of this.#arch.branches.shared) {
+            shared = this.#applyLayerToTensor(shared, layerConf)
+        }
+
+        // 2. Branches
+        const outputs = {}
+        const outputNodes = []
+
+        for (const branchName of Object.keys(this.#arch.branches)) {
+            if (branchName === 'shared') continue
+
+            let branchOut = shared
+            for (const layerConf of this.#arch.branches[branchName]) {
+                branchOut = this.#applyLayerToTensor(branchOut, layerConf)
+            }
+
+            outputs[branchName] = branchOut
+            outputNodes.push(branchOut)
+        }
+
+        this.#model = tf.model({ inputs: input, outputs: outputNodes })
+    }
+
+    #applyLayerToTensor (tensor, conf) {
+        const layer = this.#createLayer(conf, false)
+        return layer.apply(tensor)
     }
 
     #compileModel () {
         const optimizer = this.#createOptimizer(this.#arch.compilation.optimizer)
+
+        // Allow both single-output and multi-output loss specifications.
+        // For branched models, if loss is given as an object keyed by branch name
+        // (e.g., { classification: 'categoricalCrossentropy', regression: 'meanSquaredError' }),
+        // we convert it into an array ordered by the branch definition order, excluding "shared".
+        let lossConfig = this.#arch.compilation.loss
+
+        if (this.#arch.branches &&
+            lossConfig &&
+            !Array.isArray(lossConfig) &&
+            typeof lossConfig === 'object') {
+            lossConfig = this.#branchNames.map(name => lossConfig[name])
+        }
+
         this.#model.compile({
             optimizer,
-            loss: this.#arch.compilation.loss,
+            loss: lossConfig,
             metrics: this.#arch.compilation.metrics
         })
     }
