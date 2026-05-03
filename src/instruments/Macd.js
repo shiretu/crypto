@@ -4,50 +4,39 @@ export default class Macd {
     #fastEma
     #slowEma
     #signalEma
-    #macd
-    #signal
-    #histogram
+    #value
 
-    constructor (fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
-        if (fastPeriod >= slowPeriod) {
-            throw new Error(`Fast period (${fastPeriod}) must be less than slow period (${slowPeriod})`)
+    constructor ({ fast = 12, slow = 26, signal = 9 }) {
+        if (fast >= slow) {
+            throw new Error(`Fast period (${fast}) must be less than slow period (${slow})`)
         }
-        this.#fastEma = new Ema(fastPeriod)
-        this.#slowEma = new Ema(slowPeriod)
-        this.#signalEma = new Ema(signalPeriod)
-        this.#macd = null
-        this.#signal = null
-        this.#histogram = null
+        this.#fastEma = new Ema(fast)
+        this.#slowEma = new Ema(slow)
+        this.#signalEma = new Ema(signal)
+        this.#value = null
     }
 
-    get fastPeriod () { return this.#fastEma.period }
-    get slowPeriod () { return this.#slowEma.period }
-    get signalPeriod () { return this.#signalEma.period }
-    get macd () { return this.#macd }
-    get signal () { return this.#signal }
-    get histogram () { return this.#histogram }
-    get isReady () { return this.#histogram !== null }
+    get periods () { return { fast: this.#fastEma.period, slow: this.#slowEma.period, signal: this.#signalEma.period } }
+    get isReady () { return this.#value !== null }
+    get value () { return this.#value }
 
     update (price) {
         const fast = this.#fastEma.update(price)
         const slow = this.#slowEma.update(price)
         if (fast === null || slow === null) return null
 
-        this.#macd = fast - slow
-        const sig = this.#signalEma.update(this.#macd)
-        if (sig === null) return null
+        const macd = fast - slow
+        const signal = this.#signalEma.update(macd)
+        if (signal === null) return null
 
-        this.#signal = sig
-        this.#histogram = this.#macd - this.#signal
-        return { fast, slow, macd: this.#macd, signal: this.#signal, histogram: this.#histogram }
+        this.#value = { fast, slow, macd, signal, histogram: macd - signal }
+        return this.#value
     }
 
     reset () {
         this.#fastEma.reset()
         this.#slowEma.reset()
         this.#signalEma.reset()
-        this.#macd = null
-        this.#signal = null
-        this.#histogram = null
+        this.#value = null
     }
 }

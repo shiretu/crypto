@@ -45,14 +45,15 @@ const main = async () => {
     console.log()
 
     const store = new Candles('data', symbol, durationSec)
-    const macd = new Macd(fast, slow, signal)
+    const macd = new Macd({ fast, slow, signal })
 
     for await (const candle of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
         macd.update(candle.close.price)
         const openTime = new Date(candle.index * durationSec * 1000)
         const time = openTime.toISOString().replace('T', ' ').replace(/\.000Z$/, '')
         if (macd.isReady) {
-            console.log(`${time}  close=${candle.close.price.toFixed(2)}  MACD=${macd.macd.toFixed(2)}  signal=${macd.signal.toFixed(2)}  hist=${macd.histogram.toFixed(2)}`)
+            const v = macd.value
+            console.log(`${time}  close=${candle.close.price.toFixed(2)}  MACD=${v.macd.toFixed(2)}  signal=${v.signal.toFixed(2)}  hist=${v.histogram.toFixed(2)}`)
         }
     }
 }

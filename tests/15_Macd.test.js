@@ -3,27 +3,25 @@ import Macd from '../src/instruments/Macd.js'
 
 describe('Macd', () => {
     it('should reject fast >= slow', () => {
-        expect(() => new Macd(26, 12, 9)).to.throw('must be less than')
-        expect(() => new Macd(12, 12, 9)).to.throw('must be less than')
+        expect(() => new Macd({ fast: 26, slow: 12, signal: 9 })).to.throw('must be less than')
+        expect(() => new Macd({ fast: 12, slow: 12, signal: 9 })).to.throw('must be less than')
     })
 
     it('should use default periods 12, 26, 9', () => {
-        const macd = new Macd()
-        expect(macd.fastPeriod).to.equal(12)
-        expect(macd.slowPeriod).to.equal(26)
-        expect(macd.signalPeriod).to.equal(9)
+        const macd = new Macd({})
+        expect(macd.periods.fast).to.equal(12)
+        expect(macd.periods.slow).to.equal(26)
+        expect(macd.periods.signal).to.equal(9)
     })
 
-    it('should start with null values and not ready', () => {
-        const macd = new Macd()
-        expect(macd.macd).to.equal(null)
-        expect(macd.signal).to.equal(null)
-        expect(macd.histogram).to.equal(null)
+    it('should start with null value and not ready', () => {
+        const macd = new Macd({})
+        expect(macd.value).to.equal(null)
         expect(macd.isReady).to.equal(false)
     })
 
     it('should return null during warmup', () => {
-        const macd = new Macd(3, 5, 2)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 2 })
         for (let i = 0; i < 4; i++) {
             expect(macd.update(100 + i)).to.equal(null)
         }
@@ -31,17 +29,17 @@ describe('Macd', () => {
     })
 
     it('should produce macd before signal is ready', () => {
-        const macd = new Macd(3, 5, 3)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 3 })
         // Feed 5 values to get slow EMA ready (macd line starts)
         for (let i = 0; i < 5; i++) {
             macd.update(100 + i)
         }
         // macd line should exist but signal not yet ready
-        expect(macd.macd).to.not.equal(null)
+        expect(macd.value).to.equal(null)
     })
 
     it('should return object with all props when ready', () => {
-        const macd = new Macd(3, 5, 2)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 2 })
         const prices = [10, 20, 30, 40, 50, 60, 70]
         let result = null
         for (const p of prices) {
@@ -52,13 +50,13 @@ describe('Macd', () => {
         expect(result.fast).to.equal(result.slow + result.macd)
         expect(result.macd).to.equal(result.fast - result.slow)
         expect(result.histogram).to.be.closeTo(result.macd - result.signal, 1e-10)
-        expect(result.macd).to.equal(macd.macd)
-        expect(result.signal).to.equal(macd.signal)
-        expect(result.histogram).to.equal(macd.histogram)
+        expect(result.macd).to.equal(macd.value.macd)
+        expect(result.signal).to.equal(macd.value.signal)
+        expect(result.histogram).to.equal(macd.value.histogram)
     })
 
     it('should compute correct values for known sequence', () => {
-        const macd = new Macd(3, 5, 2)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 2 })
         const prices = [100, 105, 102, 110, 108, 115, 112, 120, 118, 125]
         const results = prices.map(p => macd.update(p))
 
@@ -106,23 +104,21 @@ describe('Macd', () => {
     })
 
     it('should converge to zero on flat prices', () => {
-        const macd = new Macd(3, 5, 2)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 2 })
         for (let i = 0; i < 100; i++) {
             macd.update(100)
         }
-        expect(macd.macd).to.be.closeTo(0, 0.01)
-        expect(macd.signal).to.be.closeTo(0, 0.01)
-        expect(macd.histogram).to.be.closeTo(0, 0.01)
+        expect(macd.value.macd).to.be.closeTo(0, 0.01)
+        expect(macd.value.signal).to.be.closeTo(0, 0.01)
+        expect(macd.value.histogram).to.be.closeTo(0, 0.01)
     })
 
     it('should reset to initial state', () => {
-        const macd = new Macd(3, 5, 2)
+        const macd = new Macd({ fast: 3, slow: 5, signal: 2 })
         for (let i = 0; i < 10; i++) macd.update(100 + i)
         expect(macd.isReady).to.equal(true)
         macd.reset()
-        expect(macd.macd).to.equal(null)
-        expect(macd.signal).to.equal(null)
-        expect(macd.histogram).to.equal(null)
+        expect(macd.value).to.equal(null)
         expect(macd.isReady).to.equal(false)
     })
 })
