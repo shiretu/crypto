@@ -9,7 +9,7 @@ describe('Trade', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 42000.50, 0.001, 42.0005, true)
 
-        const trade = Trade.fromBuffer(sym, buf, 0)
+        const trade = Trade.fromBuffer(sym, 0, buf, 0)
         expect(trade.tsUs).to.equal(1704067200000000)
         expect(trade.price).to.be.closeTo(42000.50, 0.0001)
         expect(trade.baseQty).to.be.closeTo(0.001, 0.000001)
@@ -21,14 +21,14 @@ describe('Trade', () => {
     it('should reject missing symbol', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
-        expect(() => Trade.fromBuffer(undefined, buf, 0)).to.throw()
+        expect(() => Trade.fromBuffer(undefined, 0, buf, 0)).to.throw()
     })
 
     it('should attach symbol with correct assets', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
 
-        const trade = Trade.fromBuffer(sym, buf, 0)
+        const trade = Trade.fromBuffer(sym, 0, buf, 0)
         expect(trade.symbol).to.equal(sym)
         expect(trade.symbol.base.id).to.equal('btc')
     })
@@ -37,7 +37,7 @@ describe('Trade', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 100, 1, 100, false)
 
-        const trade = Trade.fromBuffer(sym, buf, 0)
+        const trade = Trade.fromBuffer(sym, 0, buf, 0)
         expect(trade.isBuyerMaker).to.equal(false)
     })
 
@@ -46,7 +46,7 @@ describe('Trade', () => {
         const tsUs = 1704067200123456
         Trade.toBuffer(buf, 0, tsUs, 100, 1, 100, false)
 
-        const trade = Trade.fromBuffer(sym, buf, 0)
+        const trade = Trade.fromBuffer(sym, 0, buf, 0)
         expect(trade.tsMs).to.equal(1704067200123)
         expect(trade.date).to.be.an.instanceOf(Date)
     })
@@ -59,24 +59,27 @@ describe('Trade', () => {
         }
 
         for (let i = 0; i < count; i++) {
-            const trade = Trade.fromBuffer(sym, buf, i * Trade.RECORD_SIZE)
+            const trade = Trade.fromBuffer(sym, i * Trade.RECORD_SIZE, buf, i * Trade.RECORD_SIZE)
             expect(trade.tsUs).to.equal(1704067200000000 + i * 1000)
             expect(trade.isBuyerMaker).to.equal(i % 2 === 0)
         }
     })
 
-    it('should default srcId to -1', () => {
+    it('should set srcId from buffer offset', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 100, 1, 100, false)
-        const trade = Trade.fromBuffer(sym, buf, 0)
-        expect(trade.srcId).to.equal(-1)
+        const trade = Trade.fromBuffer(sym, 0, buf, 0)
+        expect(trade.srcId).to.equal(0)
     })
 
-    it('should allow setting srcId', () => {
+    it('should accept srcId override in fromBuffer', () => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 100, 1, 100, false)
-        const trade = Trade.fromBuffer(sym, buf, 0)
-        trade.srcId = 64
+        const trade = Trade.fromBuffer(sym, 64, buf, 0)
         expect(trade.srcId).to.equal(64)
+    })
+
+    it('should reject negative srcId in constructor', () => {
+        expect(() => new Trade(sym, -1, 1704067200000000, 100, 1, 100, false)).to.throw()
     })
 })

@@ -11,26 +11,25 @@ export default class Trade {
     #isBuyerMaker
     #srcId
 
-    constructor (symbol, tsUs, price, baseQty, quoteQty, isBuyerMaker) {
+    constructor (symbol, srcId, tsUs, price, baseQty, quoteQty, isBuyerMaker) {
         if (!(symbol instanceof Symbol)) throw new Error('symbol must be a Symbol')
+        if (!Number.isInteger(srcId) || srcId < 0) throw new Error('srcId must be a non-negative integer')
         this.#symbol = symbol
+        this.#srcId = srcId
         this.#tsUs = tsUs
         this.#price = price
         this.#baseQty = baseQty
         this.#quoteQty = quoteQty
         this.#isBuyerMaker = isBuyerMaker
-        this.#srcId = -1
     }
 
     get symbol () { return this.#symbol }
+    get srcId () { return this.#srcId }
     get tsUs () { return this.#tsUs }
     get price () { return this.#price }
     get baseQty () { return this.#baseQty }
     get quoteQty () { return this.#quoteQty }
     get isBuyerMaker () { return this.#isBuyerMaker }
-    get srcId () { return this.#srcId }
-
-    set srcId (id) { this.#srcId = id }
 
     get tsMs () {
         return Math.floor(this.#tsUs / 1000)
@@ -40,7 +39,7 @@ export default class Trade {
         return new Date(this.tsMs)
     }
 
-    static fromBuffer (symbol, buf, offset) {
+    static fromBuffer (symbol, srcId, buf, offset) {
         if (!(symbol instanceof Symbol)) throw new Error('symbol must be a Symbol')
         const tsWithFlags = buf.readBigUInt64LE(offset)
         const tsUs = Number(tsWithFlags & 0x3FFFFFFFFFFFFFFFn)
@@ -48,7 +47,7 @@ export default class Trade {
         const price = buf.readDoubleLE(offset + 8)
         const baseQty = buf.readDoubleLE(offset + 16)
         const quoteQty = buf.readDoubleLE(offset + 24)
-        return new Trade(symbol, tsUs, price, baseQty, quoteQty, isBuyerMaker)
+        return new Trade(symbol, srcId, tsUs, price, baseQty, quoteQty, isBuyerMaker)
     }
 
     static toBuffer (buf, offset, tsUs, price, baseQty, quoteQty, isBuyerMaker) {

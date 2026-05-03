@@ -30,6 +30,7 @@ class BinanceDownloader {
     async #csvToBinary (csvStream, writeStream) {
         let count = 0
         let leftover = ''
+        let lastTsUs = -1
 
         const transform = new Transform({
             transform (chunk, encoding, callback) {
@@ -49,9 +50,12 @@ class BinanceDownloader {
                     const rawTs = parseInt(fields[4])
                     const isBuyerMaker = fields[5].trim().toLowerCase() === 'true'
 
-                    const tsUs = rawTs < 1e12 ? rawTs * 1_000_000
+                    let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
                         : rawTs < 1e15 ? rawTs * 1_000
                             : rawTs
+
+                    if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
+                    lastTsUs = tsUs
 
                     const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
                     Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
@@ -74,9 +78,12 @@ class BinanceDownloader {
                         const rawTs = parseInt(fields[4])
                         const isBuyerMaker = fields[5].trim().toLowerCase() === 'true'
 
-                        const tsUs = rawTs < 1e12 ? rawTs * 1_000_000
+                        let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
                             : rawTs < 1e15 ? rawTs * 1_000
                                 : rawTs
+
+                        if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
+                        lastTsUs = tsUs
 
                         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
                         Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)

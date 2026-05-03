@@ -72,8 +72,7 @@ export default class Trades {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
                     const offset = i * Trade.RECORD_SIZE
-                    const trade = Trade.fromBuffer(this.#symbol, buf, offset)
-                    trade.srcId = offset
+                    const trade = Trade.fromBuffer(this.#symbol, offset, buf, offset)
                     yield trade
                 }
             }
@@ -106,8 +105,7 @@ export default class Trades {
             const offset = mid * Trade.RECORD_SIZE
             const midTsUs = Number(buf.readBigUInt64LE(offset) & 0x3FFFFFFFFFFFFFFFn)
             if (midTsUs === tsUs) {
-                const trade = Trade.fromBuffer(this.#symbol, buf, offset)
-                trade.srcId = offset
+                const trade = Trade.fromBuffer(this.#symbol, offset, buf, offset)
                 return trade
             }
             if (midTsUs < tsUs) lo = mid + 1
@@ -132,11 +130,10 @@ export default class Trades {
         } finally {
             fs.closeSync(fd)
         }
-        const trade = Trade.fromBuffer(this.#symbol, buf, 0)
+        const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)
         if (trade.tsUs !== tsUs) {
             throw new Error(`Trade at srcId ${srcId} has tsUs=${trade.tsUs}, expected ${tsUs}`)
         }
-        trade.srcId = srcId
         return trade
     }
 }

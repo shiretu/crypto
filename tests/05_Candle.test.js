@@ -11,7 +11,7 @@ describe('Candle', () => {
     const makeTrade = (tsUs, price, baseQty = 0.1, quoteQty = 100) => {
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, false)
-        return Trade.fromBuffer(sym, buf, 0)
+        return Trade.fromBuffer(sym, 0, buf, 0)
     }
 
     it('should create from a single trade', () => {
