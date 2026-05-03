@@ -125,5 +125,4 @@ export default class Candles {
         }
         return result
     }
-
 }

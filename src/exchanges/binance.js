@@ -47,8 +47,10 @@ class BinanceDownloader {
 
                 const isBuyerMaker = record[5].trim().toLowerCase() === 'true'
 
-                let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
-                    : rawTs < 1e15 ? rawTs * 1_000
+                let tsUs = rawTs < 1e12
+                    ? rawTs * 1_000_000
+                    : rawTs < 1e15
+                        ? rawTs * 1_000
                         : rawTs
 
                 if (tsUs <= lastTsUs) tsUs = lastTsUs + 1

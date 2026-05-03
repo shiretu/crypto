@@ -35,8 +35,10 @@ describe('BinanceDownloader', () => {
             const quoteQty = parseFloat(fields[3])
             const rawTs = parseInt(fields[4])
             if (isNaN(price) || isNaN(baseQty) || isNaN(quoteQty) || isNaN(rawTs)) continue
-            let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
-                : rawTs < 1e15 ? rawTs * 1_000
+            let tsUs = rawTs < 1e12
+                ? rawTs * 1_000_000
+                : rawTs < 1e15
+                    ? rawTs * 1_000
                     : rawTs
             if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
             lastTsUs = tsUs
