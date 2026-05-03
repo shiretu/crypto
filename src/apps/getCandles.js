@@ -1,6 +1,6 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
-import { parseDate, yesterday, fmtDate } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -11,8 +11,8 @@ const usage = () => {
     console.error('  exchange  : exchange id (e.g. binance)')
     console.error('  symbol    : symbol pair id (e.g. btc:usdc)')
     console.error('  duration  : candle duration (e.g. min_1, hour_1, or seconds: 60, 3600)')
-    console.error('  start     : optional start date (e.g. 2024-01-01), defaults to 2024-01-01')
-    console.error('  end       : optional end date (e.g. 2024-06-30), defaults to yesterday')
+    console.error('  start     : optional start date (e.g. 2024-01-01), defaults to last month')
+    console.error('  end       : optional end date (e.g. 2024-06-30), defaults to last month')
     console.error(`  valid durations: ${Object.keys(CandleDuration).join(', ')}`)
     process.exit(1)
 }
@@ -31,8 +31,9 @@ const main = async () => {
         process.exit(1)
     }
 
-    const start = args[3] ? parseDate(args[3]) : { year: 2024, month: 1, day: 1 }
-    const end = args[4] ? parseDate(args[4]) : yesterday()
+    const defaults = lastMonth()
+    const start = args[3] ? parseDate(args[3]) : defaults.start
+    const end = args[4] ? parseDate(args[4]) : defaults.end
 
     console.log(`Building ${durationArg} candles for ${symbol} from ${exchange.id}`)
     console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)

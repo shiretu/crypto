@@ -22,4 +22,16 @@ export const yesterday = () => {
     return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
 }
 
+export const lastMonth = () => {
+    const now = new Date()
+    let year = now.getUTCFullYear()
+    let month = now.getUTCMonth() // 0-indexed = previous month in 1-indexed
+    if (month === 0) { year--; month = 12 } 
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+    return {
+        start: { year, month, day: 1 },
+        end: { year, month, day: lastDay }
+    }
+}
+
 export const fmtDate = (d) => dateStr(d.year, d.month, d.day)
