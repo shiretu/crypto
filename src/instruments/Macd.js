@@ -39,7 +39,7 @@ export default class Macd {
 
         this.#signal = sig
         this.#histogram = this.#macd - this.#signal
-        return this.#histogram
+        return { fast, slow, macd: this.#macd, signal: this.#signal, histogram: this.#histogram }
     }
 
     reset () {

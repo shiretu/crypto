@@ -51,6 +51,21 @@ describe('Sma', () => {
         expect(sma.value).to.equal(50)
     })
 
+    it('should compute correct values for known sequence', () => {
+        const sma = new Sma(3)
+        const prices = [100, 105, 102, 110, 108, 115, 112, 120]
+        const results = prices.map(p => sma.update(p))
+
+        expect(results[0]).to.equal(null)
+        expect(results[1]).to.equal(null)
+        expect(results[2]).to.be.closeTo(102.333333, 1e-4)
+        expect(results[3]).to.be.closeTo(105.666667, 1e-4)
+        expect(results[4]).to.be.closeTo(106.666667, 1e-4)
+        expect(results[5]).to.be.closeTo(111.000000, 1e-4)
+        expect(results[6]).to.be.closeTo(111.666667, 1e-4)
+        expect(results[7]).to.be.closeTo(115.666667, 1e-4)
+    })
+
     it('should reset to initial state', () => {
         const sma = new Sma(3)
         sma.update(10)

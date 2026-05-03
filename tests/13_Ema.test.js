@@ -47,6 +47,21 @@ describe('Ema', () => {
         expect(ema.update(30)).to.equal(30)
     })
 
+    it('should compute correct values for known sequence', () => {
+        const ema = new Ema(3)
+        const prices = [100, 105, 102, 110, 108, 115, 112, 120]
+        const results = prices.map(p => ema.update(p))
+
+        expect(results[0]).to.equal(null)
+        expect(results[1]).to.equal(null)
+        expect(results[2]).to.be.closeTo(102.333333, 1e-4)
+        expect(results[3]).to.be.closeTo(106.166667, 1e-4)
+        expect(results[4]).to.be.closeTo(107.083333, 1e-4)
+        expect(results[5]).to.be.closeTo(111.041667, 1e-4)
+        expect(results[6]).to.be.closeTo(111.520833, 1e-4)
+        expect(results[7]).to.be.closeTo(115.760417, 1e-4)
+    })
+
     it('should converge towards repeated price', () => {
         const ema = new Ema(10)
         for (let i = 0; i < 200; i++) ema.update(50)
