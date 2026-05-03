@@ -76,11 +76,16 @@ export default class TradeStore {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
+            const file = this.#file(cur.year, cur.month, cur.day)
             const buf = this.#loadDay(cur.year, cur.month, cur.day)
             if (buf && buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
-                    yield Trade.fromBuffer(this.#symbol, buf, i * Trade.RECORD_SIZE)
+                    const offset = i * Trade.RECORD_SIZE
+                    const trade = Trade.fromBuffer(this.#symbol, buf, offset)
+                    trade.srcFile = file
+                    trade.srcOffset = offset
+                    yield trade
                 }
             }
             cur = nextDay(cur.year, cur.month, cur.day)

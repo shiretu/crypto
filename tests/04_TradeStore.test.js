@@ -45,6 +45,24 @@ describe('TradeStore', () => {
         expect(trades[9].tsUs).to.equal(1704067200000000 + 9 * 1000000)
     })
 
+    it('should set srcFile and srcOffset on loaded trades', () => {
+        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 3)
+        for (let i = 0; i < 3; i++) {
+            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
+        }
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new TradeStore(tmpDir, btcusdc)
+        const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 1)
+        expect(trades[0].srcFile).to.equal(path.join(dir, '2024-01-01.bin'))
+        expect(trades[0].srcOffset).to.equal(0)
+        expect(trades[1].srcOffset).to.equal(Trade.RECORD_SIZE)
+        expect(trades[2].srcOffset).to.equal(Trade.RECORD_SIZE * 2)
+    })
+
     it('should chain multiple days seamlessly', () => {
         const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })

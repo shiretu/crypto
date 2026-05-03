@@ -64,4 +64,22 @@ describe('Trade', () => {
             expect(trade.isBuyerMaker).to.equal(i % 2 === 0)
         }
     })
+
+    it('should default srcFile and srcOffset to null/-1', () => {
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 100, 1, 100, false)
+        const trade = Trade.fromBuffer(sym, buf, 0)
+        expect(trade.srcFile).to.equal(null)
+        expect(trade.srcOffset).to.equal(-1)
+    })
+
+    it('should allow setting srcFile and srcOffset', () => {
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 100, 1, 100, false)
+        const trade = Trade.fromBuffer(sym, buf, 0)
+        trade.srcFile = '/data/raw/binance/btcusdc/2024-01-01.bin'
+        trade.srcOffset = 64
+        expect(trade.srcFile).to.equal('/data/raw/binance/btcusdc/2024-01-01.bin')
+        expect(trade.srcOffset).to.equal(64)
+    })
 })

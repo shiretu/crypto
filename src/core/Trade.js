@@ -9,6 +9,8 @@ export default class Trade {
     #baseQty
     #quoteQty
     #isBuyerMaker
+    #srcFile
+    #srcOffset
 
     constructor (symbol, tsUs, price, baseQty, quoteQty, isBuyerMaker) {
         if (!(symbol instanceof Symbol)) throw new Error('symbol must be a Symbol')
@@ -18,6 +20,8 @@ export default class Trade {
         this.#baseQty = baseQty
         this.#quoteQty = quoteQty
         this.#isBuyerMaker = isBuyerMaker
+        this.#srcFile = null
+        this.#srcOffset = -1
     }
 
     get symbol () { return this.#symbol }
@@ -26,6 +30,11 @@ export default class Trade {
     get baseQty () { return this.#baseQty }
     get quoteQty () { return this.#quoteQty }
     get isBuyerMaker () { return this.#isBuyerMaker }
+    get srcFile () { return this.#srcFile }
+    get srcOffset () { return this.#srcOffset }
+
+    set srcFile (file) { this.#srcFile = file }
+    set srcOffset (offset) { this.#srcOffset = offset }
 
     get tsMs () {
         return Math.floor(this.#tsUs / 1000)
