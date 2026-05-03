@@ -3,6 +3,7 @@ import path from 'path'
 import Trade from '../core/Trade.js'
 import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
+import { getFilePath } from '../utils/storage.js'
 
 export default class Trades {
     #dataDir
@@ -17,7 +18,7 @@ export default class Trades {
     }
 
     #getFilePath (year, month, day) {
-        return path.join(this.#dataDir, 'trades', this.#symbol.exchange.id, `${this.#symbol.base.id}${this.#symbol.quote.id}`, `${dateStr(year, month, day)}.bin`)
+        return getFilePath(this.#dataDir, 'trades', this.#symbol, year, month, day)
     }
 
     async #ensureDayAsync (year, month, day) {

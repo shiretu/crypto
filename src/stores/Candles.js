@@ -4,6 +4,7 @@ import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
+import { getFilePath } from '../utils/storage.js'
 
 const CANDLE_RECORD_SIZE = 64
 
@@ -22,13 +23,8 @@ export default class Candles {
         this.#tradeStore = new Trades(dataDir, symbol)
     }
 
-    #file (year, month, day) {
-        return path.join(this.#dataDir, 'candles', this.#symbol.exchange.id,
-            `${this.#symbol.base.id}${this.#symbol.quote.id}`, String(this.#durationSec), `${dateStr(year, month, day)}.bin`)
-    }
-
-    #hasDay (year, month, day) {
-        return fs.existsSync(this.#file(year, month, day))
+    #getFilePath (year, month, day) {
+        return getFilePath(this.#dataDir, 'candles', this.#symbol, year, month, day, this.#durationSec)
     }
 
     async #buildFromTradesAsync (year, month, day) {
@@ -50,7 +46,7 @@ export default class Candles {
     }
 
     async #saveAsync (year, month, day, candles) {
-        const file = this.#file(year, month, day)
+        const file = this.#getFilePath(year, month, day)
         const tmpFile = file + '.tmp'
         await fs.promises.mkdir(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
@@ -71,7 +67,7 @@ export default class Candles {
     }
 
     async #loadAsync (year, month, day) {
-        const file = this.#file(year, month, day)
+        const file = this.#getFilePath(year, month, day)
         if (!fs.existsSync(file)) return null
         const buf = fs.readFileSync(file)
         const count = Math.floor(buf.length / CANDLE_RECORD_SIZE)
@@ -97,7 +93,7 @@ export default class Candles {
     }
 
     async #ensureDayAsync (year, month, day) {
-        if (this.#hasDay(year, month, day)) return
+        if (fs.existsSync(this.#getFilePath(year, month, day))) return
         const candles = await this.#buildFromTradesAsync(year, month, day)
         await this.#saveAsync(year, month, day, candles)
     }
