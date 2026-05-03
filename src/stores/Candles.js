@@ -22,13 +22,9 @@ export default class Candles {
         this.#tradeStore = new Trades(dataDir, symbol)
     }
 
-    #dir () {
-        return path.join(this.#dataDir, 'candles', this.#symbol.exchange.id,
-            `${this.#symbol.base.id}${this.#symbol.quote.id}`, String(this.#durationSec))
-    }
-
     #file (year, month, day) {
-        return path.join(this.#dir(), `${dateStr(year, month, day)}.bin`)
+        return path.join(this.#dataDir, 'candles', this.#symbol.exchange.id,
+            `${this.#symbol.base.id}${this.#symbol.quote.id}`, String(this.#durationSec), `${dateStr(year, month, day)}.bin`)
     }
 
     #hasDay (year, month, day) {
@@ -40,7 +36,7 @@ export default class Candles {
         const candles = []
         let current = null
 
-        for await (const trade of this.#tradeStore.readTrades(year, month, day, year, month, day)) {
+        for await (const trade of this.#tradeStore.readTradesAsync(year, month, day, year, month, day)) {
             const idx = Math.floor(trade.tsUs / durationUs)
             if (!current || current.index !== idx) {
                 if (current) candles.push(current)
@@ -55,6 +51,7 @@ export default class Candles {
 
     #saveCandles (year, month, day, candles) {
         const file = this.#file(year, month, day)
+        const tmpFile = file + '.tmp'
         fs.mkdirSync(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
         for (let i = 0; i < candles.length; i++) {
@@ -69,7 +66,8 @@ export default class Candles {
             buf.writeBigUInt64LE(BigInt(c.low.tsUs), off + 48)
             buf.writeBigUInt64LE(BigInt(c.low.srcId), off + 56)
         }
-        fs.writeFileSync(file, buf)
+        fs.writeFileSync(tmpFile, buf)
+        fs.renameSync(tmpFile, file)
     }
 
     #loadCandles (year, month, day) {
@@ -99,10 +97,9 @@ export default class Candles {
     }
 
     async #ensureDay (year, month, day) {
-        if (this.#hasDay(year, month, day)) return false
+        if (this.#hasDay(year, month, day)) return
         const candles = await this.#buildCandlesFromTrades(year, month, day)
         this.#saveCandles(year, month, day, candles)
-        return true
     }
 
     async * readCandles (startYear, startMonth, startDay, endYear, endMonth, endDay) {

@@ -13,57 +13,32 @@ export default class Trades {
         if (!symbol.exchange) throw new Error('Symbol must belong to an exchange')
     }
 
-    #dir () {
-        return path.join(this.#dataDir, 'trades', this.#symbol.exchange.id, `${this.#symbol.base.id}${this.#symbol.quote.id}`)
+    #getFilePath (year, month, day) {
+        return path.join(this.#dataDir, 'trades', this.#symbol.exchange.id, `${this.#symbol.base.id}${this.#symbol.quote.id}`, `${dateStr(year, month, day)}.bin`)
     }
 
-    #file (year, month, day) {
-        return path.join(this.#dir(), `${dateStr(year, month, day)}.bin`)
-    }
-
-    #hasDay (year, month, day) {
-        return fs.existsSync(this.#file(year, month, day))
-    }
-
-    async #ensureDay (year, month, day) {
-        const file = this.#file(year, month, day)
-        if (this.#hasDay(year, month, day)) return false
-
-        fs.mkdirSync(path.dirname(file), { recursive: true })
-        const ws = fs.createWriteStream(file)
+    async #ensureDayAsync (year, month, day) {
+        const file = this.#getFilePath(year, month, day)
         try {
-            const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, year, month, day, ws)
-            await new Promise((resolve, reject) => ws.end((err) => err ? reject(err) : resolve()))
-            if (count > 0) console.log(`${dateStr(year, month, day)}: ${count} trades`)
-            return count > 0
-        } catch (err) {
-            await new Promise((resolve) => ws.end(resolve))
-            if (fs.existsSync(file)) fs.unlinkSync(file)
-            throw err
-        }
+            await fs.promises.access(file)
+            return
+        } catch {}
+        const tmpFile = file + '.tmp'
+        await fs.promises.mkdir(path.dirname(file), { recursive: true })
+        const ws = fs.createWriteStream(tmpFile, { flags: 'w' })
+        const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, year, month, day, ws)
+        await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
+        await fs.promises.rename(tmpFile, file)
+        console.log(`${dateStr(year, month, day)}: ${count} trades`)
     }
 
-    async #ensureRange (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async * readTradesAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDay(cur.year, cur.month, cur.day)
-            cur = nextDay(cur.year, cur.month, cur.day)
-        }
-    }
-
-    #loadDay (year, month, day) {
-        const file = this.#file(year, month, day)
-        if (!fs.existsSync(file)) return null
-        return fs.readFileSync(file)
-    }
-
-    async * readTrades (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        await this.#ensureRange(startYear, startMonth, startDay, endYear, endMonth, endDay)
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
-        while (compareDates(cur, end) <= 0) {
-            const buf = this.#loadDay(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
+            const file = this.#getFilePath(cur.year, cur.month, cur.day)
+            const buf = await fs.promises.readFile(file).catch(() => null)
             if (buf && buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
@@ -76,9 +51,9 @@ export default class Trades {
         }
     }
 
-    async readTradesArray (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readTradesArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         const result = []
-        for await (const trade of this.readTrades(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const trade of this.readTradesAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
             result.push(trade)
         }
         return result
@@ -86,28 +61,7 @@ export default class Trades {
 
     #fileForTsUs (tsUs) {
         const d = new Date(Math.floor(tsUs / 1000))
-        return this.#file(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
-    }
-
-    findTradeByTsUs (tsUs) {
-        const filePath = this.#fileForTsUs(tsUs)
-        const buf = fs.readFileSync(filePath)
-        if (!buf || buf.length < Trade.RECORD_SIZE) throw new Error(`No trade data for ${filePath}`)
-        const count = Math.floor(buf.length / Trade.RECORD_SIZE)
-        let lo = 0
-        let hi = count - 1
-        while (lo <= hi) {
-            const mid = (lo + hi) >>> 1
-            const offset = mid * Trade.RECORD_SIZE
-            const midTsUs = Number(buf.readBigUInt64LE(offset) & 0x3FFFFFFFFFFFFFFFn)
-            if (midTsUs === tsUs) {
-                const trade = Trade.fromBuffer(this.#symbol, offset, buf, offset)
-                return trade
-            }
-            if (midTsUs < tsUs) lo = mid + 1
-            else hi = mid - 1
-        }
-        throw new Error(`Trade not found for tsUs=${tsUs}`)
+        return this.#getFilePath(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
     }
 
     readTradeAt (tsUs, srcId) {
