@@ -101,7 +101,6 @@ export default class Candles {
     async #ensureDay (year, month, day) {
         if (this.#hasDay(year, month, day)) return false
         const candles = await this.#buildCandlesFromTrades(year, month, day)
-        if (candles.length === 0) return false
         this.#saveCandles(year, month, day, candles)
         return true
     }

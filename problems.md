@@ -9,6 +9,7 @@
 - [x] 11. ~~`allAssets()` returns duplicates~~ — deduplicated with Set
 - [x] 12. ~~`yesterday()` uses local timezone~~ — now uses UTC in date.js
 - [x] 13. ~~No bounds check in `readTradeAt`~~ — validates srcId alignment, file bounds, and tsUs match
+- [x] 14. ~~Candles/Trades re-fetch empty days~~ — empty files left as sentinels
 - [x] 15. ~~Unused dependencies~~ — removed @clickhouse/client and ws
 - [x] 16. ~~Unused `#hasDay` in Trades~~ — now used by #ensureDay
 - [x] 17. ~~`src/sources/` naming~~ — renamed to src/stores/
@@ -21,7 +22,6 @@
 
 ### Medium
 - [ ] 1. **Downloader interface is implicit** — no enforced contract for downloaders.
-- [ ] 14. **Candles/Trades re-fetch empty days** — no sentinel file for days with 0 trades.
 - [ ] 21. **No NaN guard on CSV parsing** — malformed CSV lines silently inject garbage.
 
 ### Low

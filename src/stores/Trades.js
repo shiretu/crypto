@@ -34,12 +34,8 @@ export default class Trades {
         try {
             const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, year, month, day, ws)
             await new Promise((resolve, reject) => ws.end((err) => err ? reject(err) : resolve()))
-            if (count === 0) {
-                fs.unlinkSync(file)
-                return false
-            }
-            console.log(`${dateStr(year, month, day)}: ${count} trades`)
-            return true
+            if (count > 0) console.log(`${dateStr(year, month, day)}: ${count} trades`)
+            return count > 0
         } catch (err) {
             await new Promise((resolve) => ws.end(resolve))
             if (fs.existsSync(file)) fs.unlinkSync(file)
