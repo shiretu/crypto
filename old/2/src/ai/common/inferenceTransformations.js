@@ -68,5 +68,81 @@ module.exports = {
 
         // Clear winner - return its index
         return scaled.indexOf(Math.max(...scaled))
+    },
+
+    /**
+     * Hybrid decision rule for two-head models (classification + regression).
+     *
+     * The primary decision signal is the classification head (3-way: BUY/SELL/HOLD).
+     * This helper is intentionally conservative and focuses on classification confidence.
+     *
+     * Supported input shapes:
+     * - Flat array of 3 numbers: [p_buy, p_sell, p_hold]
+     * - Flat array of 5 numbers: [p_buy, p_sell, p_hold, r_buy, r_sell]
+     * - Tuple [classification, regression]
+     *   where classification is an array of 3 probabilities and regression is ignored here.
+     * - Object { classification: [...], regression: [...] }
+     *
+     * The rule is:
+     * 1. Extract the 3-way classification distribution.
+     * 2. Apply minimumSeparation with a moderate threshold.
+     * 3. If extraction fails, fall back to argmax on whatever we have.
+     *
+     * @param {any} prediction - Raw model output for a single sample.
+     * @returns {number} Predicted class index (0=BUY, 1=SELL, 2=HOLD)
+     */
+    hybridDecisionRule: (prediction) => {
+        const { minimumSeparation, argmax } = module.exports
+
+        // Helper: try to extract a 3-way classification distribution
+        const extractClassification = (p) => {
+            if (!p) {
+                return null
+            }
+
+            // Case 1: flat array of length 3 or 5
+            if (Array.isArray(p)) {
+                if (p.length === 3) {
+                    return p
+                }
+                if (p.length >= 5) {
+                    return p.slice(0, 3)
+                }
+            }
+
+            // Case 2: tuple [classification, regression]
+            if (Array.isArray(p[0]) && Array.isArray(p[1])) {
+                return p[0]
+            }
+
+            // Case 3: object with named heads
+            if (typeof p === 'object' && !Array.isArray(p)) {
+                if (Array.isArray(p.classification)) {
+                    return p.classification
+                }
+                if (Array.isArray(p.head0)) {
+                    return p.head0
+                }
+            }
+
+            return null
+        }
+
+        const cls = extractClassification(prediction)
+
+        // If we managed to extract a proper classification distribution, use a
+        // separation-based rule to be slightly more conservative than argmax.
+        if (cls && cls.length === 3) {
+            // 5 percentage points separation is a mild requirement; tune as needed.
+            return minimumSeparation(cls, 5)
+        }
+
+        // Fallback: best effort argmax on whatever we got.
+        if (Array.isArray(prediction)) {
+            return argmax(prediction)
+        }
+
+        // Last resort: HOLD
+        return 2
     }
 }

@@ -1,5 +1,7 @@
+/* eslint-disable no-unused-vars */
 const Trade = require('../core/Trade')
 const TradeKind = require('../core/TradeKind')
+/* eslint-enable no-unused-vars */
 
 class Order {
     #kind /** @type {TradeKind} */

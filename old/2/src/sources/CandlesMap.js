@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 const fs = require('fs').promises
-
 const { progressBar } = require('../ai/common/progressBar')
 const Candle = require('../core/Candle')
 const CandlesGenerator = require('../core/CandlesGenerator')
 const BinanceRawReader = require('./BinanceRawReader')
+/* eslint-enable no-unused-vars */
 
 class CandlesMap {
     #config /** @type {object} */

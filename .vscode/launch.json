@@ -57,8 +57,7 @@
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
-                "ai:pred",
-                "simple-binary"
+                "ai:pred"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [
