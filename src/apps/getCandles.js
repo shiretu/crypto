@@ -1,5 +1,6 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
+import FilePart from '../utils/FilePart.js'
 import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
@@ -46,6 +47,8 @@ const main = async () => {
     }
 
     console.log(`Done. ${totalCandles} candles.`)
+    const s = FilePart.stats
+    console.log(`FilePart: ${s.fullReads} full reads, ${s.partialReads} partial reads, ${s.upgrades} upgrades, ${s.cacheHits} cache hits`)
 }
 
 main().catch((err) => {

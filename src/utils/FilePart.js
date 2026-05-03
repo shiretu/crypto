@@ -1,6 +1,11 @@
 import fs from 'fs'
 
 export default class FilePart {
+    static #stats = { fullReads: 0, partialReads: 0, upgrades: 0, cacheHits: 0 }
+
+    static get stats () { return { ...FilePart.#stats } }
+    static resetStats () { FilePart.#stats = { fullReads: 0, partialReads: 0, upgrades: 0, cacheHits: 0 } }
+
     #filePath
     #buf
     #offset
@@ -35,6 +40,7 @@ export default class FilePart {
     }
 
     async #loadFullyAsync () {
+        FilePart.#stats.fullReads++
         this.#buf = await fs.promises.readFile(this.#filePath)
         this.#offset = 0
         this.#size = this.#buf.length
@@ -42,6 +48,7 @@ export default class FilePart {
     }
 
     async #loadPartialAsync (offset, length) {
+        FilePart.#stats.partialReads++
         this.#fileSize = (await fs.promises.stat(this.#filePath)).size
         if (length < 0) length = this.#fileSize - offset
         if (offset + length > this.#fileSize) {
@@ -73,15 +80,19 @@ export default class FilePart {
 
         // Full read requested but only partially loaded — upgrade
         if (offset < 0 && !this.loadedCompletely) {
+            FilePart.#stats.upgrades++
             await this.#loadFullyAsync()
             return this.#chop({ offset, length })
         }
 
         // Subsequent read — try to serve from loaded data
         try {
-            return this.#chop({ offset, length })
+            const result = this.#chop({ offset, length })
+            FilePart.#stats.cacheHits++
+            return result
         } catch {
             // Loaded range insufficient — upgrade to full load
+            FilePart.#stats.upgrades++
             await this.#loadFullyAsync()
             return this.#chop({ offset, length })
         }

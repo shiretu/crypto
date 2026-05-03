@@ -3,6 +3,7 @@ import path from 'path'
 import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
+import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
 import { getFilePath } from '../utils/storage.js'
 
@@ -13,6 +14,7 @@ export default class Candles {
     #symbol
     #durationSec
     #tradeStore
+    #filePart
 
     constructor (dataDir, symbol, durationSec) {
         if (!isValidDuration(durationSec)) throw new Error(`Invalid candle duration: ${durationSec}`)
@@ -21,17 +23,22 @@ export default class Candles {
         this.#symbol = symbol
         this.#durationSec = durationSec
         this.#tradeStore = new Trades(dataDir, symbol)
+        this.#filePart = null
     }
 
     #getFilePath (year, month, day) {
         return getFilePath(this.#dataDir, 'candles', this.#symbol, year, month, day, this.#durationSec)
     }
 
-    async #buildFromTradesAsync (year, month, day) {
+    async #ensureDayAsync (year, month, day) {
+        const file = this.#getFilePath(year, month, day)
+        try {
+            await fs.promises.access(file)
+            return
+        } catch {}
         const durationUs = this.#durationSec * 1_000_000
         const candles = []
         let current = null
-
         for await (const trade of this.#tradeStore.readAsync(year, month, day, year, month, day)) {
             const idx = Math.floor(trade.tsUs / durationUs)
             if (!current || current.index !== idx) {
@@ -42,11 +49,7 @@ export default class Candles {
             }
         }
         if (current) candles.push(current)
-        return candles
-    }
 
-    async #saveAsync (year, month, day, candles) {
-        const file = this.#getFilePath(year, month, day)
         const tmpFile = file + '.tmp'
         await fs.promises.mkdir(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
@@ -66,46 +69,32 @@ export default class Candles {
         await fs.promises.rename(tmpFile, file)
     }
 
-    async #loadAsync (year, month, day) {
-        const file = this.#getFilePath(year, month, day)
-        if (!fs.existsSync(file)) return null
-        const buf = fs.readFileSync(file)
-        const count = Math.floor(buf.length / CANDLE_RECORD_SIZE)
-        const candles = []
-        for (let i = 0; i < count; i++) {
-            const off = i * CANDLE_RECORD_SIZE
-            const refs = [
-                { tsUs: Number(buf.readBigUInt64LE(off)), srcId: Number(buf.readBigUInt64LE(off + 8)) },
-                { tsUs: Number(buf.readBigUInt64LE(off + 16)), srcId: Number(buf.readBigUInt64LE(off + 24)) },
-                { tsUs: Number(buf.readBigUInt64LE(off + 32)), srcId: Number(buf.readBigUInt64LE(off + 40)) },
-                { tsUs: Number(buf.readBigUInt64LE(off + 48)), srcId: Number(buf.readBigUInt64LE(off + 56)) }
-            ]
-
-            const unique = [...new Map(refs.map(r => [r.tsUs, r])).values()].sort((a, b) => a.tsUs - b.tsUs)
-            const firstTrade = await this.#tradeStore.readAtAsync(unique[0].tsUs, unique[0].srcId)
-            const candle = new Candle(this.#durationSec, firstTrade)
-            for (let t = 1; t < unique.length; t++) {
-                candle.update(await this.#tradeStore.readAtAsync(unique[t].tsUs, unique[t].srcId))
-            }
-            candles.push(candle)
-        }
-        return candles
-    }
-
-    async #ensureDayAsync (year, month, day) {
-        if (fs.existsSync(this.#getFilePath(year, month, day))) return
-        const candles = await this.#buildFromTradesAsync(year, month, day)
-        await this.#saveAsync(year, month, day, candles)
-    }
-
     async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            const candles = await this.#loadAsync(cur.year, cur.month, cur.day) || []
-            for (const candle of candles) {
-                yield candle
+            const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
+            this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+            const buf = await this.#filePart.readAsync({})
+            if (buf.length >= CANDLE_RECORD_SIZE) {
+                const count = Math.floor(buf.length / CANDLE_RECORD_SIZE)
+                for (let i = 0; i < count; i++) {
+                    const off = i * CANDLE_RECORD_SIZE
+                    const refs = [
+                        { tsUs: Number(buf.readBigUInt64LE(off)), srcId: Number(buf.readBigUInt64LE(off + 8)) },
+                        { tsUs: Number(buf.readBigUInt64LE(off + 16)), srcId: Number(buf.readBigUInt64LE(off + 24)) },
+                        { tsUs: Number(buf.readBigUInt64LE(off + 32)), srcId: Number(buf.readBigUInt64LE(off + 40)) },
+                        { tsUs: Number(buf.readBigUInt64LE(off + 48)), srcId: Number(buf.readBigUInt64LE(off + 56)) }
+                    ]
+                    const unique = [...new Map(refs.map(r => [r.tsUs, r])).values()].sort((a, b) => a.tsUs - b.tsUs)
+                    const firstTrade = await this.#tradeStore.readAtAsync(unique[0].tsUs, unique[0].srcId)
+                    const candle = new Candle(this.#durationSec, firstTrade)
+                    for (let t = 1; t < unique.length; t++) {
+                        candle.update(await this.#tradeStore.readAtAsync(unique[t].tsUs, unique[t].srcId))
+                    }
+                    yield candle
+                }
             }
             cur = nextDay(cur.year, cur.month, cur.day)
         }

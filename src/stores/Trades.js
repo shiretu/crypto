@@ -41,9 +41,10 @@ export default class Trades {
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            const file = this.#getFilePath(cur.year, cur.month, cur.day)
-            const buf = await fs.promises.readFile(file).catch(() => null)
-            if (buf && buf.length >= Trade.RECORD_SIZE) {
+            const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
+            this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+            const buf = await this.#filePart.readAsync({})
+            if (buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
                     const offset = i * Trade.RECORD_SIZE
