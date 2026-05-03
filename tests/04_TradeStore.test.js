@@ -31,7 +31,7 @@ describe('TradeStore', () => {
         const count = 10
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * count)
         for (let i = 0; i < count; i++) {
-            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, i + 1, 1704067200000000 + i * 1000000, 42000 + i, 0.01, 420, i % 2 === 0)
+            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000 + i, 0.01, 420, i % 2 === 0)
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
@@ -41,8 +41,8 @@ describe('TradeStore', () => {
 
         const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 1)
         expect(trades).to.have.length(10)
-        expect(trades[0].id).to.equal(1)
-        expect(trades[9].id).to.equal(10)
+        expect(trades[0].tsUs).to.equal(1704067200000000)
+        expect(trades[9].tsUs).to.equal(1704067200000000 + 9 * 1000000)
     })
 
     it('should chain multiple days seamlessly', () => {
@@ -52,8 +52,8 @@ describe('TradeStore', () => {
         for (const day of [1, 2, 3]) {
             const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 5)
             for (let i = 0; i < 5; i++) {
-                const id = (day - 1) * 5 + i + 1
-                Trade.toBuffer(buf, i * Trade.RECORD_SIZE, id, 1704067200000000 + id * 1000000, 42000, 0.01, 420, false)
+                const seqId = (day - 1) * 5 + i + 1
+                Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + seqId * 1000000, 42000, 0.01, 420, false)
             }
             fs.writeFileSync(path.join(dir, `2024-01-${String(day).padStart(2, '0')}.bin`), buf)
         }
@@ -61,8 +61,8 @@ describe('TradeStore', () => {
         const store = new TradeStore(tmpDir, btcusdc)
         const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 3)
         expect(trades).to.have.length(15)
-        expect(trades[0].id).to.equal(1)
-        expect(trades[14].id).to.equal(15)
+        expect(trades[0].tsUs).to.equal(1704067200000000 + 1000000)
+        expect(trades[14].tsUs).to.equal(1704067200000000 + 15 * 1000000)
     })
 
     it('should skip missing days when chaining', () => {
@@ -71,7 +71,7 @@ describe('TradeStore', () => {
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 3)
         for (let i = 0; i < 3; i++) {
-            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, i + 1, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
+            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
         // day 2 missing
@@ -87,8 +87,8 @@ describe('TradeStore', () => {
         fs.mkdirSync(dir, { recursive: true })
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 2)
-        Trade.toBuffer(buf, 0, 1, 1704067200000000, 42000, 0.01, 420, false)
-        Trade.toBuffer(buf, Trade.RECORD_SIZE, 2, 1704153600000000, 43000, 0.02, 860, true)
+        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
+        Trade.toBuffer(buf, Trade.RECORD_SIZE, 1704153600000000, 43000, 0.02, 860, true)
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
         const store = new TradeStore(tmpDir, btcusdc)
@@ -103,17 +103,17 @@ describe('TradeStore', () => {
         fs.mkdirSync(dir, { recursive: true })
 
         const buf1 = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-        Trade.toBuffer(buf1, 0, 1, 1706745600000000, 42000, 0.01, 420, false)
+        Trade.toBuffer(buf1, 0, 1706745600000000, 42000, 0.01, 420, false)
         fs.writeFileSync(path.join(dir, '2024-01-31.bin'), buf1)
 
         const buf2 = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-        Trade.toBuffer(buf2, 0, 2, 1706832000000000, 43000, 0.01, 430, false)
+        Trade.toBuffer(buf2, 0, 1706832000000000, 43000, 0.01, 430, false)
         fs.writeFileSync(path.join(dir, '2024-02-01.bin'), buf2)
 
         const store = new TradeStore(tmpDir, btcusdc)
         const trades = store.readTradesArray(2024, 1, 31, 2024, 2, 1)
         expect(trades).to.have.length(2)
-        expect(trades[0].id).to.equal(1)
-        expect(trades[1].id).to.equal(2)
+        expect(trades[0].tsUs).to.equal(1706745600000000)
+        expect(trades[1].tsUs).to.equal(1706832000000000)
     })
 })

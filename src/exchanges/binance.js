@@ -43,7 +43,6 @@ class BinanceDownloader {
                     const fields = line.split(',')
                     if (fields.length < 6) continue
 
-                    const id = parseInt(fields[0])
                     const price = parseFloat(fields[1])
                     const baseQty = parseFloat(fields[2])
                     const quoteQty = parseFloat(fields[3])
@@ -55,7 +54,7 @@ class BinanceDownloader {
                             : rawTs
 
                     const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                    Trade.toBuffer(buf, 0, id, tsUs, price, baseQty, quoteQty, isBuyerMaker)
+                    Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
                     records.push(buf)
                     count++
                 }
@@ -69,7 +68,6 @@ class BinanceDownloader {
                 if (leftover.trim()) {
                     const fields = leftover.split(',')
                     if (fields.length >= 6) {
-                        const id = parseInt(fields[0])
                         const price = parseFloat(fields[1])
                         const baseQty = parseFloat(fields[2])
                         const quoteQty = parseFloat(fields[3])
@@ -81,7 +79,7 @@ class BinanceDownloader {
                                 : rawTs
 
                         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                        Trade.toBuffer(buf, 0, id, tsUs, price, baseQty, quoteQty, isBuyerMaker)
+                        Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
                         this.push(buf)
                         count++
                     }
