@@ -31,11 +31,11 @@ export default class TradeStore {
         return path.join(this.#dir(), `${dateStr(year, month, day)}.bin`)
     }
 
-    hasDay (year, month, day) {
+    #hasDay (year, month, day) {
         return fs.existsSync(this.#file(year, month, day))
     }
 
-    async ensureDay (year, month, day) {
+    async #ensureDay (year, month, day) {
         const file = this.#file(year, month, day)
         if (fs.existsSync(file)) return false
 
@@ -57,11 +57,11 @@ export default class TradeStore {
         }
     }
 
-    async ensureRange (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async #ensureRange (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
-            await this.ensureDay(cur.year, cur.month, cur.day)
+            await this.#ensureDay(cur.year, cur.month, cur.day)
             cur = nextDay(cur.year, cur.month, cur.day)
         }
     }
@@ -72,7 +72,8 @@ export default class TradeStore {
         return fs.readFileSync(file)
     }
 
-    * readTrades (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async * readTrades (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        await this.#ensureRange(startYear, startMonth, startDay, endYear, endMonth, endDay)
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
@@ -83,8 +84,7 @@ export default class TradeStore {
                 for (let i = 0; i < count; i++) {
                     const offset = i * Trade.RECORD_SIZE
                     const trade = Trade.fromBuffer(this.#symbol, buf, offset)
-                    trade.srcFile = file
-                    trade.srcOffset = offset
+                    trade.srcId = offset
                     yield trade
                 }
             }
@@ -92,39 +92,23 @@ export default class TradeStore {
         }
     }
 
-    readTradesArray (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        return [...this.readTrades(startYear, startMonth, startDay, endYear, endMonth, endDay)]
-    }
-
-    getTradeCount (year, month, day) {
-        const file = this.#file(year, month, day)
-        if (!fs.existsSync(file)) return 0
-        const stats = fs.statSync(file)
-        return Math.floor(stats.size / Trade.RECORD_SIZE)
-    }
-
-    getInfo (year, month, day) {
-        const buf = this.#loadDay(year, month, day)
-        if (!buf || buf.length < Trade.RECORD_SIZE) return null
-        const count = Math.floor(buf.length / Trade.RECORD_SIZE)
-        const first = Trade.fromBuffer(this.#symbol, buf, 0)
-        const last = Trade.fromBuffer(this.#symbol, buf, (count - 1) * Trade.RECORD_SIZE)
-        return {
-            count,
-            firstTsUs: first.tsUs,
-            lastTsUs: last.tsUs,
-            firstDate: first.date,
-            lastDate: last.date
+    async readTradesArray (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        const result = []
+        for await (const trade of this.readTrades(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+            result.push(trade)
         }
+        return result
+    }
+
+    #fileForTsUs (tsUs) {
+        const d = new Date(Math.floor(tsUs / 1000))
+        return this.#file(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
     }
 
     findTradeByTsUs (tsUs) {
-        const d = new Date(Math.floor(tsUs / 1000))
-        const year = d.getUTCFullYear()
-        const month = d.getUTCMonth() + 1
-        const day = d.getUTCDate()
-        const buf = this.#loadDay(year, month, day)
-        if (!buf || buf.length < Trade.RECORD_SIZE) throw new Error(`No trade data for ${dateStr(year, month, day)}`)
+        const filePath = this.#fileForTsUs(tsUs)
+        const buf = fs.readFileSync(filePath)
+        if (!buf || buf.length < Trade.RECORD_SIZE) throw new Error(`No trade data for ${filePath}`)
         const count = Math.floor(buf.length / Trade.RECORD_SIZE)
         let lo = 0
         let hi = count - 1
@@ -133,15 +117,27 @@ export default class TradeStore {
             const offset = mid * Trade.RECORD_SIZE
             const midTsUs = Number(buf.readBigUInt64LE(offset) & 0x3FFFFFFFFFFFFFFFn)
             if (midTsUs === tsUs) {
-                const file = this.#file(year, month, day)
                 const trade = Trade.fromBuffer(this.#symbol, buf, offset)
-                trade.srcFile = file
-                trade.srcOffset = offset
+                trade.srcId = offset
                 return trade
             }
             if (midTsUs < tsUs) lo = mid + 1
             else hi = mid - 1
         }
         throw new Error(`Trade not found for tsUs=${tsUs}`)
+    }
+
+    readTradeAt (tsUs, srcId) {
+        const filePath = this.#fileForTsUs(tsUs)
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        const fd = fs.openSync(filePath, 'r')
+        try {
+            fs.readSync(fd, buf, 0, Trade.RECORD_SIZE, srcId)
+        } finally {
+            fs.closeSync(fd)
+        }
+        const trade = Trade.fromBuffer(this.#symbol, buf, 0)
+        trade.srcId = srcId
+        return trade
     }
 }

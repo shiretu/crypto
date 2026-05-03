@@ -53,13 +53,16 @@ const main = async () => {
     const start = args[2] ? parseDate(args[2]) : { year: 2024, month: 1, day: 1 }
     const end = args[3] ? parseDate(args[3]) : yesterday()
 
-    console.log(`Downloading ${symbol} from ${exchange.id}`)
+    console.log(`Fetching ${symbol} from ${exchange.id}`)
     console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
 
     const store = new TradeStore('data', symbol)
-    await store.ensureRange(start.year, start.month, start.day, end.year, end.month, end.day)
+    let count = 0
+    for await (const trade of store.readTrades(start.year, start.month, start.day, end.year, end.month, end.day)) {
+        count++
+    }
 
-    console.log('Done.')
+    console.log(`Done. ${count} trades.`)
 }
 
 main().catch((err) => {

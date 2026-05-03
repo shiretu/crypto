@@ -4,7 +4,7 @@ import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/CandleDuration.js'
 import TradeStore from './TradeStore.js'
 
-const CANDLE_RECORD_SIZE = 32
+const CANDLE_RECORD_SIZE = 64
 
 export default class CandleStore {
     #dataDir
@@ -31,16 +31,16 @@ export default class CandleStore {
             `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}.bin`)
     }
 
-    hasDay (year, month, day) {
+    #hasDay (year, month, day) {
         return fs.existsSync(this.#file(year, month, day))
     }
 
-    #buildCandlesFromTrades (year, month, day) {
+    async #buildCandlesFromTrades (year, month, day) {
         const durationUs = this.#durationSec * 1_000_000
         const candles = []
         let current = null
 
-        for (const trade of this.#tradeStore.readTrades(year, month, day, year, month, day)) {
+        for await (const trade of this.#tradeStore.readTrades(year, month, day, year, month, day)) {
             const idx = Math.floor(trade.tsUs / durationUs)
             if (!current || current.index !== idx) {
                 if (current) candles.push(current)
@@ -58,12 +58,16 @@ export default class CandleStore {
         fs.mkdirSync(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
         for (let i = 0; i < candles.length; i++) {
-            const offset = i * CANDLE_RECORD_SIZE
+            const off = i * CANDLE_RECORD_SIZE
             const c = candles[i]
-            buf.writeBigUInt64LE(BigInt(c.open.tsUs), offset)
-            buf.writeBigUInt64LE(BigInt(c.close.tsUs), offset + 8)
-            buf.writeBigUInt64LE(BigInt(c.high.tsUs), offset + 16)
-            buf.writeBigUInt64LE(BigInt(c.low.tsUs), offset + 24)
+            buf.writeBigUInt64LE(BigInt(c.open.tsUs), off)
+            buf.writeBigUInt64LE(BigInt(c.open.srcId), off + 8)
+            buf.writeBigUInt64LE(BigInt(c.close.tsUs), off + 16)
+            buf.writeBigUInt64LE(BigInt(c.close.srcId), off + 24)
+            buf.writeBigUInt64LE(BigInt(c.high.tsUs), off + 32)
+            buf.writeBigUInt64LE(BigInt(c.high.srcId), off + 40)
+            buf.writeBigUInt64LE(BigInt(c.low.tsUs), off + 48)
+            buf.writeBigUInt64LE(BigInt(c.low.srcId), off + 56)
         }
         fs.writeFileSync(file, buf)
     }
@@ -75,42 +79,39 @@ export default class CandleStore {
         const count = Math.floor(buf.length / CANDLE_RECORD_SIZE)
         const candles = []
         for (let i = 0; i < count; i++) {
-            const offset = i * CANDLE_RECORD_SIZE
-            const openTsUs = Number(buf.readBigUInt64LE(offset))
-            const closeTsUs = Number(buf.readBigUInt64LE(offset + 8))
-            const highTsUs = Number(buf.readBigUInt64LE(offset + 16))
-            const lowTsUs = Number(buf.readBigUInt64LE(offset + 24))
+            const off = i * CANDLE_RECORD_SIZE
+            const refs = [
+                { tsUs: Number(buf.readBigUInt64LE(off)), srcId: Number(buf.readBigUInt64LE(off + 8)) },
+                { tsUs: Number(buf.readBigUInt64LE(off + 16)), srcId: Number(buf.readBigUInt64LE(off + 24)) },
+                { tsUs: Number(buf.readBigUInt64LE(off + 32)), srcId: Number(buf.readBigUInt64LE(off + 40)) },
+                { tsUs: Number(buf.readBigUInt64LE(off + 48)), srcId: Number(buf.readBigUInt64LE(off + 56)) }
+            ]
 
-            const timestamps = [...new Set([openTsUs, closeTsUs, highTsUs, lowTsUs])].sort((a, b) => a - b)
-            const firstTrade = this.#tradeStore.findTradeByTsUs(timestamps[0])
+            const unique = [...new Map(refs.map(r => [r.tsUs, r])).values()].sort((a, b) => a.tsUs - b.tsUs)
+            const firstTrade = this.#tradeStore.readTradeAt(unique[0].tsUs, unique[0].srcId)
             const candle = new Candle(this.#durationSec, firstTrade)
-            for (let t = 1; t < timestamps.length; t++) {
-                candle.update(this.#tradeStore.findTradeByTsUs(timestamps[t]))
+            for (let t = 1; t < unique.length; t++) {
+                candle.update(this.#tradeStore.readTradeAt(unique[t].tsUs, unique[t].srcId))
             }
             candles.push(candle)
         }
         return candles
     }
 
-    async ensureDay (year, month, day) {
-        if (this.hasDay(year, month, day)) return false
-        await this.#tradeStore.ensureDay(year, month, day)
-        const candles = this.#buildCandlesFromTrades(year, month, day)
+    async #ensureDay (year, month, day) {
+        if (this.#hasDay(year, month, day)) return false
+        const candles = await this.#buildCandlesFromTrades(year, month, day)
         if (candles.length === 0) return false
         this.#saveCandles(year, month, day, candles)
         return true
-    }
-
-    async getCandles (year, month, day) {
-        await this.ensureDay(year, month, day)
-        return this.#loadCandles(year, month, day) || []
     }
 
     async * readCandles (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
-            const candles = await this.getCandles(cur.year, cur.month, cur.day)
+            await this.#ensureDay(cur.year, cur.month, cur.day)
+            const candles = this.#loadCandles(cur.year, cur.month, cur.day) || []
             for (const candle of candles) {
                 yield candle
             }
@@ -118,12 +119,14 @@ export default class CandleStore {
         }
     }
 
-    getCandleCount (year, month, day) {
-        const file = this.#file(year, month, day)
-        if (!fs.existsSync(file)) return 0
-        const stats = fs.statSync(file)
-        return Math.floor(stats.size / CANDLE_RECORD_SIZE)
+    async readCandlesArray (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        const result = []
+        for await (const candle of this.readCandles(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+            result.push(candle)
+        }
+        return result
     }
+
 }
 
 const nextDay = (year, month, day) => {

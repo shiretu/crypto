@@ -29,10 +29,9 @@ describe('CandleStore', () => {
         fs.rmSync(tmpDir, { recursive: true, force: true })
     })
 
-    it('should build and save candles from trades', async () => {
+    it('should build and cache candles from trades', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
-        // 3 trades within the same 1-min bucket, 1 in the next
-        const baseTs = 1704067200_000_000 // 2024-01-01 00:00:00 UTC
+        const baseTs = 1704067200_000_000
         writeTrades(dir, '2024-01-01', [
             { tsUs: baseTs, price: 42000, baseQty: 0.1, quoteQty: 4200, isBuyerMaker: false },
             { tsUs: baseTs + 10_000_000, price: 42100, baseQty: 0.1, quoteQty: 4210, isBuyerMaker: false },
@@ -41,11 +40,9 @@ describe('CandleStore', () => {
         ])
 
         const candleStore = new CandleStore(tmpDir, btcusdc, duration)
-
-        expect(candleStore.hasDay(2024, 1, 1)).to.equal(false)
-        await candleStore.ensureDay(2024, 1, 1)
-        expect(candleStore.hasDay(2024, 1, 1)).to.equal(true)
-        expect(candleStore.getCandleCount(2024, 1, 1)).to.equal(2)
+        const candles = []
+        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles.push(c)
+        expect(candles).to.have.length(2)
     })
 
     it('should rehydrate candles from stored timestamps', async () => {
@@ -59,29 +56,23 @@ describe('CandleStore', () => {
 
         const candleStore = new CandleStore(tmpDir, btcusdc, duration)
 
-        const candles = await candleStore.getCandles(2024, 1, 1)
-        expect(candles).to.have.length(1)
+        // First call builds and caches
+        const candles1 = []
+        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles1.push(c)
+        expect(candles1).to.have.length(1)
 
-        const c = candles[0]
+        // Second call loads from cache and rehydrates
+        const candles2 = []
+        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles2.push(c)
+        expect(candles2).to.have.length(1)
+
+        const c = candles2[0]
         expect(c.open.tsUs).to.equal(baseTs)
         expect(c.open.price).to.equal(42000)
         expect(c.open.baseQty).to.equal(0.5)
         expect(c.close.tsUs).to.equal(baseTs + 20_000_000)
         expect(c.high.price).to.equal(42100)
         expect(c.low.price).to.equal(41900)
-    })
-
-    it('should skip if already built', async () => {
-        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
-        const baseTs = 1704067200_000_000
-        writeTrades(dir, '2024-01-01', [
-            { tsUs: baseTs, price: 42000, baseQty: 0.1, quoteQty: 4200, isBuyerMaker: false }
-        ])
-
-        const candleStore = new CandleStore(tmpDir, btcusdc, duration)
-
-        expect(await candleStore.ensureDay(2024, 1, 1)).to.equal(true)
-        expect(await candleStore.ensureDay(2024, 1, 1)).to.equal(false)
     })
 
     it('should chain candles across days via generator', async () => {

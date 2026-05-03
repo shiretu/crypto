@@ -19,12 +19,7 @@ describe('TradeStore', () => {
         fs.rmSync(tmpDir, { recursive: true, force: true })
     })
 
-    it('should report hasDay=false for missing data', () => {
-        const store = new TradeStore(tmpDir, btcusdc)
-        expect(store.hasDay(2024, 1, 1)).to.equal(false)
-    })
-
-    it('should read trades from manually written daily file', () => {
+    it('should read trades from manually written daily file', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
@@ -36,16 +31,14 @@ describe('TradeStore', () => {
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
         const store = new TradeStore(tmpDir, btcusdc)
-        expect(store.hasDay(2024, 1, 1)).to.equal(true)
-        expect(store.getTradeCount(2024, 1, 1)).to.equal(10)
 
-        const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 1)
+        const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
         expect(trades).to.have.length(10)
         expect(trades[0].tsUs).to.equal(1704067200000000)
         expect(trades[9].tsUs).to.equal(1704067200000000 + 9 * 1000000)
     })
 
-    it('should set srcFile and srcOffset on loaded trades', () => {
+    it('should set srcId on loaded trades', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
@@ -56,14 +49,13 @@ describe('TradeStore', () => {
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
         const store = new TradeStore(tmpDir, btcusdc)
-        const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 1)
-        expect(trades[0].srcFile).to.equal(path.join(dir, '2024-01-01.bin'))
-        expect(trades[0].srcOffset).to.equal(0)
-        expect(trades[1].srcOffset).to.equal(Trade.RECORD_SIZE)
-        expect(trades[2].srcOffset).to.equal(Trade.RECORD_SIZE * 2)
+        const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
+        expect(trades[0].srcId).to.equal(0)
+        expect(trades[1].srcId).to.equal(Trade.RECORD_SIZE)
+        expect(trades[2].srcId).to.equal(Trade.RECORD_SIZE * 2)
     })
 
-    it('should chain multiple days seamlessly', () => {
+    it('should chain multiple days seamlessly', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
@@ -77,13 +69,13 @@ describe('TradeStore', () => {
         }
 
         const store = new TradeStore(tmpDir, btcusdc)
-        const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 3)
+        const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 3)
         expect(trades).to.have.length(15)
         expect(trades[0].tsUs).to.equal(1704067200000000 + 1000000)
         expect(trades[14].tsUs).to.equal(1704067200000000 + 15 * 1000000)
     })
 
-    it('should skip missing days when chaining', () => {
+    it('should read pre-existing trades without downloading', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
@@ -92,31 +84,16 @@ describe('TradeStore', () => {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
-        // day 2 missing
         fs.writeFileSync(path.join(dir, '2024-01-03.bin'), buf)
 
         const store = new TradeStore(tmpDir, btcusdc)
-        const trades = store.readTradesArray(2024, 1, 1, 2024, 1, 3)
-        expect(trades).to.have.length(6)
+        const trades1 = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
+        expect(trades1).to.have.length(3)
+        const trades3 = await store.readTradesArray(2024, 1, 3, 2024, 1, 3)
+        expect(trades3).to.have.length(3)
     })
 
-    it('should return info for a day', () => {
-        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
-        fs.mkdirSync(dir, { recursive: true })
-
-        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 2)
-        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
-        Trade.toBuffer(buf, Trade.RECORD_SIZE, 1704153600000000, 43000, 0.02, 860, true)
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
-
-        const store = new TradeStore(tmpDir, btcusdc)
-        const info = store.getInfo(2024, 1, 1)
-        expect(info.count).to.equal(2)
-        expect(info.firstTsUs).to.equal(1704067200000000)
-        expect(info.lastTsUs).to.equal(1704153600000000)
-    })
-
-    it('should chain across month boundaries', () => {
+    it('should chain across month boundaries', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
@@ -129,7 +106,7 @@ describe('TradeStore', () => {
         fs.writeFileSync(path.join(dir, '2024-02-01.bin'), buf2)
 
         const store = new TradeStore(tmpDir, btcusdc)
-        const trades = store.readTradesArray(2024, 1, 31, 2024, 2, 1)
+        const trades = await store.readTradesArray(2024, 1, 31, 2024, 2, 1)
         expect(trades).to.have.length(2)
         expect(trades[0].tsUs).to.equal(1706745600000000)
         expect(trades[1].tsUs).to.equal(1706832000000000)
@@ -151,8 +128,7 @@ describe('TradeStore', () => {
         const trade = store.findTradeByTsUs(baseTs + 50 * 1000000)
         expect(trade.tsUs).to.equal(baseTs + 50 * 1000000)
         expect(trade.price).to.be.closeTo(42050, 0.01)
-        expect(trade.srcFile).to.include('2024-01-01.bin')
-        expect(trade.srcOffset).to.equal(50 * Trade.RECORD_SIZE)
+        expect(trade.srcId).to.equal(50 * Trade.RECORD_SIZE)
     })
 
     it('should throw when tsUs not found', () => {
@@ -169,6 +145,6 @@ describe('TradeStore', () => {
 
     it('should throw when no data file for date', () => {
         const store = new TradeStore(tmpDir, btcusdc)
-        expect(() => store.findTradeByTsUs(1704067200000000)).to.throw('No trade data')
+        expect(() => store.findTradeByTsUs(1704067200000000)).to.throw()
     })
 })
