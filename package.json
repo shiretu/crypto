@@ -1,0 +1,24 @@
+{
+  "name": "crypto-trader",
+  "version": "3.0.0",
+  "description": "Cryptocurrency Trading AI System",
+  "license": "ISC",
+  "type": "module",
+  "scripts": {
+    "test": "mocha tests/**/*.test.js",
+    "test:watch": "mocha --watch tests/**/*.test.js",
+    "lint": "eslint src/ --fix",
+    "download": "node src/apps/downloadHistData.js"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.12.1",
+    "unzipper": "^0.12.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "chai": "^5.1.0",
+    "eslint": "^9.0.0",
+    "mocha": "^11.0.0",
+    "neostandard": "^0.12.0"
+  }
+}
