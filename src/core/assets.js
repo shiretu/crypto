@@ -89,4 +89,4 @@ export const getAsset = (name) => {
 
 export const hasAsset = (name) => assets.has(name.toLowerCase())
 
-export const allAssets = () => [...new Set(assets.values())]
+export const allAssets = () => [...new Set(assets.values())].sort((a, b) => a.id.localeCompare(b.id))

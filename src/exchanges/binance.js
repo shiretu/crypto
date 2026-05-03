@@ -1,15 +1,16 @@
 import https from 'https'
 import { pipeline } from 'stream/promises'
 import { Transform } from 'stream'
+import { parse } from 'csv-parse'
 import unzipper from 'unzipper'
 import Exchange from '../core/Exchange.js'
 import Symbol from '../core/Symbol.js'
 import { getAsset } from '../core/assets.js'
 import Trade from '../core/Trade.js'
 
-const BASE_URL = 'https://data.binance.vision/data/spot/daily/trades'
-
 class BinanceDownloader {
+    #baseUrl = 'https://data.binance.vision/data/spot/daily/trades'
+
     #formatSymbol (symbol) {
         return `${symbol.base.id}${symbol.quote.id}`.toUpperCase()
     }
@@ -20,7 +21,7 @@ class BinanceDownloader {
         if (new Date(date) >= new Date()) return 0
 
         const name = this.#formatSymbol(symbol)
-        const url = `${BASE_URL}/${name}/${name}-trades-${date}.zip`
+        const url = `${this.#baseUrl}/${name}/${name}-trades-${date}.zip`
         const csvStream = await this.#fetchZipCsv(url)
         if (!csvStream) return 0
 
@@ -29,73 +30,39 @@ class BinanceDownloader {
 
     async #csvToBinary (csvStream, writeStream) {
         let count = 0
-        let leftover = ''
         let lastTsUs = -1
 
-        const transform = new Transform({
-            transform (chunk, encoding, callback) {
-                const text = leftover + chunk.toString()
-                const lines = text.split('\n')
-                leftover = lines.pop()
+        const csvParser = parse({ relax_column_count: true })
 
-                const records = []
-                for (const line of lines) {
-                    if (!line.trim()) continue
-                    const fields = line.split(',')
-                    if (fields.length < 6) continue
+        const toBinary = new Transform({
+            objectMode: true,
+            transform (record, encoding, callback) {
+                if (record.length < 6) return callback()
 
-                    const price = parseFloat(fields[1])
-                    const baseQty = parseFloat(fields[2])
-                    const quoteQty = parseFloat(fields[3])
-                    const rawTs = parseInt(fields[4])
-                    const isBuyerMaker = fields[5].trim().toLowerCase() === 'true'
+                const price = parseFloat(record[1])
+                const baseQty = parseFloat(record[2])
+                const quoteQty = parseFloat(record[3])
+                const rawTs = parseInt(record[4])
+                if (isNaN(price) || isNaN(baseQty) || isNaN(quoteQty) || isNaN(rawTs)) return callback()
 
-                    let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
-                        : rawTs < 1e15 ? rawTs * 1_000
-                            : rawTs
+                const isBuyerMaker = record[5].trim().toLowerCase() === 'true'
 
-                    if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
-                    lastTsUs = tsUs
+                let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
+                    : rawTs < 1e15 ? rawTs * 1_000
+                        : rawTs
 
-                    const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                    Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
-                    records.push(buf)
-                    count++
-                }
+                if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
+                lastTsUs = tsUs
 
-                if (records.length > 0) {
-                    this.push(Buffer.concat(records))
-                }
-                callback()
-            },
-            flush (callback) {
-                if (leftover.trim()) {
-                    const fields = leftover.split(',')
-                    if (fields.length >= 6) {
-                        const price = parseFloat(fields[1])
-                        const baseQty = parseFloat(fields[2])
-                        const quoteQty = parseFloat(fields[3])
-                        const rawTs = parseInt(fields[4])
-                        const isBuyerMaker = fields[5].trim().toLowerCase() === 'true'
-
-                        let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
-                            : rawTs < 1e15 ? rawTs * 1_000
-                                : rawTs
-
-                        if (tsUs <= lastTsUs) tsUs = lastTsUs + 1
-                        lastTsUs = tsUs
-
-                        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                        Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
-                        this.push(buf)
-                        count++
-                    }
-                }
+                const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+                Trade.toBuffer(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
+                count++
+                this.push(buf)
                 callback()
             }
         })
 
-        await pipeline(csvStream, transform, writeStream, { end: false })
+        await pipeline(csvStream, csvParser, toBinary, writeStream, { end: false })
         return count
     }
 

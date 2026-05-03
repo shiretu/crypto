@@ -30,7 +30,11 @@ describe('BinanceDownloader', () => {
         for (const line of csvText.trim().split('\n')) {
             const fields = line.split(',')
             if (fields.length < 6) continue
+            const price = parseFloat(fields[1])
+            const baseQty = parseFloat(fields[2])
+            const quoteQty = parseFloat(fields[3])
             const rawTs = parseInt(fields[4])
+            if (isNaN(price) || isNaN(baseQty) || isNaN(quoteQty) || isNaN(rawTs)) continue
             let tsUs = rawTs < 1e12 ? rawTs * 1_000_000
                 : rawTs < 1e15 ? rawTs * 1_000
                     : rawTs
@@ -38,9 +42,9 @@ describe('BinanceDownloader', () => {
             lastTsUs = tsUs
             trades.push({
                 tsUs,
-                price: parseFloat(fields[1]),
-                baseQty: parseFloat(fields[2]),
-                quoteQty: parseFloat(fields[3]),
+                price,
+                baseQty,
+                quoteQty,
                 isBuyerMaker: fields[5].trim().toLowerCase() === 'true'
             })
         }
@@ -110,5 +114,21 @@ describe('BinanceDownloader', () => {
         const csv = '1,42000,0.1,4200,1704067200123456,false,true'
         const trades = await csvToTrades(csv)
         expect(trades[0].tsUs).to.equal(1704067200123456)
+    })
+
+    it('should skip lines with NaN values', async () => {
+        const csv = [
+            '1,42000,0.1,4200,1704067200100,false,true',
+            '2,abc,0.1,4200,1704067200200,false,true',
+            '3,42000,xyz,4200,1704067200300,false,true',
+            '4,42000,0.1,bad,1704067200400,false,true',
+            '5,42000,0.1,4200,notanumber,false,true',
+            '6,42001,0.1,4200,1704067200500,false,true'
+        ].join('\n')
+
+        const trades = await csvToTrades(csv)
+        expect(trades).to.have.length(2)
+        expect(trades[0].price).to.equal(42000)
+        expect(trades[1].price).to.equal(42001)
     })
 })

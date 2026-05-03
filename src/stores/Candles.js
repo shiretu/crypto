@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import Candle from '../core/Candle.js'
-import { isValidDuration } from '../core/CandleDuration.js'
+import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
 

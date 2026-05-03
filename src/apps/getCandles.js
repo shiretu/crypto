@@ -1,4 +1,4 @@
-import CandleDuration from '../core/CandleDuration.js'
+import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import { parseDate, yesterday, fmtDate } from '../utils/date.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'

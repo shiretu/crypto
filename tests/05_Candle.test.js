@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import Trade from '../src/core/Trade.js'
 import Candle from '../src/core/Candle.js'
-import CandleDuration from '../src/core/CandleDuration.js'
+import CandleDuration from '../src/core/candleDuration.js'
 import { binance } from '../src/exchanges/binance.js'
 
 describe('Candle', () => {

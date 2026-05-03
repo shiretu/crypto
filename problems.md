@@ -16,17 +16,17 @@
 - [x] 18. ~~Case-sensitive import in Candles.js~~ — fixed `./trades.js` to `./Trades.js`
 - [x] 19. ~~Candle rehydration loses OHLC on same-tsUs trades~~ — tsUs now guaranteed unique at import (sub-ms increment)
 - [x] 20. ~~Negative srcId written as unsigned BigInt~~ — srcId now required in constructor, validated non-negative, immutable
+- [x] 21. ~~No NaN guard on CSV parsing~~ — malformed lines now skipped
 - [x] 22. ~~No tests for date.js, cli.js, readTradeAt~~ — added tests for date utils and readTradeAt
+- [x] 23. ~~Duplicated CSV parsing in BinanceDownloader~~ — extracted to shared closure, then replaced with csv-parse library
+- [x] 25. ~~`CandleDuration.js` naming~~ — renamed to candleDuration.js
+- [x] 26. ~~`allAssets()` not sorted~~ — now sorted alphabetically
 
 ## Still Open
 
 ### Medium
 - [ ] 1. **Downloader interface is implicit** — no enforced contract for downloaders.
-- [ ] 21. **No NaN guard on CSV parsing** — malformed CSV lines silently inject garbage.
 
 ### Low
 - [ ] 4. **Symbol.parse() is fragile** — hardcoded quote list, breaks on edge cases.
-- [ ] 23. **Duplicated CSV parsing in BinanceDownloader transform/flush** — identical logic in both callbacks.
 - [ ] 24. **`parseDate` accepts invalid dates** — `2024-13-45` passes regex, no semantic validation.
-- [ ] 25. **`CandleDuration.js` naming** — PascalCase but not a class. Should be lowercase per convention.
-- [ ] 26. **`allAssets()` not sorted** — unlike `Exchange.assets` which sorts alphabetically.
