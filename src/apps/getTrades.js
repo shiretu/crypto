@@ -26,7 +26,7 @@ const main = async () => {
 
     const store = new Trades('data', symbol)
     let count = 0
-    for await (const trade of store.readTradesAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const trade of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
         count++
     }
 

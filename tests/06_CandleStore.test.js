@@ -41,7 +41,7 @@ describe('CandleStore', () => {
 
         const candleStore = new Candles(tmpDir, btcusdc, duration)
         const candles = []
-        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles.push(c)
+        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles.push(c)
         expect(candles).to.have.length(2)
     })
 
@@ -58,12 +58,12 @@ describe('CandleStore', () => {
 
         // First call builds and caches
         const candles1 = []
-        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles1.push(c)
+        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles1.push(c)
         expect(candles1).to.have.length(1)
 
         // Second call loads from cache and rehydrates
         const candles2 = []
-        for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles2.push(c)
+        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles2.push(c)
         expect(candles2).to.have.length(1)
 
         const c = candles2[0]
@@ -90,7 +90,7 @@ describe('CandleStore', () => {
         const candleStore = new Candles(tmpDir, btcusdc, duration)
 
         const candles = []
-        for await (const candle of candleStore.readCandles(2024, 1, 1, 2024, 1, 2)) {
+        for await (const candle of candleStore.readAsync(2024, 1, 1, 2024, 1, 2)) {
             candles.push(candle)
         }
         expect(candles).to.have.length(2)

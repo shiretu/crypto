@@ -1,15 +1,18 @@
 import fs from 'fs'
 import path from 'path'
 import Trade from '../core/Trade.js'
+import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
 
 export default class Trades {
     #dataDir
     #symbol
+    #filePart
 
     constructor (dataDir, symbol) {
         this.#dataDir = dataDir
         this.#symbol = symbol
+        this.#filePart = null
         if (!symbol.exchange) throw new Error('Symbol must belong to an exchange')
     }
 
@@ -32,7 +35,7 @@ export default class Trades {
         console.log(`${dateStr(year, month, day)}: ${count} trades`)
     }
 
-    async * readTradesAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
@@ -51,9 +54,9 @@ export default class Trades {
         }
     }
 
-    async readTradesArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         const result = []
-        for await (const trade of this.readTradesAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const trade of this.readAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
             result.push(trade)
         }
         return result
@@ -64,22 +67,13 @@ export default class Trades {
         return this.#getFilePath(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
     }
 
-    readTradeAt (tsUs, srcId) {
+    async readAtAsync (tsUs, srcId) {
         if (srcId < 0 || srcId % Trade.RECORD_SIZE !== 0) {
             throw new Error(`Invalid srcId: ${srcId} (must be non-negative multiple of ${Trade.RECORD_SIZE})`)
         }
         const filePath = this.#fileForTsUs(tsUs)
-        const fileSize = fs.statSync(filePath).size
-        if (srcId + Trade.RECORD_SIZE > fileSize) {
-            throw new Error(`srcId ${srcId} out of bounds (file size: ${fileSize})`)
-        }
-        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-        const fd = fs.openSync(filePath, 'r')
-        try {
-            fs.readSync(fd, buf, 0, Trade.RECORD_SIZE, srcId)
-        } finally {
-            fs.closeSync(fd)
-        }
+        this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+        const buf = await this.#filePart.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
         const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)
         if (trade.tsUs !== tsUs) {
             throw new Error(`Trade at srcId ${srcId} has tsUs=${trade.tsUs}, expected ${tsUs}`)

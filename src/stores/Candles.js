@@ -31,12 +31,12 @@ export default class Candles {
         return fs.existsSync(this.#file(year, month, day))
     }
 
-    async #buildCandlesFromTrades (year, month, day) {
+    async #buildFromTradesAsync (year, month, day) {
         const durationUs = this.#durationSec * 1_000_000
         const candles = []
         let current = null
 
-        for await (const trade of this.#tradeStore.readTradesAsync(year, month, day, year, month, day)) {
+        for await (const trade of this.#tradeStore.readAsync(year, month, day, year, month, day)) {
             const idx = Math.floor(trade.tsUs / durationUs)
             if (!current || current.index !== idx) {
                 if (current) candles.push(current)
@@ -49,10 +49,10 @@ export default class Candles {
         return candles
     }
 
-    #saveCandles (year, month, day, candles) {
+    async #saveAsync (year, month, day, candles) {
         const file = this.#file(year, month, day)
         const tmpFile = file + '.tmp'
-        fs.mkdirSync(path.dirname(file), { recursive: true })
+        await fs.promises.mkdir(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
         for (let i = 0; i < candles.length; i++) {
             const off = i * CANDLE_RECORD_SIZE
@@ -66,11 +66,11 @@ export default class Candles {
             buf.writeBigUInt64LE(BigInt(c.low.tsUs), off + 48)
             buf.writeBigUInt64LE(BigInt(c.low.srcId), off + 56)
         }
-        fs.writeFileSync(tmpFile, buf)
-        fs.renameSync(tmpFile, file)
+        await fs.promises.writeFile(tmpFile, buf)
+        await fs.promises.rename(tmpFile, file)
     }
 
-    #loadCandles (year, month, day) {
+    async #loadAsync (year, month, day) {
         const file = this.#file(year, month, day)
         if (!fs.existsSync(file)) return null
         const buf = fs.readFileSync(file)
@@ -86,28 +86,28 @@ export default class Candles {
             ]
 
             const unique = [...new Map(refs.map(r => [r.tsUs, r])).values()].sort((a, b) => a.tsUs - b.tsUs)
-            const firstTrade = this.#tradeStore.readTradeAt(unique[0].tsUs, unique[0].srcId)
+            const firstTrade = await this.#tradeStore.readAtAsync(unique[0].tsUs, unique[0].srcId)
             const candle = new Candle(this.#durationSec, firstTrade)
             for (let t = 1; t < unique.length; t++) {
-                candle.update(this.#tradeStore.readTradeAt(unique[t].tsUs, unique[t].srcId))
+                candle.update(await this.#tradeStore.readAtAsync(unique[t].tsUs, unique[t].srcId))
             }
             candles.push(candle)
         }
         return candles
     }
 
-    async #ensureDay (year, month, day) {
+    async #ensureDayAsync (year, month, day) {
         if (this.#hasDay(year, month, day)) return
-        const candles = await this.#buildCandlesFromTrades(year, month, day)
-        this.#saveCandles(year, month, day, candles)
+        const candles = await this.#buildFromTradesAsync(year, month, day)
+        await this.#saveAsync(year, month, day, candles)
     }
 
-    async * readCandles (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDay(cur.year, cur.month, cur.day)
-            const candles = this.#loadCandles(cur.year, cur.month, cur.day) || []
+            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
+            const candles = await this.#loadAsync(cur.year, cur.month, cur.day) || []
             for (const candle of candles) {
                 yield candle
             }
@@ -115,9 +115,9 @@ export default class Candles {
         }
     }
 
-    async readCandlesArray (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
         const result = []
-        for await (const candle of this.readCandles(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const candle of this.readAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
             result.push(candle)
         }
         return result
