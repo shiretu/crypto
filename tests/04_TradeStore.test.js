@@ -5,7 +5,7 @@ import { expect } from 'chai'
 import Trade from '../src/core/Trade.js'
 import Symbol from '../src/core/Symbol.js'
 import { binance } from '../src/exchanges/binance.js'
-import TradeStore from '../src/sources/TradeStore.js'
+import Trades from '../src/stores/Trades.js'
 
 describe('TradeStore', () => {
     let tmpDir
@@ -30,7 +30,7 @@ describe('TradeStore', () => {
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
 
         const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
         expect(trades).to.have.length(10)
@@ -48,7 +48,7 @@ describe('TradeStore', () => {
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
         expect(trades[0].srcId).to.equal(0)
         expect(trades[1].srcId).to.equal(Trade.RECORD_SIZE)
@@ -68,7 +68,7 @@ describe('TradeStore', () => {
             fs.writeFileSync(path.join(dir, `2024-01-${String(day).padStart(2, '0')}.bin`), buf)
         }
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         const trades = await store.readTradesArray(2024, 1, 1, 2024, 1, 3)
         expect(trades).to.have.length(15)
         expect(trades[0].tsUs).to.equal(1704067200000000 + 1000000)
@@ -86,7 +86,7 @@ describe('TradeStore', () => {
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
         fs.writeFileSync(path.join(dir, '2024-01-03.bin'), buf)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         const trades1 = await store.readTradesArray(2024, 1, 1, 2024, 1, 1)
         expect(trades1).to.have.length(3)
         const trades3 = await store.readTradesArray(2024, 1, 3, 2024, 1, 3)
@@ -105,7 +105,7 @@ describe('TradeStore', () => {
         Trade.toBuffer(buf2, 0, 1706832000000000, 43000, 0.01, 430, false)
         fs.writeFileSync(path.join(dir, '2024-02-01.bin'), buf2)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         const trades = await store.readTradesArray(2024, 1, 31, 2024, 2, 1)
         expect(trades).to.have.length(2)
         expect(trades[0].tsUs).to.equal(1706745600000000)
@@ -124,7 +124,7 @@ describe('TradeStore', () => {
         }
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         const trade = store.findTradeByTsUs(baseTs + 50 * 1000000)
         expect(trade.tsUs).to.equal(baseTs + 50 * 1000000)
         expect(trade.price).to.be.closeTo(42050, 0.01)
@@ -139,12 +139,12 @@ describe('TradeStore', () => {
         Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
         fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
 
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         expect(() => store.findTradeByTsUs(1704067200999999)).to.throw('Trade not found')
     })
 
     it('should throw when no data file for date', () => {
-        const store = new TradeStore(tmpDir, btcusdc)
+        const store = new Trades(tmpDir, btcusdc)
         expect(() => store.findTradeByTsUs(1704067200000000)).to.throw()
     })
 })

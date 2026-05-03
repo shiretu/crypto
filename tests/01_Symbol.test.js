@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Asset from '../src/core/Asset.js'
-import { getAsset } from '../src/core/AssetList.js'
+import { getAsset } from '../src/core/assets.js'
 import Symbol from '../src/core/Symbol.js'
 import { binance } from '../src/exchanges/binance.js'
 

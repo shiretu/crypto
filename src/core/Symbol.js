@@ -1,5 +1,5 @@
 import Asset from './Asset.js'
-import { getAsset } from './AssetList.js'
+import { getAsset } from './assets.js'
 
 export default class Symbol {
     #exchange

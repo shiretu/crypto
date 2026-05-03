@@ -4,7 +4,7 @@ import { Transform } from 'stream'
 import unzipper from 'unzipper'
 import Exchange from '../core/Exchange.js'
 import Symbol from '../core/Symbol.js'
-import { getAsset } from '../core/AssetList.js'
+import { getAsset } from '../core/assets.js'
 import Trade from '../core/Trade.js'
 
 const BASE_URL = 'https://data.binance.vision/data/spot/daily/trades'

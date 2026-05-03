@@ -2,11 +2,12 @@ import fs from 'fs'
 import path from 'path'
 import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/CandleDuration.js'
-import TradeStore from './TradeStore.js'
+import Trades from './trades.js'
+import { dateStr, nextDay, compareDates } from '../utils/date.js'
 
 const CANDLE_RECORD_SIZE = 64
 
-export default class CandleStore {
+export default class Candles {
     #dataDir
     #symbol
     #durationSec
@@ -18,7 +19,7 @@ export default class CandleStore {
         this.#dataDir = dataDir
         this.#symbol = symbol
         this.#durationSec = durationSec
-        this.#tradeStore = new TradeStore(dataDir, symbol)
+        this.#tradeStore = new Trades(dataDir, symbol)
     }
 
     #dir () {
@@ -27,8 +28,7 @@ export default class CandleStore {
     }
 
     #file (year, month, day) {
-        return path.join(this.#dir(),
-            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}.bin`)
+        return path.join(this.#dir(), `${dateStr(year, month, day)}.bin`)
     }
 
     #hasDay (year, month, day) {
@@ -128,11 +128,3 @@ export default class CandleStore {
     }
 
 }
-
-const nextDay = (year, month, day) => {
-    const d = new Date(Date.UTC(year, month - 1, day + 1))
-    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
-}
-
-const compareDates = (a, b) =>
-    (a.year - b.year) || (a.month - b.month) || (a.day - b.day)

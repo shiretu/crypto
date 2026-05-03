@@ -1,19 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import Trade from '../core/Trade.js'
+import { dateStr, nextDay, compareDates } from '../utils/date.js'
 
-const dateStr = (year, month, day) =>
-    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-
-const nextDay = (year, month, day) => {
-    const d = new Date(Date.UTC(year, month - 1, day + 1))
-    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
-}
-
-const compareDates = (a, b) =>
-    (a.year - b.year) || (a.month - b.month) || (a.day - b.day)
-
-export default class TradeStore {
+export default class Trades {
     #dataDir
     #symbol
 
@@ -37,7 +27,7 @@ export default class TradeStore {
 
     async #ensureDay (year, month, day) {
         const file = this.#file(year, month, day)
-        if (fs.existsSync(file)) return false
+        if (this.#hasDay(year, month, day)) return false
 
         fs.mkdirSync(path.dirname(file), { recursive: true })
         const ws = fs.createWriteStream(file)
@@ -77,7 +67,6 @@ export default class TradeStore {
         let cur = { year: startYear, month: startMonth, day: startDay }
         const end = { year: endYear, month: endMonth, day: endDay }
         while (compareDates(cur, end) <= 0) {
-            const file = this.#file(cur.year, cur.month, cur.day)
             const buf = this.#loadDay(cur.year, cur.month, cur.day)
             if (buf && buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)

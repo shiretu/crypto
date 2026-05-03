@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Asset from '../src/core/Asset.js'
-import { getAsset, hasAsset, allAssets } from '../src/core/AssetList.js'
+import { getAsset, hasAsset, allAssets } from '../src/core/assets.js'
 
 describe('Asset', () => {
     it('should store id lowercase', () => {

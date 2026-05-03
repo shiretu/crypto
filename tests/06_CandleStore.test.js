@@ -5,7 +5,7 @@ import { expect } from 'chai'
 import Trade from '../src/core/Trade.js'
 import CandleDuration from '../src/core/CandleDuration.js'
 import { binance } from '../src/exchanges/binance.js'
-import CandleStore from '../src/sources/CandleStore.js'
+import Candles from '../src/stores/Candles.js'
 
 describe('CandleStore', () => {
     let tmpDir
@@ -39,7 +39,7 @@ describe('CandleStore', () => {
             { tsUs: baseTs + 60_000_000, price: 42050, baseQty: 0.1, quoteQty: 4205, isBuyerMaker: false }
         ])
 
-        const candleStore = new CandleStore(tmpDir, btcusdc, duration)
+        const candleStore = new Candles(tmpDir, btcusdc, duration)
         const candles = []
         for await (const c of candleStore.readCandles(2024, 1, 1, 2024, 1, 1)) candles.push(c)
         expect(candles).to.have.length(2)
@@ -54,7 +54,7 @@ describe('CandleStore', () => {
             { tsUs: baseTs + 20_000_000, price: 41900, baseQty: 0.2, quoteQty: 8380, isBuyerMaker: true }
         ])
 
-        const candleStore = new CandleStore(tmpDir, btcusdc, duration)
+        const candleStore = new Candles(tmpDir, btcusdc, duration)
 
         // First call builds and caches
         const candles1 = []
@@ -87,7 +87,7 @@ describe('CandleStore', () => {
             { tsUs: day2Ts, price: 43000, baseQty: 0.1, quoteQty: 4300, isBuyerMaker: false }
         ])
 
-        const candleStore = new CandleStore(tmpDir, btcusdc, duration)
+        const candleStore = new Candles(tmpDir, btcusdc, duration)
 
         const candles = []
         for await (const candle of candleStore.readCandles(2024, 1, 1, 2024, 1, 2)) {

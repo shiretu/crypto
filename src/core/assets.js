@@ -89,4 +89,4 @@ export const getAsset = (name) => {
 
 export const hasAsset = (name) => assets.has(name.toLowerCase())
 
-export const allAssets = () => [...assets.values()]
+export const allAssets = () => [...new Set(assets.values())]
