@@ -25,7 +25,7 @@ describe('TradeStore', () => {
     })
 
     it('should read trades from manually written daily file', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         const count = 10
@@ -46,7 +46,7 @@ describe('TradeStore', () => {
     })
 
     it('should set srcFile and srcOffset on loaded trades', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 3)
@@ -64,7 +64,7 @@ describe('TradeStore', () => {
     })
 
     it('should chain multiple days seamlessly', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         for (const day of [1, 2, 3]) {
@@ -84,7 +84,7 @@ describe('TradeStore', () => {
     })
 
     it('should skip missing days when chaining', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 3)
@@ -101,7 +101,7 @@ describe('TradeStore', () => {
     })
 
     it('should return info for a day', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * 2)
@@ -117,7 +117,7 @@ describe('TradeStore', () => {
     })
 
     it('should chain across month boundaries', () => {
-        const dir = path.join(tmpDir, 'raw', 'binance', 'btcusdc')
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 
         const buf1 = Buffer.allocUnsafe(Trade.RECORD_SIZE)
@@ -133,5 +133,42 @@ describe('TradeStore', () => {
         expect(trades).to.have.length(2)
         expect(trades[0].tsUs).to.equal(1706745600000000)
         expect(trades[1].tsUs).to.equal(1706832000000000)
+    })
+
+    it('should find a trade by tsUs via binary search', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const count = 100
+        const baseTs = 1704067200000000
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * count)
+        for (let i = 0; i < count; i++) {
+            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, baseTs + i * 1000000, 42000 + i, 0.01, 420, i % 2 === 0)
+        }
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new TradeStore(tmpDir, btcusdc)
+        const trade = store.findTradeByTsUs(baseTs + 50 * 1000000)
+        expect(trade.tsUs).to.equal(baseTs + 50 * 1000000)
+        expect(trade.price).to.be.closeTo(42050, 0.01)
+        expect(trade.srcFile).to.include('2024-01-01.bin')
+        expect(trade.srcOffset).to.equal(50 * Trade.RECORD_SIZE)
+    })
+
+    it('should throw when tsUs not found', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new TradeStore(tmpDir, btcusdc)
+        expect(() => store.findTradeByTsUs(1704067200999999)).to.throw('Trade not found')
+    })
+
+    it('should throw when no data file for date', () => {
+        const store = new TradeStore(tmpDir, btcusdc)
+        expect(() => store.findTradeByTsUs(1704067200000000)).to.throw('No trade data')
     })
 })

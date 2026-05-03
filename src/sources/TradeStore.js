@@ -24,7 +24,7 @@ export default class TradeStore {
     }
 
     #dir () {
-        return path.join(this.#dataDir, 'raw', this.#symbol.exchange.id, `${this.#symbol.base.id}${this.#symbol.quote.id}`)
+        return path.join(this.#dataDir, 'trades', this.#symbol.exchange.id, `${this.#symbol.base.id}${this.#symbol.quote.id}`)
     }
 
     #file (year, month, day) {
@@ -116,5 +116,32 @@ export default class TradeStore {
             firstDate: first.date,
             lastDate: last.date
         }
+    }
+
+    findTradeByTsUs (tsUs) {
+        const d = new Date(Math.floor(tsUs / 1000))
+        const year = d.getUTCFullYear()
+        const month = d.getUTCMonth() + 1
+        const day = d.getUTCDate()
+        const buf = this.#loadDay(year, month, day)
+        if (!buf || buf.length < Trade.RECORD_SIZE) throw new Error(`No trade data for ${dateStr(year, month, day)}`)
+        const count = Math.floor(buf.length / Trade.RECORD_SIZE)
+        let lo = 0
+        let hi = count - 1
+        while (lo <= hi) {
+            const mid = (lo + hi) >>> 1
+            const offset = mid * Trade.RECORD_SIZE
+            const midTsUs = Number(buf.readBigUInt64LE(offset) & 0x3FFFFFFFFFFFFFFFn)
+            if (midTsUs === tsUs) {
+                const file = this.#file(year, month, day)
+                const trade = Trade.fromBuffer(this.#symbol, buf, offset)
+                trade.srcFile = file
+                trade.srcOffset = offset
+                return trade
+            }
+            if (midTsUs < tsUs) lo = mid + 1
+            else hi = mid - 1
+        }
+        throw new Error(`Trade not found for tsUs=${tsUs}`)
     }
 }

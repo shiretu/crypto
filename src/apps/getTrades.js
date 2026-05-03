@@ -2,7 +2,7 @@ import { getExchange } from '../exchanges/index.js'
 import TradeStore from '../sources/TradeStore.js'
 
 const usage = () => {
-    console.error('Usage: node downloadHistData.js <exchange> <symbol> [YYYY-MM-DD] [YYYY-MM-DD]')
+    console.error('Usage: getTrades <exchange> <symbol> [YYYY-MM-DD] [YYYY-MM-DD]')
     console.error('  exchange  : exchange id (e.g. binance)')
     console.error('  symbol    : symbol pair id (e.g. btc:usdc)')
     console.error('  start     : optional start date (e.g. 2024-01-01), defaults to 2024-01-01')
