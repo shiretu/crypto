@@ -117,7 +117,14 @@ export default class Trades {
     }
 
     readTradeAt (tsUs, srcId) {
+        if (srcId < 0 || srcId % Trade.RECORD_SIZE !== 0) {
+            throw new Error(`Invalid srcId: ${srcId} (must be non-negative multiple of ${Trade.RECORD_SIZE})`)
+        }
         const filePath = this.#fileForTsUs(tsUs)
+        const fileSize = fs.statSync(filePath).size
+        if (srcId + Trade.RECORD_SIZE > fileSize) {
+            throw new Error(`srcId ${srcId} out of bounds (file size: ${fileSize})`)
+        }
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         const fd = fs.openSync(filePath, 'r')
         try {
@@ -126,6 +133,9 @@ export default class Trades {
             fs.closeSync(fd)
         }
         const trade = Trade.fromBuffer(this.#symbol, buf, 0)
+        if (trade.tsUs !== tsUs) {
+            throw new Error(`Trade at srcId ${srcId} has tsUs=${trade.tsUs}, expected ${tsUs}`)
+        }
         trade.srcId = srcId
         return trade
     }

@@ -147,4 +147,64 @@ describe('TradeStore', () => {
         const store = new Trades(tmpDir, btcusdc)
         expect(() => store.findTradeByTsUs(1704067200000000)).to.throw()
     })
+
+    it('should readTradeAt a valid srcId', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const count = 5
+        const baseTs = 1704067200000000
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * count)
+        for (let i = 0; i < count; i++) {
+            Trade.toBuffer(buf, i * Trade.RECORD_SIZE, baseTs + i * 1000000, 42000 + i, 0.01, 420, false)
+        }
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new Trades(tmpDir, btcusdc)
+        const trade = store.readTradeAt(baseTs + 3 * 1000000, 3 * Trade.RECORD_SIZE)
+        expect(trade.tsUs).to.equal(baseTs + 3 * 1000000)
+        expect(trade.price).to.be.closeTo(42003, 0.01)
+        expect(trade.srcId).to.equal(3 * Trade.RECORD_SIZE)
+    })
+
+    it('should throw readTradeAt on misaligned srcId', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new Trades(tmpDir, btcusdc)
+        expect(() => store.readTradeAt(1704067200000000, 7)).to.throw('must be non-negative multiple')
+    })
+
+    it('should throw readTradeAt on negative srcId', () => {
+        const store = new Trades(tmpDir, btcusdc)
+        expect(() => store.readTradeAt(1704067200000000, -1)).to.throw('must be non-negative multiple')
+    })
+
+    it('should throw readTradeAt on out-of-bounds srcId', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new Trades(tmpDir, btcusdc)
+        expect(() => store.readTradeAt(1704067200000000, Trade.RECORD_SIZE)).to.throw('out of bounds')
+    })
+
+    it('should throw readTradeAt on tsUs mismatch', () => {
+        const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
+        fs.mkdirSync(dir, { recursive: true })
+
+        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
+        Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
+        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+
+        const store = new Trades(tmpDir, btcusdc)
+        expect(() => store.readTradeAt(1704067200999999, 0)).to.throw('expected')
+    })
 })
