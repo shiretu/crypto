@@ -15,6 +15,10 @@
 
 - [x] 18. ~~Case-sensitive import in Candles.js~~ — fixed `./trades.js` to `./Trades.js`
 - [x] 22. ~~No tests for date.js, cli.js, readTradeAt~~ — added tests for date utils and readTradeAt
+
+## Still Open
+
+### High
 - [ ] 19. **Candle rehydration loses OHLC on same-tsUs trades** — dedup by `tsUs` drops trades with same timestamp but different srcId. Should key on `tsUs:srcId`.
 - [ ] 20. **Negative srcId written as unsigned BigInt** — Trade.srcId defaults to -1. If a candle is built from unloaded trades, BigInt(-1) corrupts the cache.
 
