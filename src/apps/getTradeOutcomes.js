@@ -33,12 +33,26 @@ const main = async () => {
     console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
     console.log()
 
+    const chunks = new Map()
+    let lastPrint = 0
     const onProgress = (p) => {
-        if (p.done) {
-            process.stderr.write(`\r  ${fmtDate(p.requestedDay)}: ${p.resolvedTradesCount}/${p.totalOutcomes} resolved\n`)
-        } else if (p.scanningDayIndex % 10000 === 0) {
-            process.stderr.write(`\r  ${fmtDate(p.scanningDay)}: trade ${p.scanningDayIndex}, pending ${p.pendingTradesCount}/${p.totalOutcomes}, resolved ${p.resolvedTradesCount}`)
+        chunks.set(p.requestedChunk.start, {
+            wanted: p.requestedChunk.count,
+            pending: p.pendingTradesCount,
+            resolved: p.resolvedTradesCount
+        })
+        const now = Date.now()
+        if (now - lastPrint < 500) return
+        lastPrint = now
+        let totalWanted = 0
+        let totalPending = 0
+        let totalResolved = 0
+        for (const c of chunks.values()) {
+            totalWanted += c.wanted
+            totalPending += c.pending
+            totalResolved += c.resolved
         }
+        process.stderr.write(`\r  ${chunks.size} chunks, wanted ${totalWanted}, pending ${totalPending}, resolved ${totalResolved}`)
     }
 
     const store = new TradeOutcomes('data', symbol, { tpPercent, slPercent, onProgress })

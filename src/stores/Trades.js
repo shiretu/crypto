@@ -73,6 +73,8 @@ export default class Trades {
         if (srcId < 0 || srcId % Trade.RECORD_SIZE !== 0) {
             throw new Error(`Invalid srcId: ${srcId} (must be non-negative multiple of ${Trade.RECORD_SIZE})`)
         }
+        const d = new Date(Math.floor(tsUs / 1000))
+        await this.#ensureDayAsync(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
         const filePath = this.#fileForTsUs(tsUs)
         this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
         const buf = await this.#filePart.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
