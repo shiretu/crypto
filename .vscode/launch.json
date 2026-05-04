@@ -1,82 +1,14 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "JS train",
-            "request": "launch",
-            "runtimeArgs": [
-                "run-script",
-                "ai:train"
-            ],
-            "runtimeExecutable": "npm",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
+            "name": "getTradeOutcomes",
             "type": "node",
-            "env": {
-                "DEBUG": "express:*"
-            }
-        },
-        {
-            "name": "JS Data Generation",
             "request": "launch",
-            "runtimeArgs": [
-                "run-script",
-                "ai:ss"
-            ],
-            "runtimeExecutable": "npm",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "type": "node",
-            "env": {
-                "DEBUG": "express:*"
-            }
-        },
-        {
-            "name": "JS Testing",
-            "request": "launch",
-            "runtimeArgs": [
-                "run-script",
-                "test"
-            ],
-            "runtimeExecutable": "npm",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "type": "node",
-            "env": {
-                "DEBUG": "express:*"
-            }
-        },
-        {
-            "name": "JS pred",
-            "request": "launch",
-            "runtimeArgs": [
-                "run-script",
-                "ai:pred"
-            ],
-            "runtimeExecutable": "npm",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "type": "node",
-            "env": {
-                "DEBUG": "express:*"
-            }
-        },
-        {
-            "name": "Python train",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/python/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "binance_ethusdc"
-            ]
+            "program": "${workspaceFolder}/src/apps/getTradeOutcomes.js",
+            "args": ["binance", "eth:usdc", "1.5", "1", "2026-04-07", "2026-04-07"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal"
         }
     ]
 }
