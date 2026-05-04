@@ -8,11 +8,16 @@ import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
 import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
-import { getFilePath } from '../utils/storage.js'
+import { getFilePath, saveFile } from '../utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const WORKER_PATH = path.join(__dirname, 'tradeOutcomesWorker.js')
+
+const workerCount = os.cpus().length * 4
+if (!process.env.UV_THREADPOOL_SIZE || parseInt(process.env.UV_THREADPOOL_SIZE) < workerCount) {
+    process.env.UV_THREADPOOL_SIZE = String(workerCount)
+}
 
 const RECORD_SIZE = 48
 
@@ -56,7 +61,7 @@ export default class TradeOutcomes {
         const currentDay = { year, month, day }
         const trades = await tradeStore.readArrayAsync(currentDay.year, currentDay.month, currentDay.day,
             currentDay.year, currentDay.month, currentDay.day)
-        const cpusCount = os.cpus().length * 2
+        const cpusCount = os.cpus().length * 4
         const chunkSize = Math.ceil(trades.length / cpusCount)
 
         const spawnWorker = (startIndex, size) => new Promise((resolve, reject) => {
@@ -105,10 +110,16 @@ export default class TradeOutcomes {
             buf.writeBigUInt64LE(BigInt(o.shortCloseSrcId), off + 40)
         }
 
-        const tmpFile = file + '.tmp'
-        await fs.promises.mkdir(path.dirname(file), { recursive: true })
-        await fs.promises.writeFile(tmpFile, buf)
-        await fs.promises.rename(tmpFile, file)
+        await saveFile(file, buf)
+    }
+
+    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        let cur = { year: startYear, month: startMonth, day: startDay }
+        const end = { year: endYear, month: endMonth, day: endDay }
+        while (compareDates(cur, end) <= 0) {
+            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
+            cur = nextDay(cur.year, cur.month, cur.day)
+        }
     }
 
     async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {

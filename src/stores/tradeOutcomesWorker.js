@@ -10,6 +10,8 @@ const { symbol } = resolveExchangeAndSymbol(exchangeId, pairId)
 const tradeStore = new Trades(dataDir, symbol)
 
 const trades = await tradeStore.readArrayAsync(year, month, day, year, month, day)
+const daySize = trades.length
+const dayStartUs = trades[0]?.tsUs || 0
 const wantedTrades = trades.slice(startIndex, startIndex + chunkSize)
 let scanningTrades = trades.slice(startIndex)
 
@@ -19,6 +21,10 @@ const lastWantedTradeUs = wantedTrades.at(-1)?.tsUs || 0
 let localCurrentDay = { year, month, day }
 
 const progressInfo = {
+    day: {
+        startUs: dayStartUs,
+        size: daySize
+    },
     requestedChunk: { start: wantedTrades[0]?.tsUs, end: lastWantedTradeUs, count: wantedTrades.length },
     scanningChunk: { start: scanningTrades[0]?.tsUs, end: scanningTrades.at(-1)?.tsUs, count: scanningTrades.length },
     pendingTradesCount: 0,
@@ -68,6 +74,8 @@ while (true) {
 
     if (scanningTrades.length === 0) break
 }
+
+sendProgress(false)
 
 const completed = outcomes.filter(o => o.completed).map(o => ({
     openTsUs: o.longOrder.open.tsUs,

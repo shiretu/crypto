@@ -1,9 +1,8 @@
 import fs from 'fs'
-import path from 'path'
 import Trade from '../core/Trade.js'
 import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
-import { getFilePath } from '../utils/storage.js'
+import { getFilePath, saveFile } from '../utils/storage.js'
 
 export default class Trades {
     #dataDir
@@ -27,13 +26,23 @@ export default class Trades {
             await fs.promises.access(file)
             return
         } catch {}
-        const tmpFile = file + '.tmp'
-        await fs.promises.mkdir(path.dirname(file), { recursive: true })
-        const ws = fs.createWriteStream(tmpFile, { flags: 'w' })
+        const chunks = []
+        const ws = new (await import('stream')).Writable({
+            write (chunk, encoding, callback) { chunks.push(chunk); callback() }
+        })
         const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, year, month, day, ws)
         await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
-        await fs.promises.rename(tmpFile, file)
+        await saveFile(file, Buffer.concat(chunks))
         console.log(`${dateStr(year, month, day)}: ${count} trades`)
+    }
+
+    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        let cur = { year: startYear, month: startMonth, day: startDay }
+        const end = { year: endYear, month: endMonth, day: endDay }
+        while (compareDates(cur, end) <= 0) {
+            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
+            cur = nextDay(cur.year, cur.month, cur.day)
+        }
     }
 
     async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {

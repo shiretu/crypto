@@ -5,7 +5,7 @@ import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import FilePart from '../utils/FilePart.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
-import { getFilePath } from '../utils/storage.js'
+import { getFilePath, saveFile } from '../utils/storage.js'
 
 const CANDLE_RECORD_SIZE = 64
 
@@ -50,8 +50,6 @@ export default class Candles {
         }
         if (current) candles.push(current)
 
-        const tmpFile = file + '.tmp'
-        await fs.promises.mkdir(path.dirname(file), { recursive: true })
         const buf = Buffer.allocUnsafe(candles.length * CANDLE_RECORD_SIZE)
         for (let i = 0; i < candles.length; i++) {
             const off = i * CANDLE_RECORD_SIZE
@@ -65,8 +63,16 @@ export default class Candles {
             buf.writeBigUInt64LE(BigInt(c.low.tsUs), off + 48)
             buf.writeBigUInt64LE(BigInt(c.low.srcId), off + 56)
         }
-        await fs.promises.writeFile(tmpFile, buf)
-        await fs.promises.rename(tmpFile, file)
+        await saveFile(file, buf)
+    }
+
+    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+        let cur = { year: startYear, month: startMonth, day: startDay }
+        const end = { year: endYear, month: endMonth, day: endDay }
+        while (compareDates(cur, end) <= 0) {
+            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
+            cur = nextDay(cur.year, cur.month, cur.day)
+        }
     }
 
     async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {

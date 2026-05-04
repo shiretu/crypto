@@ -8,7 +8,8 @@
     "test": "mocha tests/**/*.test.js",
     "test:watch": "mocha --watch tests/**/*.test.js",
     "lint": "eslint src/ --fix",
-    "download": "node src/apps/getTrades.js"
+    "download": "node src/apps/getTrades.js",
+    "outcomes": "node src/apps/getTradeOutcomes.js"
   },
   "dependencies": {
     "csv-parse": "^6.2.1",

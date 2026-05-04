@@ -1,4 +1,5 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
+import Trades from '../stores/Trades.js'
 import FilePart from '../utils/FilePart.js'
 import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
@@ -34,28 +35,68 @@ const main = async () => {
     console.log()
 
     const chunks = new Map()
-    let lastPrint = 0
+    let currentDayStartUs = 0
+    let dayTotal = 0
+    let dayResolved = 0
     const onProgress = (p) => {
-        chunks.set(p.requestedChunk.start, {
-            wanted: p.requestedChunk.count,
-            pending: p.pendingTradesCount,
-            resolved: p.resolvedTradesCount
-        })
-        const now = Date.now()
-        if (now - lastPrint < 500) return
-        lastPrint = now
-        let totalWanted = 0
-        let totalPending = 0
-        let totalResolved = 0
-        for (const c of chunks.values()) {
-            totalWanted += c.wanted
-            totalPending += c.pending
-            totalResolved += c.resolved
+        if (p.day.startUs !== currentDayStartUs) {
+            currentDayStartUs = p.day.startUs
+            dayTotal = p.day.size
+            dayResolved = 0
+            chunks.clear()
         }
-        process.stderr.write(`\r  ${chunks.size} chunks, wanted ${totalWanted}, pending ${totalPending}, resolved ${totalResolved}`)
+        if (p.resolvedTradesCount === p.requestedChunk.count) {
+            dayResolved += p.requestedChunk.count
+            chunks.delete(p.requestedChunk.start)
+        } else {
+            chunks.set(p.requestedChunk.start, p)
+        }
     }
 
     const store = new TradeOutcomes('data', symbol, { tpPercent, slPercent, onProgress })
+
+    const progressTimer = setInterval(() => {
+        if (chunks.size === 0) return
+        process.stderr.write('\x1b[H')
+        const rows = []
+        let totalWanted = 0
+        let inFlightResolved = 0
+        let inFlightPending = 0
+        for (const [key, p] of [...chunks].sort((a, b) => a[0] - b[0])) {
+            const pct = p.requestedChunk.count > 0 ? (p.resolvedTradesCount / p.requestedChunk.count * 100) : 0
+            const barWidth = 20
+            const filled = Math.round(pct / 100 * barWidth)
+            const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(barWidth - filled)
+            rows.push({
+                progress: bar,
+                resolved: p.resolvedTradesCount,
+                wanted: p.requestedChunk.count,
+                pending: p.pendingTradesCount,
+                scanning: p.scanningChunk.count
+            })
+            totalWanted += p.requestedChunk.count
+            inFlightResolved += p.resolvedTradesCount
+            inFlightPending += p.pendingTradesCount
+        }
+        const totalResolved = dayResolved + inFlightResolved
+        const totalPct = dayTotal > 0 ? (totalResolved / dayTotal * 100) : 0
+        const totalFilled = Math.min(20, Math.round(totalPct / 100 * 20))
+        const totalBar = '\u2588'.repeat(totalFilled) + '\u2591'.repeat(20 - totalFilled)
+        rows.unshift({
+            progress: totalBar,
+            resolved: totalResolved,
+            wanted: dayTotal,
+            pending: inFlightPending,
+            scanning: chunks.size + ' chunks'
+        })
+        console.table(rows)
+        process.stderr.write('\x1b[J')
+    }, 250)
+
+    await store.fetchAsync(start.year, start.month, start.day, end.year, end.month, end.day)
+
+    clearInterval(progressTimer)
+    process.stderr.write('\x1b[H\x1b[J')
 
     let total = 0
     let longTp = 0
@@ -69,7 +110,6 @@ const main = async () => {
         if (so.profitPercent > 0) shortTp++
     }
 
-    console.log()
     console.log(`Total outcomes: ${total}`)
     console.log(`Long  TP: ${longTp} (${(longTp / total * 100).toFixed(1)}%)  SL: ${total - longTp} (${((total - longTp) / total * 100).toFixed(1)}%)`)
     console.log(`Short TP: ${shortTp} (${(shortTp / total * 100).toFixed(1)}%)  SL: ${total - shortTp} (${((total - shortTp) / total * 100).toFixed(1)}%)`)
