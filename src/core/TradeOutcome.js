@@ -22,6 +22,7 @@ export default class TradeOutcome {
     get shortOrder () { return this.#shortTrade ? new ShortOrder(this.#openTrade, this.#shortTrade) : null }
 
     update (trade) {
+        if (this.completed || trade.tsUs <= this.#openTrade.tsUs) return this.completed
         const price = trade.price
         const openPrice = this.#openTrade.price
 

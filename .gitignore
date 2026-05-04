@@ -3,5 +3,4 @@ node_modules
 package-lock.json
 generatedImages
 .venv
-data/trades
-data/candles
+data
