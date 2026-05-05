@@ -1,7 +1,7 @@
 import fs from 'fs'
 import Trade from '../core/Trade.js'
 import CachedFile from '../utils/CachedFile.js'
-import Day, { nextDay, compareDates } from '../utils/Day.js'
+import Day, { compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 export default class Trades {
@@ -40,7 +40,7 @@ export default class Trades {
         let cur = start
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 
@@ -59,7 +59,7 @@ export default class Trades {
                     yield trade
                 }
             }
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 

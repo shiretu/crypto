@@ -7,7 +7,7 @@ import Trade from '../core/Trade.js'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { nextDay, compareDates } from '../utils/Day.js'
+import Day, { compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -115,7 +115,7 @@ export default class TradeOutcomes {
         let cur = start
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 
@@ -151,7 +151,7 @@ export default class TradeOutcomes {
                     yield outcome
                 }
             }
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 

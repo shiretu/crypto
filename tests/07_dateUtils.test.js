@@ -1,6 +1,5 @@
 import { expect } from 'chai'
-import { nextDay, compareDates, parseDate, yesterday } from '../src/utils/Day.js'
-import Day from '../src/utils/Day.js'
+import Day, { compareDates, parseDate, yesterday } from '../src/utils/Day.js'
 
 describe('date utils', () => {
     it('should format dateStr with zero padding', () => {
@@ -9,17 +8,17 @@ describe('date utils', () => {
     })
 
     it('should compute nextDay within month', () => {
-        const n = nextDay({ year: 2024, month: 1, day: 15 })
+        const n = Day.nextDay({ year: 2024, month: 1, day: 15 })
         expect(n).to.deep.equal({ year: 2024, month: 1, day: 16 })
     })
 
     it('should compute nextDay across month boundary', () => {
-        const n = nextDay({ year: 2024, month: 1, day: 31 })
+        const n = Day.nextDay({ year: 2024, month: 1, day: 31 })
         expect(n).to.deep.equal({ year: 2024, month: 2, day: 1 })
     })
 
     it('should compute nextDay across year boundary', () => {
-        const n = nextDay({ year: 2024, month: 12, day: 31 })
+        const n = Day.nextDay({ year: 2024, month: 12, day: 31 })
         expect(n).to.deep.equal({ year: 2025, month: 1, day: 1 })
     })
 

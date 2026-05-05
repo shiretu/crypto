@@ -4,7 +4,7 @@ import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { nextDay, compareDates } from '../utils/Day.js'
+import Day, { compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const CANDLE_RECORD_SIZE = 64
@@ -70,7 +70,7 @@ export default class Candles {
         let cur = start
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 
@@ -100,7 +100,7 @@ export default class Candles {
                     yield candle
                 }
             }
-            cur = nextDay(cur)
+            cur = Day.nextDay(cur)
         }
     }
 

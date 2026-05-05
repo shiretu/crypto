@@ -2,7 +2,7 @@ import { parentPort, workerData } from 'worker_threads'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
-import { nextDay } from '../utils/Day.js'
+import Day from '../utils/Day.js'
 
 const { dataDir, exchangeId, pairId, year, month, day, startIndex, chunkSize, tpPercent, slPercent } = workerData
 
@@ -68,7 +68,7 @@ while (true) {
     }
     if (pending.length === 0) break
 
-    localCurrentDay = nextDay(localCurrentDay)
+    localCurrentDay = Day.nextDay(localCurrentDay)
     scanningTrades = await tradeStore.readArrayAsync(localCurrentDay, localCurrentDay)
     sendProgress(true)
 
