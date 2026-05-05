@@ -42,6 +42,8 @@ const main = async () => {
 
     const store = new Candles('data', symbol, durationSec)
 
+    await store.fetchAsync(start, end)
+
     let totalCandles = 0
     for await (const candle of store.readAsync(start, end)) {
         totalCandles++
