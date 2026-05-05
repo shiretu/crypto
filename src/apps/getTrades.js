@@ -1,6 +1,6 @@
 import Trades from '../stores/Trades.js'
-import Day from '../utils/Day.js'
-import { parseDate, lastMonth } from '../utils/Day.js'
+import Day, { parseDate } from '../utils/Day.js'
+import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {

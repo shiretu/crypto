@@ -1,8 +1,8 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import Sma from '../instruments/Sma.js'
-import Day from '../utils/Day.js'
-import { parseDate, lastMonth } from '../utils/Day.js'
+import Day, { parseDate } from '../utils/Day.js'
+import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)

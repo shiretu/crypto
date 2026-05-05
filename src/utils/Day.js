@@ -65,7 +65,3 @@ export default class Day {
 export const compareDates = Day.compare
 export const parseDate = Day.fromStr
 export const yesterday = Day.yesterday
-export const lastMonth = () => ({
-    start: Day.offsetByMonths(Day.thisMonth(), -1),
-    end: Day.prevDay(Day.thisMonth())
-})

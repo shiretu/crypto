@@ -1,8 +1,8 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import Macd from '../instruments/Macd.js'
-import Day from '../utils/Day.js'
-import { parseDate, lastMonth } from '../utils/Day.js'
+import Day, { parseDate } from '../utils/Day.js'
+import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -38,8 +38,9 @@ const main = async () => {
     const fast = args[3] ? parseInt(args[3], 10) : 12
     const slow = args[4] ? parseInt(args[4], 10) : 26
     const signal = args[5] ? parseInt(args[5], 10) : 9
-    const start = args[6] ? parseDate(args[6]) : lastMonth().start
-    const end = args[7] ? parseDate(args[7]) : lastMonth().end
+    const defaults = lastMonth()
+    const start = args[6] ? parseDate(args[6]) : defaults.start
+    const end = args[7] ? parseDate(args[7]) : defaults.end
 
     console.log(`MACD(${fast},${slow},${signal}) on ${durationArg} candles for ${symbol} from ${exchange.id}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
