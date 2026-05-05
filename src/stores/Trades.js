@@ -32,7 +32,17 @@ export default class Trades {
         })
         const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, date.year, date.month, date.day, ws)
         await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
-        await saveFile(file, Buffer.concat(chunks))
+        const buf = Buffer.concat(chunks)
+        if (buf.length >= Trade.RECORD_SIZE) {
+            const first = Trade.fromBuffer(this.#symbol, 0, buf, 0)
+            const last = Trade.fromBuffer(this.#symbol, 0, buf, buf.length - Trade.RECORD_SIZE)
+            const firstDay = Day.fromTsUs(first.tsUs)
+            const lastDay = Day.fromTsUs(last.tsUs)
+            if (Day.compare(firstDay, date) !== 0 || Day.compare(lastDay, date) !== 0) {
+                throw new Error(`Trade date mismatch for ${Day.toStr(date)}: first=${Day.toStr(firstDay)}, last=${Day.toStr(lastDay)}`)
+            }
+        }
+        await saveFile(file, buf)
         console.log(`${Day.toStr(date)}: ${count} trades`)
     }
 
