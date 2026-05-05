@@ -66,6 +66,7 @@ export default class CachedFile {
         if (this.#buf === null) {
             CachedFile.#stats.reads++
             this.#buf = await fs.promises.readFile(this.#filePath)
+            console.log(`Loaded file into cache: ${this.#filePath} (size: ${this.#buf.length} bytes)`)
         } else {
             CachedFile.#stats.cacheHits++
         }

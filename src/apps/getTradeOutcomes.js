@@ -103,7 +103,7 @@ const main = async () => {
     await store.fetchAsync(start.year, start.month, start.day, end.year, end.month, end.day)
 
     clearInterval(progressTimer)
-    process.stderr.write('\x1b[H\x1b[J')
+    process.stdout.write('\x1b[H\x1b[J')
 
     let total = 0
     let longTp = 0
@@ -115,7 +115,9 @@ const main = async () => {
         const so = outcome.shortOrder
         if (lo.profitPercent > 0) longTp++
         if (so.profitPercent > 0) shortTp++
+        if (total % 100000 === 0) process.stderr.write(`\rReading outcomes: ${total}`)
     }
+    if (total > 0) process.stderr.write(`\rReading outcomes: ${total}\n`)
 
     console.log(`Total outcomes: ${total}`)
     console.log(`Long  TP: ${longTp} (${(longTp / total * 100).toFixed(1)}%)  SL: ${total - longTp} (${((total - longTp) / total * 100).toFixed(1)}%)`)

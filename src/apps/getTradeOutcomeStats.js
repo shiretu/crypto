@@ -57,6 +57,8 @@ const main = async () => {
     let shortDurMin = Infinity; let shortDurMax = 0
     const longProfits = []
     const shortProfits = []
+    const longDurations = []
+    const shortDurations = []
 
     for await (const outcome of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
         total++
@@ -74,6 +76,8 @@ const main = async () => {
         const sDur = so.durationUs
         longDurSum += lDur
         shortDurSum += sDur
+        longDurations.push(lDur)
+        shortDurations.push(sDur)
         if (lDur < longDurMin) longDurMin = lDur
         if (lDur > longDurMax) longDurMax = lDur
         if (sDur < shortDurMin) shortDurMin = sDur
@@ -105,9 +109,13 @@ const main = async () => {
     console.log()
 
     // Duration stats
+    longDurations.sort((a, b) => a - b)
+    shortDurations.sort((a, b) => a - b)
+    const lp95 = longDurations[Math.floor(0.95 * longDurations.length)]
+    const sp95 = shortDurations[Math.floor(0.95 * shortDurations.length)]
     console.log('=== Duration ===')
-    console.log(`Long  avg: ${fmtDuration(longDurSum / total)}  min: ${fmtDuration(longDurMin)}  max: ${fmtDuration(longDurMax)}`)
-    console.log(`Short avg: ${fmtDuration(shortDurSum / total)}  min: ${fmtDuration(shortDurMin)}  max: ${fmtDuration(shortDurMax)}`)
+    console.log(`Long  avg: ${fmtDuration(longDurSum / total)}  min: ${fmtDuration(longDurMin)}  p95: ${fmtDuration(lp95)}  max: ${fmtDuration(longDurMax)}`)
+    console.log(`Short avg: ${fmtDuration(shortDurSum / total)}  min: ${fmtDuration(shortDurMin)}  p95: ${fmtDuration(sp95)}  max: ${fmtDuration(shortDurMax)}`)
     console.log()
 
     // Profit distribution
@@ -128,10 +136,14 @@ const main = async () => {
         dailyRows.push({
             date: dayKey,
             count: d.count,
-            'long TP%': pct(d.longTp, d.count),
-            'short TP%': pct(d.shortTp, d.count),
-            'avg long dur': fmtDuration(d.longDurSum / d.count),
-            'avg short dur': fmtDuration(d.shortDurSum / d.count)
+            'L win': d.longTp,
+            'L loss': d.count - d.longTp,
+            'L %': pct(d.longTp, d.count),
+            'S win': d.shortTp,
+            'S loss': d.count - d.shortTp,
+            'S %': pct(d.shortTp, d.count),
+            'avg L dur': fmtDuration(d.longDurSum / d.count),
+            'avg S dur': fmtDuration(d.shortDurSum / d.count)
         })
     }
     console.table(dailyRows)
