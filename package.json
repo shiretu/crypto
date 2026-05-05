@@ -12,6 +12,7 @@
     "outcomes": "node src/apps/getTradeOutcomes.js"
   },
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "csv-parse": "^6.2.1",
     "unzipper": "^0.12.3"
   },

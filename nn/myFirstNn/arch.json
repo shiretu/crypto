@@ -1,0 +1,22 @@
+{
+    "layers": [
+        {
+            "type": "dense",
+            "units": 16,
+            "activation": "relu",
+            "inputShape": [
+                10
+            ]
+        },
+        {
+            "type": "dense",
+            "units": 8,
+            "activation": "relu"
+        },
+        {
+            "type": "dense",
+            "units": 1,
+            "activation": "sigmoid"
+        }
+    ]
+}
