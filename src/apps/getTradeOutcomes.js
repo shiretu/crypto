@@ -1,7 +1,7 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
 import Trades from '../stores/Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {
@@ -100,7 +100,7 @@ const main = async () => {
         process.stderr.write('\x1b[J')
     }, 250)
 
-    await store.fetchAsync(start.year, start.month, start.day, end.year, end.month, end.day)
+    await store.fetchAsync(start, end)
 
     clearInterval(progressTimer)
     process.stdout.write('\x1b[H\x1b[J')
@@ -109,7 +109,7 @@ const main = async () => {
     let longTp = 0
     let shortTp = 0
 
-    for await (const outcome of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const outcome of store.readAsync(start, end)) {
         total++
         const lo = outcome.longOrder
         const so = outcome.shortOrder

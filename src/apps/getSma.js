@@ -1,7 +1,7 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import Sma from '../instruments/Sma.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -48,7 +48,7 @@ const main = async () => {
     const store = new Candles('data', symbol, durationSec)
     const sma = new Sma(period)
 
-    for await (const candle of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const candle of store.readAsync(start, end)) {
         const value = sma.update(candle.close.price)
         const openTime = new Date(candle.index * durationSec * 1000)
         const time = openTime.toISOString().replace('T', ' ').replace(/\.000Z$/, '')

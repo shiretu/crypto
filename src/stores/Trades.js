@@ -1,7 +1,7 @@
 import fs from 'fs'
 import Trade from '../core/Trade.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/date.js'
+import { dateStr, nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 export default class Trades {
@@ -16,12 +16,12 @@ export default class Trades {
         if (!symbol.exchange) throw new Error('Symbol must belong to an exchange')
     }
 
-    #getFilePath (year, month, day) {
-        return getFilePath(this.#dataDir, 'trades', this.#symbol, year, month, day)
+    #getFilePath (date) {
+        return getFilePath(this.#dataDir, 'trades', this.#symbol, date)
     }
 
-    async #ensureDayAsync (year, month, day) {
-        const file = this.#getFilePath(year, month, day)
+    async #ensureDayAsync (date) {
+        const file = this.#getFilePath(date)
         try {
             await fs.promises.access(file)
             return
@@ -30,27 +30,25 @@ export default class Trades {
         const ws = new (await import('stream')).Writable({
             write (chunk, encoding, callback) { chunks.push(chunk); callback() }
         })
-        const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, year, month, day, ws)
+        const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, date.year, date.month, date.day, ws)
         await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
         await saveFile(file, Buffer.concat(chunks))
-        console.log(`${dateStr(year, month, day)}: ${count} trades`)
+        console.log(`${dateStr(date)}: ${count} trades`)
     }
 
-    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async fetchAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            cur = nextDay(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            cur = nextDay(cur)
         }
     }
 
-    async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async * readAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            const filePath = this.#getFilePath(cur)
             this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
             const buf = await this.#filePart.readAsync({})
             if (buf.length >= Trade.RECORD_SIZE) {
@@ -61,30 +59,30 @@ export default class Trades {
                     yield trade
                 }
             }
-            cur = nextDay(cur.year, cur.month, cur.day)
+            cur = nextDay(cur)
         }
     }
 
-    async readArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readArrayAsync (start, end) {
         const result = []
-        for await (const trade of this.readAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const trade of this.readAsync(start, end)) {
             result.push(trade)
         }
         return result
     }
 
-    #fileForTsUs (tsUs) {
+    #dateForTsUs (tsUs) {
         const d = new Date(Math.floor(tsUs / 1000))
-        return this.#getFilePath(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
     }
 
     async readAtAsync (tsUs, srcId) {
         if (srcId < 0 || srcId % Trade.RECORD_SIZE !== 0) {
             throw new Error(`Invalid srcId: ${srcId} (must be non-negative multiple of ${Trade.RECORD_SIZE})`)
         }
-        const d = new Date(Math.floor(tsUs / 1000))
-        await this.#ensureDayAsync(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
-        const filePath = this.#fileForTsUs(tsUs)
+        const date = this.#dateForTsUs(tsUs)
+        await this.#ensureDayAsync(date)
+        const filePath = this.#getFilePath(date)
         this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
         const buf = await this.#filePart.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
         const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)

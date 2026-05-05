@@ -1,7 +1,7 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import CachedFile from '../utils/CachedFile.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -42,7 +42,7 @@ const main = async () => {
     const store = new Candles('data', symbol, durationSec)
 
     let totalCandles = 0
-    for await (const candle of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const candle of store.readAsync(start, end)) {
         totalCandles++
     }
 

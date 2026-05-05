@@ -11,6 +11,11 @@ describe('TradeStore', () => {
     let tmpDir
     const btcusdc = binance.getSymbol('btc:usdc')
 
+    const writeFile = (filePath, data) => {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true })
+        fs.writeFileSync(filePath, data)
+    }
+
     beforeEach(() => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tradestore-test-'))
     })
@@ -28,11 +33,11 @@ describe('TradeStore', () => {
         for (let i = 0; i < count; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000 + i, 0.01, 420, i % 2 === 0)
         }
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
 
-        const trades = await store.readArrayAsync(2024, 1, 1, 2024, 1, 1)
+        const trades = await store.readArrayAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })
         expect(trades).to.have.length(10)
         expect(trades[0].tsUs).to.equal(1704067200000000)
         expect(trades[9].tsUs).to.equal(1704067200000000 + 9 * 1000000)
@@ -46,10 +51,10 @@ describe('TradeStore', () => {
         for (let i = 0; i < 3; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
         }
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
-        const trades = await store.readArrayAsync(2024, 1, 1, 2024, 1, 1)
+        const trades = await store.readArrayAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })
         expect(trades[0].srcId).to.equal(0)
         expect(trades[1].srcId).to.equal(Trade.RECORD_SIZE)
         expect(trades[2].srcId).to.equal(Trade.RECORD_SIZE * 2)
@@ -65,11 +70,11 @@ describe('TradeStore', () => {
                 const seqId = (day - 1) * 5 + i + 1
                 Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + seqId * 1000000, 42000, 0.01, 420, false)
             }
-            fs.writeFileSync(path.join(dir, `2024-01-${String(day).padStart(2, '0')}.bin`), buf)
+            writeFile(path.join(dir, '2024', '01', `${String(day).padStart(2, '0')}.bin`), buf)
         }
 
         const store = new Trades(tmpDir, btcusdc)
-        const trades = await store.readArrayAsync(2024, 1, 1, 2024, 1, 3)
+        const trades = await store.readArrayAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 3 })
         expect(trades).to.have.length(15)
         expect(trades[0].tsUs).to.equal(1704067200000000 + 1000000)
         expect(trades[14].tsUs).to.equal(1704067200000000 + 15 * 1000000)
@@ -83,13 +88,13 @@ describe('TradeStore', () => {
         for (let i = 0; i < 3; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, 1704067200000000 + i * 1000000, 42000, 0.01, 420, false)
         }
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
-        fs.writeFileSync(path.join(dir, '2024-01-03.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '03.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
-        const trades1 = await store.readArrayAsync(2024, 1, 1, 2024, 1, 1)
+        const trades1 = await store.readArrayAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })
         expect(trades1).to.have.length(3)
-        const trades3 = await store.readArrayAsync(2024, 1, 3, 2024, 1, 3)
+        const trades3 = await store.readArrayAsync({ year: 2024, month: 1, day: 3 }, { year: 2024, month: 1, day: 3 })
         expect(trades3).to.have.length(3)
     })
 
@@ -99,14 +104,14 @@ describe('TradeStore', () => {
 
         const buf1 = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf1, 0, 1706745600000000, 42000, 0.01, 420, false)
-        fs.writeFileSync(path.join(dir, '2024-01-31.bin'), buf1)
+        writeFile(path.join(dir, '2024', '01', '31.bin'), buf1)
 
         const buf2 = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf2, 0, 1706832000000000, 43000, 0.01, 430, false)
-        fs.writeFileSync(path.join(dir, '2024-02-01.bin'), buf2)
+        writeFile(path.join(dir, '2024', '02', '01.bin'), buf2)
 
         const store = new Trades(tmpDir, btcusdc)
-        const trades = await store.readArrayAsync(2024, 1, 31, 2024, 2, 1)
+        const trades = await store.readArrayAsync({ year: 2024, month: 1, day: 31 }, { year: 2024, month: 2, day: 1 })
         expect(trades).to.have.length(2)
         expect(trades[0].tsUs).to.equal(1706745600000000)
         expect(trades[1].tsUs).to.equal(1706832000000000)
@@ -122,7 +127,7 @@ describe('TradeStore', () => {
         for (let i = 0; i < count; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, baseTs + i * 1000000, 42000 + i, 0.01, 420, false)
         }
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
         const trade = await store.readAtAsync(baseTs + 3 * 1000000, 3 * Trade.RECORD_SIZE)
@@ -141,7 +146,7 @@ describe('TradeStore', () => {
         for (let i = 0; i < count; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, baseTs + i * 1000000, 42000 + i, 0.01, 420, false)
         }
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
         const t1 = await store.readAtAsync(baseTs, 0)
@@ -158,7 +163,7 @@ describe('TradeStore', () => {
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
         try {
@@ -175,7 +180,7 @@ describe('TradeStore', () => {
 
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
         Trade.toBuffer(buf, 0, 1704067200000000, 42000, 0.01, 420, false)
-        fs.writeFileSync(path.join(dir, '2024-01-01.bin'), buf)
+        writeFile(path.join(dir, '2024', '01', '01.bin'), buf)
 
         const store = new Trades(tmpDir, btcusdc)
         try {

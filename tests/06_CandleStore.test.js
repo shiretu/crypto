@@ -13,12 +13,14 @@ describe('CandleStore', () => {
     const duration = CandleDuration.MIN_1
 
     const writeTrades = (dir, date, trades) => {
-        fs.mkdirSync(dir, { recursive: true })
+        const [y, m, d] = date.split('-')
+        const filePath = path.join(dir, y, m, `${d}.bin`)
+        fs.mkdirSync(path.dirname(filePath), { recursive: true })
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * trades.length)
         for (let i = 0; i < trades.length; i++) {
             Trade.toBuffer(buf, i * Trade.RECORD_SIZE, trades[i].tsUs, trades[i].price, trades[i].baseQty, trades[i].quoteQty, trades[i].isBuyerMaker)
         }
-        fs.writeFileSync(path.join(dir, `${date}.bin`), buf)
+        fs.writeFileSync(filePath, buf)
     }
 
     beforeEach(() => {
@@ -41,7 +43,7 @@ describe('CandleStore', () => {
 
         const candleStore = new Candles(tmpDir, btcusdc, duration)
         const candles = []
-        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles.push(c)
+        for await (const c of candleStore.readAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })) candles.push(c)
         expect(candles).to.have.length(2)
     })
 
@@ -58,12 +60,12 @@ describe('CandleStore', () => {
 
         // First call builds and caches
         const candles1 = []
-        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles1.push(c)
+        for await (const c of candleStore.readAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })) candles1.push(c)
         expect(candles1).to.have.length(1)
 
         // Second call loads from cache and rehydrates
         const candles2 = []
-        for await (const c of candleStore.readAsync(2024, 1, 1, 2024, 1, 1)) candles2.push(c)
+        for await (const c of candleStore.readAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })) candles2.push(c)
         expect(candles2).to.have.length(1)
 
         const c = candles2[0]
@@ -90,7 +92,7 @@ describe('CandleStore', () => {
         const candleStore = new Candles(tmpDir, btcusdc, duration)
 
         const candles = []
-        for await (const candle of candleStore.readAsync(2024, 1, 1, 2024, 1, 2)) {
+        for await (const candle of candleStore.readAsync({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 2 })) {
             candles.push(candle)
         }
         expect(candles).to.have.length(2)

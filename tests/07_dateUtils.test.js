@@ -1,24 +1,24 @@
 import { expect } from 'chai'
-import { dateStr, nextDay, compareDates, parseDate, yesterday, fmtDate } from '../src/utils/date.js'
+import { dateStr, nextDay, compareDates, parseDate, yesterday, fmtDate } from '../src/utils/Day.js'
 
 describe('date utils', () => {
     it('should format dateStr with zero padding', () => {
-        expect(dateStr(2024, 1, 5)).to.equal('2024-01-05')
-        expect(dateStr(2024, 12, 31)).to.equal('2024-12-31')
+        expect(dateStr({ year: 2024, month: 1, day: 5 })).to.equal('2024-01-05')
+        expect(dateStr({ year: 2024, month: 12, day: 31 })).to.equal('2024-12-31')
     })
 
     it('should compute nextDay within month', () => {
-        const n = nextDay(2024, 1, 15)
+        const n = nextDay({ year: 2024, month: 1, day: 15 })
         expect(n).to.deep.equal({ year: 2024, month: 1, day: 16 })
     })
 
     it('should compute nextDay across month boundary', () => {
-        const n = nextDay(2024, 1, 31)
+        const n = nextDay({ year: 2024, month: 1, day: 31 })
         expect(n).to.deep.equal({ year: 2024, month: 2, day: 1 })
     })
 
     it('should compute nextDay across year boundary', () => {
-        const n = nextDay(2024, 12, 31)
+        const n = nextDay({ year: 2024, month: 12, day: 31 })
         expect(n).to.deep.equal({ year: 2025, month: 1, day: 1 })
     })
 

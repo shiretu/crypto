@@ -7,7 +7,7 @@ import Trade from '../core/Trade.js'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/date.js'
+import { dateStr, nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -45,22 +45,20 @@ export default class TradeOutcomes {
         this.#onProgress = onProgress || null
     }
 
-    #getFilePath (year, month, day) {
-        return getFilePath(this.#dataDir, 'outcomes', this.#symbol, year, month, day,
+    #getFilePath (date) {
+        return getFilePath(this.#dataDir, 'outcomes', this.#symbol, date,
             `tp${this.#tpPercent}_sl${this.#slPercent}`)
     }
 
-    async #ensureDayAsync (year, month, day) {
-        const file = this.#getFilePath(year, month, day)
+    async #ensureDayAsync (date) {
+        const file = this.#getFilePath(date)
         try {
             await fs.promises.access(file)
             return
         } catch {}
 
         const tradeStore = new Trades(this.#dataDir, this.#symbol)
-        const currentDay = { year, month, day }
-        const trades = await tradeStore.readArrayAsync(currentDay.year, currentDay.month, currentDay.day,
-            currentDay.year, currentDay.month, currentDay.day)
+        const trades = await tradeStore.readArrayAsync(date, date)
         const cpusCount = os.cpus().length * 4
         const chunkSize = Math.ceil(trades.length / cpusCount)
 
@@ -70,9 +68,9 @@ export default class TradeOutcomes {
                     dataDir: this.#dataDir,
                     exchangeId: this.#symbol.exchange.id,
                     pairId: this.#symbol.pairId,
-                    year,
-                    month,
-                    day,
+                    year: date.year,
+                    month: date.month,
+                    day: date.day,
                     startIndex,
                     chunkSize: size,
                     tpPercent: this.#tpPercent,
@@ -113,21 +111,19 @@ export default class TradeOutcomes {
         await saveFile(file, buf)
     }
 
-    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async fetchAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            cur = nextDay(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            cur = nextDay(cur)
         }
     }
 
-    async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async * readAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            const filePath = this.#getFilePath(cur)
             this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
             const buf = await this.#filePart.readAsync({})
             if (buf.length >= RECORD_SIZE) {
@@ -155,13 +151,13 @@ export default class TradeOutcomes {
                     yield outcome
                 }
             }
-            cur = nextDay(cur.year, cur.month, cur.day)
+            cur = nextDay(cur)
         }
     }
 
-    async readArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readArrayAsync (start, end) {
         const result = []
-        for await (const outcome of this.readAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const outcome of this.readAsync(start, end)) {
             result.push(outcome)
         }
         return result

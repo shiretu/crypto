@@ -4,7 +4,7 @@ import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/date.js'
+import { dateStr, nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const CANDLE_RECORD_SIZE = 64
@@ -26,12 +26,12 @@ export default class Candles {
         this.#filePart = null
     }
 
-    #getFilePath (year, month, day) {
-        return getFilePath(this.#dataDir, 'candles', this.#symbol, year, month, day, this.#durationSec)
+    #getFilePath (date) {
+        return getFilePath(this.#dataDir, 'candles', this.#symbol, date, this.#durationSec)
     }
 
-    async #ensureDayAsync (year, month, day) {
-        const file = this.#getFilePath(year, month, day)
+    async #ensureDayAsync (date) {
+        const file = this.#getFilePath(date)
         try {
             await fs.promises.access(file)
             return
@@ -39,7 +39,7 @@ export default class Candles {
         const durationUs = this.#durationSec * 1_000_000
         const candles = []
         let current = null
-        for await (const trade of this.#tradeStore.readAsync(year, month, day, year, month, day)) {
+        for await (const trade of this.#tradeStore.readAsync(date, date)) {
             const idx = Math.floor(trade.tsUs / durationUs)
             if (!current || current.index !== idx) {
                 if (current) candles.push(current)
@@ -66,21 +66,19 @@ export default class Candles {
         await saveFile(file, buf)
     }
 
-    async fetchAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async fetchAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            cur = nextDay(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            cur = nextDay(cur)
         }
     }
 
-    async * readAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
-        let cur = { year: startYear, month: startMonth, day: startDay }
-        const end = { year: endYear, month: endMonth, day: endDay }
+    async * readAsync (start, end) {
+        let cur = start
         while (compareDates(cur, end) <= 0) {
-            await this.#ensureDayAsync(cur.year, cur.month, cur.day)
-            const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
+            await this.#ensureDayAsync(cur)
+            const filePath = this.#getFilePath(cur)
             this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
             const buf = await this.#filePart.readAsync({})
             if (buf.length >= CANDLE_RECORD_SIZE) {
@@ -102,13 +100,13 @@ export default class Candles {
                     yield candle
                 }
             }
-            cur = nextDay(cur.year, cur.month, cur.day)
+            cur = nextDay(cur)
         }
     }
 
-    async readArrayAsync (startYear, startMonth, startDay, endYear, endMonth, endDay) {
+    async readArrayAsync (start, end) {
         const result = []
-        for await (const candle of this.readAsync(startYear, startMonth, startDay, endYear, endMonth, endDay)) {
+        for await (const candle of this.readAsync(start, end)) {
             result.push(candle)
         }
         return result

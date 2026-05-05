@@ -1,5 +1,5 @@
 import Trades from '../stores/Trades.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {
@@ -26,7 +26,7 @@ const main = async () => {
 
     const store = new Trades('data', symbol)
     let count = 0
-    for await (const trade of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const trade of store.readAsync(start, end)) {
         count++
     }
 

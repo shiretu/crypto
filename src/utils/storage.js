@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { dateStr } from './date.js'
+import { dateStr } from './Day.js'
 
-const getFilePath = (dataDir, type, symbol, year, month, day, ...extra) => {
+const getFilePath = (dataDir, type, symbol, { year, month, day }, ...extra) => {
     return path.join(dataDir, type, symbol.exchange.id,
         `${symbol.base.id}${symbol.quote.id}`, ...extra.map(String),
         String(year), String(month).padStart(2, '0'), `${String(day).padStart(2, '0')}.bin`)

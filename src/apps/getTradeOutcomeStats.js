@@ -1,6 +1,6 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
 import Trades from '../stores/Trades.js'
-import { parseDate, lastMonth, fmtDate, dateStr } from '../utils/date.js'
+import { parseDate, lastMonth, fmtDate, dateStr } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {
@@ -43,10 +43,10 @@ const main = async () => {
     console.log()
 
     const tradeStore = new Trades('data', symbol)
-    await tradeStore.fetchAsync(start.year, start.month, start.day, end.year, end.month, end.day)
+    await tradeStore.fetchAsync(start, end)
 
     const store = new TradeOutcomes('data', symbol, { tpPercent, slPercent })
-    await store.fetchAsync(start.year, start.month, start.day, end.year, end.month, end.day)
+    await store.fetchAsync(start, end)
 
     // Collect per-day and overall stats
     const days = new Map()
@@ -60,7 +60,7 @@ const main = async () => {
     const longDurations = []
     const shortDurations = []
 
-    for await (const outcome of store.readAsync(start.year, start.month, start.day, end.year, end.month, end.day)) {
+    for await (const outcome of store.readAsync(start, end)) {
         total++
         const lo = outcome.longOrder
         const so = outcome.shortOrder
@@ -85,7 +85,7 @@ const main = async () => {
 
         // Per-day tracking
         const d = new Date(Math.floor(lo.open.tsUs / 1000))
-        const dayKey = dateStr(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+        const dayKey = dateStr({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() })
         let day = days.get(dayKey)
         if (!day) {
             day = { count: 0, longTp: 0, shortTp: 0, longDurSum: 0, shortDurSum: 0 }
