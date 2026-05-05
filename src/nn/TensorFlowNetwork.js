@@ -10,7 +10,7 @@ export default class TensorFlowNetwork extends NeuralNetwork {
 
     constructor (config) {
         super(config)
-        this.#dataPath = path.join(this.path, 'tensorflow')
+        this.#dataPath = path.join(this.runtimePath, 'tensorflow')
         fs.mkdirSync(this.#dataPath, { recursive: true })
         this.#modelPath = path.join(this.#dataPath, 'model.json')
     }

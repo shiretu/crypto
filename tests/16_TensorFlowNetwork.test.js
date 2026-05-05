@@ -34,7 +34,7 @@ describe('TensorFlowNetwork', () => {
     it('should create a model from arch.json and save it', async () => {
         const nn = await TensorFlowNetwork.create(config)
         expect(nn).to.be.instanceOf(TensorFlowNetwork)
-        const tfPath = path.join(testPath, 'tensorflow')
+        const tfPath = path.join(testPath, 'runtime', 'tensorflow')
         expect(fs.existsSync(path.join(tfPath, 'model.json'))).to.equal(true)
     })
 

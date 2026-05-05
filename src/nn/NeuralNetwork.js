@@ -7,17 +7,21 @@ export default class NeuralNetwork {
     #config
     #path
     #arch
+    #runtimePath
 
     constructor (config) {
         this.#config = config
         this.#path = path.join(NN_DIR, config.name)
         this.#arch = JSON.parse(fs.readFileSync(path.join(this.#path, 'arch.json'), 'utf8'))
         if (!config.train) throw new Error('config.train is required')
+        this.#runtimePath = path.join(this.#path, 'runtime')
+        fs.mkdirSync(this.#runtimePath, { recursive: true })
     }
 
     get config () { return this.#config }
     get path () { return this.#path }
     get arch () { return this.#arch }
+    get runtimePath () { return this.#runtimePath }
 
     static async create (config) {
         throw new Error('create() not implemented')
