@@ -1,7 +1,7 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import CachedFile from '../utils/CachedFile.js'
-import Day, { parseDate } from '../utils/Day.js'
+import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
@@ -34,8 +34,8 @@ const main = async () => {
     }
 
     const defaults = lastMonth()
-    const start = args[3] ? parseDate(args[3]) : defaults.start
-    const end = args[4] ? parseDate(args[4]) : defaults.end
+    const start = args[3] ? Day.fromStr(args[3]) : defaults.start
+    const end = args[4] ? Day.fromStr(args[4]) : defaults.end
 
     console.log(`Building ${durationArg} candles for ${symbol} from ${exchange.id}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)

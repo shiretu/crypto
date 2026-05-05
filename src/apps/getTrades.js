@@ -1,5 +1,5 @@
 import Trades from '../stores/Trades.js'
-import Day, { parseDate } from '../utils/Day.js'
+import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
@@ -19,8 +19,8 @@ const main = async () => {
     const { exchange, symbol } = resolveExchangeAndSymbol(args[0], args[1])
 
     const defaults = lastMonth()
-    const start = args[2] ? parseDate(args[2]) : defaults.start
-    const end = args[3] ? parseDate(args[3]) : defaults.end
+    const start = args[2] ? Day.fromStr(args[2]) : defaults.start
+    const end = args[3] ? Day.fromStr(args[3]) : defaults.end
 
     console.log(`Fetching ${symbol} from ${exchange.id}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)

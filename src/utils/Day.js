@@ -61,7 +61,3 @@ export default class Day {
 
     static thisYear () { return Day.toYear(Day.today()) }
 }
-
-export const compareDates = Day.compare
-export const parseDate = Day.fromStr
-export const yesterday = Day.yesterday

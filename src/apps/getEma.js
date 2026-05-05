@@ -1,7 +1,7 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import Ema from '../instruments/Ema.js'
-import Day, { parseDate } from '../utils/Day.js'
+import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
@@ -39,8 +39,8 @@ const main = async () => {
     }
 
     const defaults = lastMonth()
-    const start = args[4] ? parseDate(args[4]) : defaults.start
-    const end = args[5] ? parseDate(args[5]) : defaults.end
+    const start = args[4] ? Day.fromStr(args[4]) : defaults.start
+    const end = args[5] ? Day.fromStr(args[5]) : defaults.end
 
     console.log(`EMA(${period}) on ${durationArg} candles for ${symbol} from ${exchange.id}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)

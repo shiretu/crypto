@@ -122,4 +122,39 @@ describe('Day', () => {
             expect(Day.prevDay({ year: 2025, month: 1, day: 1 })).to.deep.equal({ year: 2024, month: 12, day: 31 })
         })
     })
+
+    describe('nextDay', () => {
+        it('should go to next day within month', () => {
+            expect(Day.nextDay({ year: 2024, month: 1, day: 15 })).to.deep.equal({ year: 2024, month: 1, day: 16 })
+        })
+
+        it('should cross month boundary', () => {
+            expect(Day.nextDay({ year: 2024, month: 1, day: 31 })).to.deep.equal({ year: 2024, month: 2, day: 1 })
+        })
+
+        it('should cross year boundary', () => {
+            expect(Day.nextDay({ year: 2024, month: 12, day: 31 })).to.deep.equal({ year: 2025, month: 1, day: 1 })
+        })
+    })
+
+    describe('compare', () => {
+        it('should compare dates correctly', () => {
+            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 2 })).to.be.lessThan(0)
+            expect(Day.compare({ year: 2024, month: 1, day: 2 }, { year: 2024, month: 1, day: 1 })).to.be.greaterThan(0)
+            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })).to.equal(0)
+            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2025, month: 1, day: 1 })).to.be.lessThan(0)
+            expect(Day.compare({ year: 2024, month: 6, day: 1 }, { year: 2024, month: 1, day: 1 })).to.be.greaterThan(0)
+        })
+    })
+
+    describe('yesterday', () => {
+        it('should return yesterday in UTC', () => {
+            const y = Day.yesterday()
+            expect(y).to.have.keys('year', 'month', 'day')
+            const expected = new Date(Date.now() - 86400000)
+            expect(y.year).to.equal(expected.getUTCFullYear())
+            expect(y.month).to.equal(expected.getUTCMonth() + 1)
+            expect(y.day).to.equal(expected.getUTCDate())
+        })
+    })
 })
