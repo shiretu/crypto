@@ -4,7 +4,7 @@ import Candle from '../core/Candle.js'
 import { isValidDuration } from '../core/candleDuration.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/Day.js'
+import { nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const CANDLE_RECORD_SIZE = 64

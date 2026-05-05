@@ -1,7 +1,7 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import CachedFile from '../utils/CachedFile.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
+import Day, { parseDate, lastMonth } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -37,7 +37,7 @@ const main = async () => {
     const end = args[4] ? parseDate(args[4]) : defaults.end
 
     console.log(`Building ${durationArg} candles for ${symbol} from ${exchange.id}`)
-    console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
+    console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
 
     const store = new Candles('data', symbol, durationSec)
 

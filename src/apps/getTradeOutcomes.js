@@ -1,7 +1,7 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
 import Trades from '../stores/Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
+import Day, { parseDate, lastMonth } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {
@@ -31,7 +31,7 @@ const main = async () => {
     const end = args[5] ? parseDate(args[5]) : defaults.end
 
     console.log(`TradeOutcomes TP=${tpPercent}% SL=${slPercent}% for ${symbol} from ${exchange.id}`)
-    console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
+    console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
     console.log()
 
     const chunks = new Map()

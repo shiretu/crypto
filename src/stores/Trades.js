@@ -1,7 +1,7 @@
 import fs from 'fs'
 import Trade from '../core/Trade.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/Day.js'
+import Day, { nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 export default class Trades {
@@ -33,7 +33,7 @@ export default class Trades {
         const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, date.year, date.month, date.day, ws)
         await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
         await saveFile(file, Buffer.concat(chunks))
-        console.log(`${dateStr(date)}: ${count} trades`)
+        console.log(`${Day.toStr(date)}: ${count} trades`)
     }
 
     async fetchAsync (start, end) {

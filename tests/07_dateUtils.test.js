@@ -1,10 +1,11 @@
 import { expect } from 'chai'
-import { dateStr, nextDay, compareDates, parseDate, yesterday, fmtDate } from '../src/utils/Day.js'
+import { nextDay, compareDates, parseDate, yesterday } from '../src/utils/Day.js'
+import Day from '../src/utils/Day.js'
 
 describe('date utils', () => {
     it('should format dateStr with zero padding', () => {
-        expect(dateStr({ year: 2024, month: 1, day: 5 })).to.equal('2024-01-05')
-        expect(dateStr({ year: 2024, month: 12, day: 31 })).to.equal('2024-12-31')
+        expect(Day.toStr({ year: 2024, month: 1, day: 5 })).to.equal('2024-01-05')
+        expect(Day.toStr({ year: 2024, month: 12, day: 31 })).to.equal('2024-12-31')
     })
 
     it('should compute nextDay within month', () => {
@@ -55,6 +56,6 @@ describe('date utils', () => {
     })
 
     it('should format fmtDate from date object', () => {
-        expect(fmtDate({ year: 2024, month: 3, day: 5 })).to.equal('2024-03-05')
+        expect(Day.toStr({ year: 2024, month: 3, day: 5 })).to.equal('2024-03-05')
     })
 })

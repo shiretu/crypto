@@ -1,6 +1,6 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
 import Trades from '../stores/Trades.js'
-import { parseDate, lastMonth, fmtDate, dateStr } from '../utils/Day.js'
+import Day, { parseDate, lastMonth } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const usage = () => {
@@ -39,7 +39,7 @@ const main = async () => {
     const end = args[5] ? parseDate(args[5]) : defaults.end
 
     console.log(`TradeOutcome Stats TP=${tpPercent}% SL=${slPercent}% for ${symbol} from ${exchange.id}`)
-    console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
+    console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
     console.log()
 
     const tradeStore = new Trades('data', symbol)
@@ -84,8 +84,7 @@ const main = async () => {
         if (sDur > shortDurMax) shortDurMax = sDur
 
         // Per-day tracking
-        const d = new Date(Math.floor(lo.open.tsUs / 1000))
-        const dayKey = dateStr({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() })
+        const dayKey = Day.toStr(Day.fromTsUs(lo.open.tsUs))
         let day = days.get(dayKey)
         if (!day) {
             day = { count: 0, longTp: 0, shortTp: 0, longDurSum: 0, shortDurSum: 0 }

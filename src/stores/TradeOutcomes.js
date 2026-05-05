@@ -7,7 +7,7 @@ import Trade from '../core/Trade.js'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
 import CachedFile from '../utils/CachedFile.js'
-import { dateStr, nextDay, compareDates } from '../utils/Day.js'
+import { nextDay, compareDates } from '../utils/Day.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)

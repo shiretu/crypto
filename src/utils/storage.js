@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { dateStr } from './Day.js'
 
 const getFilePath = (dataDir, type, symbol, { year, month, day }, ...extra) => {
     return path.join(dataDir, type, symbol.exchange.id,

@@ -1,7 +1,8 @@
 import CandleDuration from '../core/candleDuration.js'
 import Candles from '../stores/Candles.js'
 import Ema from '../instruments/Ema.js'
-import { parseDate, lastMonth, fmtDate } from '../utils/Day.js'
+import Day from '../utils/Day.js'
+import { parseDate, lastMonth } from '../utils/Day.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
@@ -42,7 +43,7 @@ const main = async () => {
     const end = args[5] ? parseDate(args[5]) : defaults.end
 
     console.log(`EMA(${period}) on ${durationArg} candles for ${symbol} from ${exchange.id}`)
-    console.log(`Range: ${fmtDate(start)} to ${fmtDate(end)}`)
+    console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
     console.log()
 
     const store = new Candles('data', symbol, durationSec)

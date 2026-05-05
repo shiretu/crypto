@@ -16,6 +16,11 @@ export default class Day {
         return Day.normalize(date)
     }
 
+    static fromTsUs (tsUs) {
+        const d = new Date(Math.floor(tsUs / 1000))
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
+    }
+
     static compare (a, b) {
         return (a.year - b.year) || (a.month - b.month) || (a.day - b.day)
     }
@@ -57,7 +62,6 @@ export default class Day {
     static thisYear () { return Day.toYear(Day.today()) }
 }
 
-export const dateStr = Day.toStr
 export const nextDay = Day.nextDay
 export const compareDates = Day.compare
 export const parseDate = Day.fromStr
@@ -66,5 +70,3 @@ export const lastMonth = () => ({
     start: Day.offsetByMonths(Day.thisMonth(), -1),
     end: Day.prevDay(Day.thisMonth())
 })
-
-export const fmtDate = dateStr
