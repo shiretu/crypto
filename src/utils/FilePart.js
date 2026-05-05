@@ -1,7 +1,9 @@
 import fs from 'fs'
+import { isMainThread } from 'worker_threads'
 
 export default class FilePart {
     static #stats = { fullReads: 0, partialReads: 0, upgrades: 0, cacheHits: 0 }
+    static #cache = new Map()
 
     static get stats () { return { ...FilePart.#stats } }
     static resetStats () { FilePart.#stats = { fullReads: 0, partialReads: 0, upgrades: 0, cacheHits: 0 } }
@@ -31,12 +33,20 @@ export default class FilePart {
         if (filePart && filePart.filePath === filePath) {
             return filePart
         }
+        if (isMainThread) {
+            const cached = FilePart.#cache.get(filePath)
+            if (cached) return cached
+        }
         try {
             await fs.promises.access(filePath, fs.constants.R_OK)
         } catch (e) {
             throw new Error(`File not found or not readable: ${filePath}`)
         }
-        return new FilePart(filePath)
+        const fp = new FilePart(filePath)
+        if (isMainThread) {
+            FilePart.#cache.set(filePath, fp)
+        }
+        return fp
     }
 
     async #loadFullyAsync () {
@@ -69,12 +79,7 @@ export default class FilePart {
     async readAsync ({ offset = -1, length = -1 }) {
         if (length === 0) throw new Error('length must not be 0')
         if (this.#buf === null) {
-            // First read — load fully or partially as requested
-            if (offset < 0) {
-                await this.#loadFullyAsync()
-            } else {
-                await this.#loadPartialAsync(offset, length)
-            }
+            await this.#loadFullyAsync()
             return this.#chop({ offset, length })
         }
 
