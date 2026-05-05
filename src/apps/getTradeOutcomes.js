@@ -67,7 +67,10 @@ const main = async () => {
             const barWidth = 20
             const filled = Math.round(pct / 100 * barWidth)
             const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(barWidth - filled)
+            const t = new Date(Math.floor(p.requestedChunk.start / 1000))
+            const time = `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}:${String(t.getUTCSeconds()).padStart(2, '0')}`
             rows.push({
+                time,
                 progress: bar,
                 resolved: p.resolvedTradesCount,
                 wanted: p.requestedChunk.count,
@@ -81,14 +84,18 @@ const main = async () => {
         const totalResolved = dayResolved + inFlightResolved
         const totalPct = dayTotal > 0 ? (totalResolved / dayTotal * 100) : 0
         const totalFilled = Math.min(20, Math.round(totalPct / 100 * 20))
+        const d = new Date(Math.floor(currentDayStartUs / 1000))
+        const label = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
         const totalBar = '\u2588'.repeat(totalFilled) + '\u2591'.repeat(20 - totalFilled)
         rows.unshift({
+            time: '',
             progress: totalBar,
             resolved: totalResolved,
             wanted: dayTotal,
             pending: inFlightPending,
             scanning: chunks.size + ' chunks'
         })
+        process.stderr.write(`\x1b[K  ${label}  ${totalResolved}/${dayTotal} (${totalPct.toFixed(1)}%)  ${chunks.size} chunks\n`)
         console.table(rows)
         process.stderr.write('\x1b[J')
     }, 250)
