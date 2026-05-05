@@ -14,7 +14,7 @@ export default class Candles {
     #symbol
     #durationSec
     #tradeStore
-    #filePart
+    #cachedFile
 
     constructor (dataDir, symbol, durationSec) {
         if (!isValidDuration(durationSec)) throw new Error(`Invalid candle duration: ${durationSec}`)
@@ -23,7 +23,7 @@ export default class Candles {
         this.#symbol = symbol
         this.#durationSec = durationSec
         this.#tradeStore = new Trades(dataDir, symbol)
-        this.#filePart = null
+        this.#cachedFile = null
     }
 
     #getFilePath (date) {
@@ -79,8 +79,8 @@ export default class Candles {
         while (Day.compare(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
             const filePath = this.#getFilePath(cur)
-            this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
-            const buf = await this.#filePart.readAsync({})
+            this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+            const buf = await this.#cachedFile.readAsync({})
             if (buf.length >= CANDLE_RECORD_SIZE) {
                 const count = Math.floor(buf.length / CANDLE_RECORD_SIZE)
                 for (let i = 0; i < count; i++) {

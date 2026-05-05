@@ -136,7 +136,7 @@ describe('TradeStore', () => {
         expect(trade.srcId).to.equal(3 * Trade.RECORD_SIZE)
     })
 
-    it('should reuse FilePart across readAtAsync calls for same day', async () => {
+    it('should reuse CachedFile across readAtAsync calls for same day', async () => {
         const dir = path.join(tmpDir, 'trades', 'binance', 'btcusdc')
         fs.mkdirSync(dir, { recursive: true })
 

@@ -7,12 +7,12 @@ import { getFilePath, saveFile } from '../utils/storage.js'
 export default class Trades {
     #dataDir
     #symbol
-    #filePart
+    #cachedFile
 
     constructor (dataDir, symbol) {
         this.#dataDir = dataDir
         this.#symbol = symbol
-        this.#filePart = null
+        this.#cachedFile = null
         if (!symbol.exchange) throw new Error('Symbol must belong to an exchange')
     }
 
@@ -49,8 +49,8 @@ export default class Trades {
         while (Day.compare(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
             const filePath = this.#getFilePath(cur)
-            this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
-            const buf = await this.#filePart.readAsync({})
+            this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+            const buf = await this.#cachedFile.readAsync({})
             if (buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
@@ -83,8 +83,8 @@ export default class Trades {
         const date = this.#dateForTsUs(tsUs)
         await this.#ensureDayAsync(date)
         const filePath = this.#getFilePath(date)
-        this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
-        const buf = await this.#filePart.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
+        this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+        const buf = await this.#cachedFile.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
         const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)
         if (trade.tsUs !== tsUs) {
             throw new Error(`Trade at srcId ${srcId} has tsUs=${trade.tsUs}, expected ${tsUs}`)

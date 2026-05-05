@@ -49,7 +49,7 @@ const main = async () => {
 
     console.log(`Done. ${totalCandles} candles.`)
     const s = CachedFile.stats
-    console.log(`FilePart: ${s.reads} reads, ${s.cacheHits} cache hits`)
+    console.log(`CachedFile: ${s.reads} reads, ${s.cacheHits} cache hits`)
 }
 
 main().catch((err) => {

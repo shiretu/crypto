@@ -28,7 +28,7 @@ export default class TradeOutcomes {
     #slPercent
     #openTradeStore
     #closeTradeStore
-    #filePart
+    #cachedFile
     #onProgress
 
     constructor (dataDir, symbol, { tpPercent, slPercent, onProgress }) {
@@ -41,7 +41,7 @@ export default class TradeOutcomes {
         this.#slPercent = slPercent
         this.#openTradeStore = new Trades(dataDir, symbol)
         this.#closeTradeStore = new Trades(dataDir, symbol)
-        this.#filePart = null
+        this.#cachedFile = null
         this.#onProgress = onProgress || null
     }
 
@@ -124,8 +124,8 @@ export default class TradeOutcomes {
         while (Day.compare(cur, end) <= 0) {
             await this.#ensureDayAsync(cur)
             const filePath = this.#getFilePath(cur)
-            this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
-            const buf = await this.#filePart.readAsync({})
+            this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+            const buf = await this.#cachedFile.readAsync({})
             if (buf.length >= RECORD_SIZE) {
                 const count = Math.floor(buf.length / RECORD_SIZE)
                 for (let i = 0; i < count; i++) {

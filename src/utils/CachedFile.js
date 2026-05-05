@@ -31,11 +31,11 @@ export default class CachedFile {
     get filePath () { return this.#filePath }
     get lastActivity () { return this.#lastActivity }
 
-    static async createAsync ({ filePart = null, filePath }) {
+    static async createAsync ({ existingFile = null, filePath }) {
         let result = null
         try {
-            if (filePart && filePart.filePath === filePath) {
-                result = filePart
+            if (existingFile && existingFile.filePath === filePath) {
+                result = existingFile
                 return result
             }
             if (isMainThread) {

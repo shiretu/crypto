@@ -124,7 +124,7 @@ const main = async () => {
     console.log(`Long  TP: ${longTp} (${(longTp / total * 100).toFixed(1)}%)  SL: ${total - longTp} (${((total - longTp) / total * 100).toFixed(1)}%)`)
     console.log(`Short TP: ${shortTp} (${(shortTp / total * 100).toFixed(1)}%)  SL: ${total - shortTp} (${((total - shortTp) / total * 100).toFixed(1)}%)`)
     const s = CachedFile.stats
-    console.log(`FilePart: ${s.reads} reads, ${s.cacheHits} cache hits`)
+    console.log(`CachedFile: ${s.reads} reads, ${s.cacheHits} cache hits`)
 }
 
 main().catch((err) => {

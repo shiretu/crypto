@@ -8,7 +8,7 @@ describe('CachedFile', () => {
     let tmpDir
 
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filepart-test-'))
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cachedfile-test-'))
         CachedFile.resetStats()
     })
 
@@ -25,23 +25,23 @@ describe('CachedFile', () => {
         }
     })
 
-    it('should reuse filePart when filePath matches', async () => {
+    it('should reuse cachedFile when filePath matches', async () => {
         const filePath = path.join(tmpDir, 'reuse.bin')
         fs.writeFileSync(filePath, Buffer.from([1, 2, 3]))
 
         const fp = await CachedFile.createAsync({ filePath })
-        const fp2 = await CachedFile.createAsync({ filePart: fp, filePath })
+        const fp2 = await CachedFile.createAsync({ existingFile: fp, filePath })
         expect(fp2).to.equal(fp)
     })
 
-    it('should create new filePart when filePath differs', async () => {
+    it('should create new cachedFile when filePath differs', async () => {
         const file1 = path.join(tmpDir, 'a.bin')
         const file2 = path.join(tmpDir, 'b.bin')
         fs.writeFileSync(file1, Buffer.from([1, 2, 3]))
         fs.writeFileSync(file2, Buffer.from([4, 5, 6]))
 
         const fp = await CachedFile.createAsync({ filePath: file1 })
-        const fp2 = await CachedFile.createAsync({ filePart: fp, filePath: file2 })
+        const fp2 = await CachedFile.createAsync({ existingFile: fp, filePath: file2 })
         expect(fp2).to.not.equal(fp)
         expect(fp2.filePath).to.equal(file2)
     })
