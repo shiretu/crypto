@@ -1,6 +1,6 @@
 import fs from 'fs'
 import Trade from '../core/Trade.js'
-import FilePart from '../utils/FilePart.js'
+import CachedFile from '../utils/CachedFile.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
@@ -51,7 +51,7 @@ export default class Trades {
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur.year, cur.month, cur.day)
             const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
-            this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+            this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
             const buf = await this.#filePart.readAsync({})
             if (buf.length >= Trade.RECORD_SIZE) {
                 const count = Math.floor(buf.length / Trade.RECORD_SIZE)
@@ -85,7 +85,7 @@ export default class Trades {
         const d = new Date(Math.floor(tsUs / 1000))
         await this.#ensureDayAsync(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
         const filePath = this.#fileForTsUs(tsUs)
-        this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+        this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
         const buf = await this.#filePart.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
         const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)
         if (trade.tsUs !== tsUs) {

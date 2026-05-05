@@ -1,6 +1,6 @@
 import TradeOutcomes from '../stores/TradeOutcomes.js'
 import Trades from '../stores/Trades.js'
-import FilePart from '../utils/FilePart.js'
+import CachedFile from '../utils/CachedFile.js'
 import { parseDate, lastMonth, fmtDate } from '../utils/date.js'
 import { resolveExchangeAndSymbol } from '../utils/cli.js'
 
@@ -120,8 +120,8 @@ const main = async () => {
     console.log(`Total outcomes: ${total}`)
     console.log(`Long  TP: ${longTp} (${(longTp / total * 100).toFixed(1)}%)  SL: ${total - longTp} (${((total - longTp) / total * 100).toFixed(1)}%)`)
     console.log(`Short TP: ${shortTp} (${(shortTp / total * 100).toFixed(1)}%)  SL: ${total - shortTp} (${((total - shortTp) / total * 100).toFixed(1)}%)`)
-    const s = FilePart.stats
-    console.log(`FilePart: ${s.fullReads} full reads, ${s.partialReads} partial reads, ${s.upgrades} upgrades, ${s.cacheHits} cache hits`)
+    const s = CachedFile.stats
+    console.log(`FilePart: ${s.reads} reads, ${s.cacheHits} cache hits`)
 }
 
 main().catch((err) => {

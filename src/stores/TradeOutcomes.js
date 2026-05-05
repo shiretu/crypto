@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 import Trade from '../core/Trade.js'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
-import FilePart from '../utils/FilePart.js'
+import CachedFile from '../utils/CachedFile.js'
 import { dateStr, nextDay, compareDates } from '../utils/date.js'
 import { getFilePath, saveFile } from '../utils/storage.js'
 
@@ -128,7 +128,7 @@ export default class TradeOutcomes {
         while (compareDates(cur, end) <= 0) {
             await this.#ensureDayAsync(cur.year, cur.month, cur.day)
             const filePath = this.#getFilePath(cur.year, cur.month, cur.day)
-            this.#filePart = await FilePart.createAsync({ filePart: this.#filePart, filePath })
+            this.#filePart = await CachedFile.createAsync({ filePart: this.#filePart, filePath })
             const buf = await this.#filePart.readAsync({})
             if (buf.length >= RECORD_SIZE) {
                 const count = Math.floor(buf.length / RECORD_SIZE)
