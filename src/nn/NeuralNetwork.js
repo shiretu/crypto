@@ -25,11 +25,10 @@ export default class NeuralNetwork {
         this.#personality = config.personality
         const rootPath = path.join(NeuralNetwork.#NN_DIR, config.name)
         this.#arch = JSON.parse(fs.readFileSync(path.join(rootPath, 'arch.json'), 'utf8'))
-        const recipe = canonicalize({ data: this.#personality.data, train: this.#personality.train })
-        const fingerprint = crypto.createHash('sha256').update(JSON.stringify(recipe)).digest('hex').slice(0, 16)
+        const fingerprint = crypto.createHash('sha256').update(JSON.stringify(canonicalize({ data: this.#personality.data, train: this.#personality.train }))).digest('hex').slice(0, 16)
         this.#trainingRootPath = path.join(rootPath, 'runtime', fingerprint)
         fs.mkdirSync(this.#trainingRootPath, { recursive: true })
-        fs.writeFileSync(path.join(this.#trainingRootPath, 'recipe.json'), JSON.stringify(recipe, null, 2))
+        fs.writeFileSync(path.join(this.#trainingRootPath, 'recipe.json'), JSON.stringify(this.#personality, null, 2))
     }
 
     get arch () { return this.#arch }
