@@ -66,8 +66,7 @@ export default class TradeOutcomes {
             const worker = new Worker(WORKER_PATH, {
                 workerData: {
                     dataDir: this.#dataDir,
-                    exchangeId: this.#symbol.exchange.id,
-                    pairId: this.#symbol.pairId,
+                    symbolId: this.#symbol.id,
                     year: date.year,
                     month: date.month,
                     day: date.day,

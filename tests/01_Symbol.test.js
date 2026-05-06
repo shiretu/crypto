@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import Asset from '../src/core/Asset.js'
 import { getAsset } from '../src/core/assets.js'
 import Symbol from '../src/core/Symbol.js'
+import { resolveSymbol } from '../src/core/resolveSymbol.js'
 import { binance } from '../src/exchanges/binance.js'
 
 describe('Symbol', () => {
@@ -32,19 +33,25 @@ describe('Symbol', () => {
         expect(sym.id).to.equal('binance:btc:usdc')
     })
 
-    it('should have a readable toString', () => {
+    it('should have toString fall back to id', () => {
         const s = new Symbol(getAsset('sol'), getAsset('usdc'))
-        expect(s.toString()).to.equal('SOL/USDC')
+        expect(s.toString()).to.equal(':sol:usdc')
+        const sym = binance.getSymbol('btc:usdc')
+        expect(sym.toString()).to.equal('binance:btc:usdc')
     })
 
-    it('should parse common symbol strings', () => {
-        expect(Symbol.parse('BTCUSDC').pairId).to.equal('btc:usdc')
-        expect(Symbol.parse('ethusdt').pairId).to.equal('eth:usdt')
-        expect(Symbol.parse('SOL/USDC').pairId).to.equal('sol:usdc')
-        expect(Symbol.parse('BTC-USDT').pairId).to.equal('btc:usdt')
+    it('should resolve exchange:base:quote string', () => {
+        const sym = resolveSymbol('binance:eth:usdc')
+        expect(sym.id).to.equal('binance:eth:usdc')
+        expect(sym.exchange).to.equal(binance)
     })
 
-    it('should throw on unparseable symbol', () => {
-        expect(() => Symbol.parse('X')).to.throw()
+    it('should throw on invalid resolve format', () => {
+        expect(() => resolveSymbol('ethusdc')).to.throw('expected exchange:base:quote')
+        expect(() => resolveSymbol('binance:eth')).to.throw('expected exchange:base:quote')
+    })
+
+    it('should throw on unknown exchange in resolve', () => {
+        expect(() => resolveSymbol('fake:eth:usdc')).to.throw('Exchange not found')
     })
 })

@@ -1,12 +1,12 @@
 import { parentPort, workerData } from 'worker_threads'
 import TradeOutcome from '../core/TradeOutcome.js'
 import Trades from './Trades.js'
-import { resolveExchangeAndSymbol } from '../utils/cli.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
 import Day from '../utils/Day.js'
 
-const { dataDir, exchangeId, pairId, year, month, day, startIndex, chunkSize, tpPercent, slPercent } = workerData
+const { dataDir, symbolId, year, month, day, startIndex, chunkSize, tpPercent, slPercent } = workerData
 
-const { symbol } = resolveExchangeAndSymbol(exchangeId, pairId)
+const symbol = resolveSymbol(symbolId)
 const tradeStore = new Trades(dataDir, symbol)
 const date = { year, month, day }
 

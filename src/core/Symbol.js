@@ -33,18 +33,6 @@ export default class Symbol {
     }
 
     toString () {
-        return `${this.#base}/${this.#quote}`
-    }
-
-    static parse (str) {
-        const cleaned = str.replace(/[^a-zA-Z]/g, '').toLowerCase()
-
-        for (const quote of ['usdc', 'usdt', 'busd', 'usd', 'btc', 'eth', 'bnb']) {
-            if (cleaned.endsWith(quote) && cleaned.length > quote.length) {
-                return new Symbol(getAsset(cleaned.slice(0, -quote.length)), getAsset(quote))
-            }
-        }
-
-        throw new Error(`Cannot parse symbol: ${str}`)
+        return this.id
     }
 }

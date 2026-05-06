@@ -3,16 +3,15 @@ import Candles from '../stores/Candles.js'
 import Ema from '../instruments/Ema.js'
 import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
-import { resolveExchangeAndSymbol } from '../utils/cli.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
     .reduce((m, [k, v]) => { m[k.toLowerCase()] = v; m[String(v)] = v; return m }, {})
 
 const usage = () => {
-    console.error('Usage: ema <exchange> <symbol> <duration> <period> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  exchange  : exchange id (e.g. binance)')
-    console.error('  symbol    : symbol pair id (e.g. btc:usdc)')
-    console.error('  duration  : candle duration (e.g. min_1, hour_4)')
+    console.error('Usage: getEma <symbol> <duration> <period> [YYYY-MM-DD] [YYYY-MM-DD]')
+    console.error('  symbol    : exchange:base:quote (e.g. binance:btc:usdc)')
+    console.error('  duration  : candle duration (e.g. min_1, hour_4)'))
     console.error('  period    : EMA period (e.g. 20)')
     console.error('  start     : optional start date, defaults to last month')
     console.error('  end       : optional end date, defaults to last month')
@@ -22,11 +21,11 @@ const usage = () => {
 
 const main = async () => {
     const args = process.argv.slice(2)
-    if (args.length < 4) usage()
+    if (args.length < 3) usage()
 
-    const { exchange, symbol } = resolveExchangeAndSymbol(args[0], args[1])
-    const durationArg = args[2]
-    const period = parseInt(args[3], 10)
+    const symbol = resolveSymbol(args[0])
+    const durationArg = args[1]
+    const period = parseInt(args[2], 10)
 
     const durationSec = DURATION_NAMES[durationArg.toLowerCase()]
     if (!durationSec) {
@@ -39,10 +38,10 @@ const main = async () => {
     }
 
     const defaults = lastMonth()
-    const start = args[4] ? Day.fromStr(args[4]) : defaults.start
-    const end = args[5] ? Day.fromStr(args[5]) : defaults.end
+    const start = args[3] ? Day.fromStr(args[3]) : defaults.start
+    const end = args[4] ? Day.fromStr(args[4]) : defaults.end
 
-    console.log(`EMA(${period}) on ${durationArg} candles for ${symbol} from ${exchange.id}`)
+    console.log(`EMA(${period}) on ${durationArg} candles for ${symbol}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
     console.log()
 

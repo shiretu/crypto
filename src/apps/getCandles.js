@@ -3,16 +3,15 @@ import Candles from '../stores/Candles.js'
 import CachedFile from '../utils/CachedFile.js'
 import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
-import { resolveExchangeAndSymbol } from '../utils/cli.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
 
 const DURATION_NAMES = Object.entries(CandleDuration)
     .reduce((m, [k, v]) => { m[k.toLowerCase()] = v; m[String(v)] = v; return m }, {})
 
 const usage = () => {
-    console.error('Usage: getCandles <exchange> <symbol> <duration> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  exchange  : exchange id (e.g. binance)')
-    console.error('  symbol    : symbol pair id (e.g. btc:usdc)')
-    console.error('  duration  : candle duration (e.g. min_1, hour_1, or seconds: 60, 3600)')
+    console.error('Usage: getCandles <symbol> <duration> [YYYY-MM-DD] [YYYY-MM-DD]')
+    console.error('  symbol    : exchange:base:quote (e.g. binance:btc:usdc)')
+    console.error('  duration  : candle duration (e.g. min_1, hour_1, or seconds: 60, 3600)'))
     console.error('  start     : optional start date (e.g. 2024-01-01), defaults to last month')
     console.error('  end       : optional end date (e.g. 2024-06-30), defaults to last month')
     console.error(`  valid durations: ${Object.keys(CandleDuration).join(', ')}`)
@@ -21,10 +20,10 @@ const usage = () => {
 
 const main = async () => {
     const args = process.argv.slice(2)
-    if (args.length < 3) usage()
+    if (args.length < 2) usage()
 
-    const { exchange, symbol } = resolveExchangeAndSymbol(args[0], args[1])
-    const durationArg = args[2]
+    const symbol = resolveSymbol(args[0])
+    const durationArg = args[1]
 
     const durationSec = DURATION_NAMES[durationArg.toLowerCase()]
     if (!durationSec) {

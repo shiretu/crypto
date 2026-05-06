@@ -3,12 +3,11 @@ import Trades from '../stores/Trades.js'
 import CachedFile from '../utils/CachedFile.js'
 import Day from '../utils/Day.js'
 import { lastMonth } from './utils.js'
-import { resolveExchangeAndSymbol } from '../utils/cli.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
 
 const usage = () => {
-    console.error('Usage: getTradeOutcomes <exchange> <symbol> <tpPercent> <slPercent> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  exchange  : exchange id (e.g. binance)')
-    console.error('  symbol    : symbol pair id (e.g. btc:usdc)')
+    console.error('Usage: getTradeOutcomes <symbol> <tpPercent> <slPercent> [YYYY-MM-DD] [YYYY-MM-DD]')
+    console.error('  symbol    : exchange:base:quote (e.g. binance:btc:usdc)'))
     console.error('  tpPercent : take profit percent (e.g. 1.5)')
     console.error('  slPercent : stop loss percent (e.g. 1)')
     console.error('  start     : optional start date, defaults to last month')
@@ -18,20 +17,20 @@ const usage = () => {
 
 const main = async () => {
     const args = process.argv.slice(2)
-    if (args.length < 4) usage()
+    if (args.length < 3) usage()
 
-    const { exchange, symbol } = resolveExchangeAndSymbol(args[0], args[1])
-    const tpPercent = parseFloat(args[2])
-    const slPercent = parseFloat(args[3])
+    const symbol = resolveSymbol(args[0])
+    const tpPercent = parseFloat(args[1])
+    const slPercent = parseFloat(args[2])
 
-    if (isNaN(tpPercent) || tpPercent <= 0) { console.error(`Invalid tpPercent: ${args[2]}`); process.exit(1) }
-    if (isNaN(slPercent) || slPercent <= 0) { console.error(`Invalid slPercent: ${args[3]}`); process.exit(1) }
+    if (isNaN(tpPercent) || tpPercent <= 0) { console.error(`Invalid tpPercent: ${args[1]}`); process.exit(1) }
+    if (isNaN(slPercent) || slPercent <= 0) { console.error(`Invalid slPercent: ${args[2]}`); process.exit(1) }
 
     const defaults = lastMonth()
-    const start = args[4] ? Day.fromStr(args[4]) : defaults.start
-    const end = args[5] ? Day.fromStr(args[5]) : defaults.end
+    const start = args[3] ? Day.fromStr(args[3]) : defaults.start
+    const end = args[4] ? Day.fromStr(args[4]) : defaults.end
 
-    console.log(`TradeOutcomes TP=${tpPercent}% SL=${slPercent}% for ${symbol} from ${exchange.id}`)
+    console.log(`TradeOutcomes TP=${tpPercent}% SL=${slPercent}% for ${symbol}`)
     console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
     console.log()
 
