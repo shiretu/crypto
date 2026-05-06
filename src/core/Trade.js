@@ -31,14 +31,6 @@ export default class Trade {
     get quoteQty () { return this.#quoteQty }
     get isBuyerMaker () { return this.#isBuyerMaker }
 
-    get tsMs () {
-        return Math.floor(this.#tsUs / 1000)
-    }
-
-    get date () {
-        return new Date(this.tsMs)
-    }
-
     static fromBuffer (symbol, srcId, buf, offset) {
         if (!(symbol instanceof Symbol)) throw new Error('symbol must be a Symbol')
         const tsWithFlags = buf.readBigUInt64LE(offset)

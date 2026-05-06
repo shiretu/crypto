@@ -41,16 +41,6 @@ describe('Trade', () => {
         expect(trade.isBuyerMaker).to.equal(false)
     })
 
-    it('should compute tsMs and date from tsUs', () => {
-        const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-        const tsUs = 1704067200123456
-        Trade.toBuffer(buf, 0, tsUs, 100, 1, 100, false)
-
-        const trade = Trade.fromBuffer(sym, 0, buf, 0)
-        expect(trade.tsMs).to.equal(1704067200123)
-        expect(trade.date).to.be.an.instanceOf(Date)
-    })
-
     it('should handle multiple records in a buffer', () => {
         const count = 5
         const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE * count)
