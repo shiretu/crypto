@@ -9,7 +9,14 @@ describe('TensorFlowNetwork', () => {
     const nnDir = path.resolve('nn')
     const testName = 'testModel'
     const testPath = path.join(nnDir, testName)
-    const config = { name: testName, train: { learningRate: 0.001 } }
+    const config = {
+        name: testName,
+        personality: {
+            name: 'testPersonality',
+            data: { symbol: 'binance:eth:usdc', candleDuration: 300, lookback: 60, tpPercent: 1, slPercent: 1 },
+            train: { learningRate: 0.001 }
+        }
+    }
     const arch = {
         layers: [
             { type: 'dense', units: 8, activation: 'relu', inputShape: [4] },
@@ -34,8 +41,13 @@ describe('TensorFlowNetwork', () => {
     it('should create a model from arch.json and save it', async () => {
         const nn = await TensorFlowNetwork.create(config)
         expect(nn).to.be.instanceOf(TensorFlowNetwork)
-        const tfPath = path.join(testPath, 'runtime', 'tensorflow')
+        const tfPath = path.join(nn.trainingRootPath, 'tensorflow')
         expect(fs.existsSync(path.join(tfPath, 'model.json'))).to.equal(true)
+        const recipePath = path.join(nn.trainingRootPath, 'recipe.json')
+        expect(fs.existsSync(recipePath)).to.equal(true)
+        const recipe = JSON.parse(fs.readFileSync(recipePath, 'utf8'))
+        expect(recipe.data).to.deep.equal(config.personality.data)
+        expect(recipe.train).to.deep.equal(config.personality.train)
     })
 
     it('should predict after create', async () => {

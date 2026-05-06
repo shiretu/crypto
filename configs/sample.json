@@ -1,8 +1,18 @@
 {
     "name": "myFirstNn",
-    "train": {
-        "learningRate": 0.01,
-        "epochs": 10,
-        "batchSize": 32
+    "personality": {
+        "name": "littleBoy",
+        "data": {
+            "symbol": "binance:eth:usdc",
+            "candleDuration": 300,
+            "lookback": 60,
+            "tpPercent": 1,
+            "slPercent": 1
+        },
+        "train": {
+            "learningRate": 0.01,
+            "epochs": 10,
+            "batchSize": 32
+        }
     }
 }

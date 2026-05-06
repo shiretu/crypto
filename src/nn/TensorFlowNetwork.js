@@ -10,7 +10,7 @@ export default class TensorFlowNetwork extends NeuralNetwork {
 
     constructor (config) {
         super(config)
-        this.#dataPath = path.join(this.runtimePath, 'tensorflow')
+        this.#dataPath = path.join(this.trainingRootPath, 'tensorflow')
         fs.mkdirSync(this.#dataPath, { recursive: true })
         this.#modelPath = path.join(this.#dataPath, 'model.json')
     }
@@ -34,7 +34,7 @@ export default class TensorFlowNetwork extends NeuralNetwork {
 
     async train (data) {
         const { inputs, labels } = data
-        const { epochs = 10, batchSize = 32 } = this.config.train
+        const { epochs = 10, batchSize = 32 } = this.personality.train
         const xs = tf.tensor2d(inputs)
         const ys = tf.tensor2d(labels, [labels.length, 1])
 
@@ -71,7 +71,7 @@ export default class TensorFlowNetwork extends NeuralNetwork {
     }
 
     async #create () {
-        const { learningRate = 0.001 } = this.config.train
+        const { learningRate = 0.001 } = this.personality.train
         const model = tf.sequential()
 
         for (const layer of this.arch.layers) {
@@ -94,7 +94,7 @@ export default class TensorFlowNetwork extends NeuralNetwork {
             throw err
         }
         this.#model = await tf.loadLayersModel(`file://${this.#modelPath}`)
-        const { learningRate = 0.001 } = this.config.train
+        const { learningRate = 0.001 } = this.personality.train
         this.#model.compile({
             optimizer: tf.train.adam(learningRate),
             loss: 'binaryCrossentropy',
