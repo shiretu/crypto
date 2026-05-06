@@ -118,6 +118,28 @@ export default class TradeOutcomes {
         }
     }
 
+    async #hydrateRecord (buf, off) {
+        const openTsUs = Number(buf.readBigUInt64LE(off))
+        const openSrcId = Number(buf.readBigUInt64LE(off + 8))
+        const longCloseTsUs = Number(buf.readBigUInt64LE(off + 16))
+        const longCloseSrcId = Number(buf.readBigUInt64LE(off + 24))
+        const shortCloseTsUs = Number(buf.readBigUInt64LE(off + 32))
+        const shortCloseSrcId = Number(buf.readBigUInt64LE(off + 40))
+
+        const openTrade = await this.#openTradeStore.readAtAsync(openTsUs, openSrcId)
+        const longCloseTrade = await this.#closeTradeStore.readAtAsync(longCloseTsUs, longCloseSrcId)
+        const shortCloseTrade = await this.#closeTradeStore.readAtAsync(shortCloseTsUs, shortCloseSrcId)
+
+        const outcome = new TradeOutcome({
+            tpPercent: this.#tpPercent,
+            slPercent: this.#slPercent,
+            trade: openTrade
+        })
+        outcome.update(longCloseTrade)
+        outcome.update(shortCloseTrade)
+        return outcome
+    }
+
     async * readAsync (start, end) {
         let cur = start
         while (Day.compare(cur, end) <= 0) {
@@ -128,26 +150,7 @@ export default class TradeOutcomes {
             if (buf.length >= RECORD_SIZE) {
                 const count = Math.floor(buf.length / RECORD_SIZE)
                 for (let i = 0; i < count; i++) {
-                    const off = i * RECORD_SIZE
-                    const openTsUs = Number(buf.readBigUInt64LE(off))
-                    const openSrcId = Number(buf.readBigUInt64LE(off + 8))
-                    const longCloseTsUs = Number(buf.readBigUInt64LE(off + 16))
-                    const longCloseSrcId = Number(buf.readBigUInt64LE(off + 24))
-                    const shortCloseTsUs = Number(buf.readBigUInt64LE(off + 32))
-                    const shortCloseSrcId = Number(buf.readBigUInt64LE(off + 40))
-
-                    const openTrade = await this.#openTradeStore.readAtAsync(openTsUs, openSrcId)
-                    const longCloseTrade = await this.#closeTradeStore.readAtAsync(longCloseTsUs, longCloseSrcId)
-                    const shortCloseTrade = await this.#closeTradeStore.readAtAsync(shortCloseTsUs, shortCloseSrcId)
-
-                    const outcome = new TradeOutcome({
-                        tpPercent: this.#tpPercent,
-                        slPercent: this.#slPercent,
-                        trade: openTrade
-                    })
-                    outcome.update(longCloseTrade)
-                    outcome.update(shortCloseTrade)
-                    yield outcome
+                    yield await this.#hydrateRecord(buf, i * RECORD_SIZE)
                 }
             }
             cur = Day.nextDay(cur)
@@ -160,5 +163,29 @@ export default class TradeOutcomes {
             result.push(outcome)
         }
         return result
+    }
+
+    async readAtAsync (tsUs) {
+        const date = Day.fromTsUs(tsUs)
+        await this.#ensureDayAsync(date)
+        const filePath = this.#getFilePath(date)
+        const cachedFile = await CachedFile.createAsync({ filePath })
+        const buf = await cachedFile.readAsync({})
+        const count = Math.floor(buf.length / RECORD_SIZE)
+
+        let lo = 0
+        let hi = count - 1
+        let found = -1
+        while (lo <= hi) {
+            const mid = (lo + hi) >>> 1
+            const midTsUs = Number(buf.readBigUInt64LE(mid * RECORD_SIZE))
+            if (midTsUs === tsUs) { found = mid; break }
+            if (midTsUs < tsUs) lo = mid + 1
+            else hi = mid - 1
+        }
+
+        if (found === -1) throw new Error(`No outcome found for tsUs=${tsUs}`)
+
+        return this.#hydrateRecord(buf, found * RECORD_SIZE)
     }
 }

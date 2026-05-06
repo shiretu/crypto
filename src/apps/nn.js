@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import TensorFlowNetwork from '../nn/TensorFlowNetwork.js'
 import Candles from '../stores/Candles.js'
+import TradeOutcomes from '../stores/TradeOutcomes.js'
 import { resolveSymbol } from '../core/resolveSymbol.js'
 import Day from '../utils/Day.js'
 
@@ -32,15 +33,17 @@ const symbol = resolveSymbol(data.symbol)
 const dataDir = path.resolve('data')
 
 console.log(`Loading candles for ${symbol}...`)
-const candlesStorage = new Candles(dataDir, symbol, data.candleDuration)
-const candles = await candlesStorage.readArrayAsync(from, to)
+const candlesStore = new Candles(dataDir, symbol, data.candleDuration)
+const outcomesStore = new TradeOutcomes(dataDir, symbol, { tpPercent: data.tpPercent, slPercent: data.slPercent })
+const candles = await candlesStore.readArrayAsync(from, to)
 console.log(`${candles.length} candles loaded`)
 
 const { lookback } = data
-const setCount = candles.length - lookback
+const setSize = lookback + 1
+const setCount = candles.length - setSize
 
 if (setCount <= 0) {
-    console.error(`Not enough candles: have ${candles.length}, need more than ${lookback}`)
+    console.error(`Not enough candles: have ${candles.length}, need more than ${setSize}`)
     process.exit(1)
 }
 
@@ -51,3 +54,16 @@ for (let i = indices.length - 1; i > 0; i--) {
 }
 
 console.log(`${setCount} sets of ${lookback} candles each (shuffled)`)
+
+const dataSets = await Promise.all(indices.map(async startCandleIdx => {
+    const selectedCandles = candles.slice(startCandleIdx, startCandleIdx + lookback)
+    const openTrade = candles[startCandleIdx + lookback].open
+    const outcome = await outcomesStore.readAtAsync(openTrade.tsUs)
+    return {
+        inputs: selectedCandles,
+        label: outcome.longOrder.profitPercent > 0 ? 1 : 0
+    }
+}))
+
+const longs = dataSets.filter(d => d.label === 1).length
+console.log(`${dataSets.length} data sets ready (${longs} long, ${dataSets.length - longs} short)`)
