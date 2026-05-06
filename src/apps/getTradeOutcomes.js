@@ -7,7 +7,7 @@ import { resolveSymbol } from '../core/resolveSymbol.js'
 
 const usage = () => {
     console.error('Usage: getTradeOutcomes <symbol> <tpPercent> <slPercent> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  symbol    : exchange:base:quote (e.g. binance:btc:usdc)'))
+    console.error('  symbol    : exchange:base:quote (e.g. binance:btc:usdc)')
     console.error('  tpPercent : take profit percent (e.g. 1.5)')
     console.error('  slPercent : stop loss percent (e.g. 1)')
     console.error('  start     : optional start date, defaults to last month')
@@ -37,20 +37,13 @@ const main = async () => {
     const chunks = new Map()
     let currentDayStartUs = 0
     let dayTotal = 0
-    let dayResolved = 0
     const onProgress = (p) => {
         if (p.day.startUs !== currentDayStartUs) {
             currentDayStartUs = p.day.startUs
             dayTotal = p.day.size
-            dayResolved = 0
             chunks.clear()
         }
-        if (p.resolvedTradesCount === p.requestedChunk.count) {
-            dayResolved += p.requestedChunk.count
-            chunks.delete(p.requestedChunk.start)
-        } else {
-            chunks.set(p.requestedChunk.start, p)
-        }
+        chunks.set(p.requestedChunk.start, p)
     }
 
     const store = new TradeOutcomes('data', symbol, { tpPercent, slPercent, onProgress })
@@ -81,7 +74,7 @@ const main = async () => {
             inFlightResolved += p.resolvedTradesCount
             inFlightPending += p.pendingTradesCount
         }
-        const totalResolved = dayResolved + inFlightResolved
+        const totalResolved = inFlightResolved
         const totalPct = dayTotal > 0 ? (totalResolved / dayTotal * 100) : 0
         const totalFilled = Math.min(20, Math.round(totalPct / 100 * 20))
         const d = new Date(Math.floor(currentDayStartUs / 1000))

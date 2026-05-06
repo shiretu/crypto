@@ -55,15 +55,20 @@ for (let i = indices.length - 1; i > 0; i--) {
 
 console.log(`${setCount} sets of ${lookback} candles each (shuffled)`)
 
-const dataSets = await Promise.all(indices.map(async startCandleIdx => {
+const dataSets = []
+for (let i = 0; i < indices.length; i++) {
+    const startCandleIdx = indices[i]
     const selectedCandles = candles.slice(startCandleIdx, startCandleIdx + lookback)
     const openTrade = candles[startCandleIdx + lookback].open
     const outcome = await outcomesStore.readAtAsync(openTrade.tsUs)
-    return {
+    dataSets.push({
         inputs: selectedCandles,
         label: outcome.longOrder.profitPercent > 0 ? 1 : 0
+    })
+    if ((i + 1) % 1000 === 0) {
+        process.stdout.write(`\r${i + 1} / ${setCount} sets processed        `)
     }
-}))
+}
 
 const longs = dataSets.filter(d => d.label === 1).length
-console.log(`${dataSets.length} data sets ready (${longs} long, ${dataSets.length - longs} short)`)
+console.log(`\n${dataSets.length} data sets ready (${longs} long, ${dataSets.length - longs} short)`)
