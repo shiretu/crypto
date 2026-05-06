@@ -58,7 +58,7 @@ class BinanceDownloader {
                 lastTsUs = tsUs
 
                 const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                Trade.writeRecord(buf, 0, tsUs, recordIndex++, price, baseQty, quoteQty, isBuyerMaker)
+                Trade.writeRecord(buf, 0, recordIndex++, tsUs, price, baseQty, quoteQty, isBuyerMaker)
                 chunks.push(buf)
                 callback()
             }

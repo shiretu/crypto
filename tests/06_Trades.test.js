@@ -32,7 +32,7 @@ describe('Trades', () => {
         const buf = Buffer.alloc(RS * trades.length)
         for (let i = 0; i < trades.length; i++) {
             const t = trades[i]
-            Trade.writeRecord(buf, i * RS, t.tsUs, i, t.price, t.baseQty, t.quoteQty, t.isBuyerMaker)
+            Trade.writeRecord(buf, i * RS, i, t.tsUs, t.price, t.baseQty, t.quoteQty, t.isBuyerMaker)
         }
         fs.writeFileSync(path.join(dir, `${dd}.bin`), buf)
     }

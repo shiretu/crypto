@@ -34,7 +34,7 @@ export default class Store {
     get recordSize () { return this.#recordSize }
 
     readTsUs (buf, offset) {
-        return Number(buf.readBigUInt64LE(offset) & 0x7FFFFFFFFFFFFFFFn)
+        return Number(buf.readBigUInt64LE(offset + 8) & 0x7FFFFFFFFFFFFFFFn)
     }
 
     /**
