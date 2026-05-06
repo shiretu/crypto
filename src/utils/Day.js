@@ -23,14 +23,15 @@ export default class Day {
         return date.getTime() * 1000
     }
 
+    static get usPerDay () { return 86_400_000_000 }
+
     /**
      * Truncate an arbitrary microsecond timestamp to midnight UTC of that day.
      * @param {number} tsUs - microsecond timestamp
      * @returns {number} tsUs at midnight UTC
      */
     static fromTsUs (tsUs) {
-        const usPerDay = 24 * 3600 * 1000 * 1000
-        return Math.floor(tsUs / usPerDay) * usPerDay
+        return Math.floor(tsUs / Day.usPerDay) * Day.usPerDay
     }
 
     /**
@@ -70,7 +71,7 @@ export default class Day {
      * @returns {number} tsUs at midnight UTC of the resulting day
      */
     static offsetByDays (tsUs, days) {
-        return Day.fromTsUs(tsUs) + days * 24 * 60 * 60 * 1000 * 1000
+        return Day.fromTsUs(tsUs) + days * Day.usPerDay
     }
 
     /**

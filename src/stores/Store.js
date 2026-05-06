@@ -15,18 +15,21 @@ export default class Store {
     #minDay
     #maxDay
     #onActivity
+    #extraPathComponents
 
-    constructor (dataDir, symbol, storeType, recordSize) {
+    constructor (dataDir, symbol, storeType, recordSize, extraPathComponents = []) {
         this.#dataDir = dataDir
         this.#symbol = symbol
         this.#storeType = storeType
         this.#recordSize = recordSize
         this.#buffers = new Map()
+        this.#extraPathComponents = extraPathComponents
         this.#minDay = null
         this.#maxDay = null
         this.#onActivity = null
     }
 
+    get dataDir () { return this.#dataDir }
     get symbol () { return this.#symbol }
     get buffers () { return this.#buffers }
     get minDay () { return this.#minDay }
@@ -59,6 +62,7 @@ export default class Store {
             this.#symbol.exchange.id,
             this.#symbol.base.id,
             this.#symbol.quote.id,
+            ...this.#extraPathComponents,
             y,
             m,
             `${dd}.bin`
@@ -100,11 +104,10 @@ export default class Store {
 
         const startDay = Day.fromTsUs(startTsUs)
         const endDay = Day.fromTsUs(endTsUs)
-        const usPerDay = 24 * 3600 * 1_000_000
 
         for (let day = Math.min(startDay, this.#minDay ?? startDay);
             day <= Math.max(endDay, this.#maxDay ?? endDay);
-            day += usPerDay) {
+            day += Day.usPerDay) {
             await this.#ensureDay(day)
         }
         this.#minDay = Math.min(startDay, this.#minDay ?? startDay)

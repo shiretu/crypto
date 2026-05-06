@@ -89,6 +89,25 @@ describe('Trades', () => {
             expect(store.count).to.equal(2)
         })
 
+        it('should load exactly one day when start equals end', async () => {
+            writeDayFile(day1, [
+                { tsUs: day1 + 1000, price: 100, baseQty: 0.1, quoteQty: 10, isBuyerMaker: false },
+                { tsUs: day1 + 2000, price: 200, baseQty: 0.2, quoteQty: 40, isBuyerMaker: true },
+                { tsUs: day1 + 3000, price: 300, baseQty: 0.3, quoteQty: 90, isBuyerMaker: false }
+            ])
+            writeDayFile(day2, [
+                { tsUs: day2 + 1000, price: 400, baseQty: 0.1, quoteQty: 40, isBuyerMaker: false }
+            ])
+            const store = new Trades(tmpDir, sym)
+            await store.loadAsync(day1, day1)
+            expect(store.count).to.equal(3)
+            expect(store.firstTsUs).to.equal(day1 + 1000)
+            expect(store.lastTsUs).to.equal(day1 + 3000)
+            expect(store.get(0).price).to.equal(100)
+            expect(store.get(1).price).to.equal(200)
+            expect(store.get(2).price).to.equal(300)
+        })
+
         it('should not reload already loaded days', async () => {
             writeDayFile(day1, [
                 { tsUs: day1 + 1000, price: 2000, baseQty: 0.1, quoteQty: 200, isBuyerMaker: false }

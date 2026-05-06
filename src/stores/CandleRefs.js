@@ -1,20 +1,51 @@
 import Store from './Store.js'
-import Trade from '../core/Trade.js'
+import CandleRef from '../core/CandleRef.js'
+import Candle from '../core/Candle.js'
 import Day from '../utils/Day.js'
+import Trades from './Trades.js'
 
-export default class Trades extends Store {
-    constructor (dataDir, symbol) {
-        super(dataDir, symbol, 'trades', Trade.RECORD_SIZE)
+export default class CandleRefs extends Store {
+    #targetDurationSec
+
+    constructor (dataDir, symbol, targetDurationSec) {
+        super(dataDir, symbol, 'candles', CandleRef.RECORD_SIZE, [`${targetDurationSec}`])
+        this.#targetDurationSec = targetDurationSec
     }
 
     async computeDay (dayTsUs) {
-        const downloader = this.symbol.exchange.downloader
-        if (!downloader) throw new Error(`No downloader for exchange ${this.symbol.exchange.id}`)
-        return await downloader.downloadDay(this.symbol, dayTsUs)
+        const trades = new Trades(this.dataDir, this.symbol)
+        await trades.loadAsync(dayTsUs, dayTsUs)
+        if (trades.count === 0) return Buffer.alloc(0)
+
+        const durationUs = this.#targetDurationSec * 1_000_000
+        const candles = []
+        let current = null
+
+        for (let i = 0; i < trades.count; i++) {
+            const trade = trades.get(i)
+            const ordinal = Math.floor(trade.tsUs / durationUs)
+            if (current) {
+                if (current.ordinal === ordinal) {
+                    current.update(trade)
+                } else {
+                    current = new Candle(this.#targetDurationSec, trade)
+                    candles.push(current)
+                }
+            } else {
+                current = new Candle(this.#targetDurationSec, trade)
+                candles.push(current)
+            }
+        }
+
+        const buf = Buffer.alloc(CandleRef.RECORD_SIZE * candles.length)
+        for (let i = 0; i < candles.length; i++) {
+            CandleRef.writeRecord(buf, i * CandleRef.RECORD_SIZE, i, candles[i])
+        }
+        return buf
     }
 
     #makeRecord (buf, offset) {
-        return new Trade(buf.subarray(offset, offset + this.recordSize))
+        return new CandleRef(buf.subarray(offset, offset + this.recordSize))
     }
 
     getAt (tsUs, dayIndex) {
@@ -23,9 +54,7 @@ export default class Trades extends Store {
         if (!buf) throw new Error(`Day not loaded for tsUs=${tsUs}`)
         const offset = dayIndex * this.recordSize
         if (offset + this.recordSize > buf.length) throw new Error(`dayIndex ${dayIndex} out of bounds (day has ${buf.length / this.recordSize} records)`)
-        const record = this.#makeRecord(buf, offset)
-        if (record.tsUs !== tsUs) throw new Error(`tsUs mismatch at dayIndex ${dayIndex}: expected ${tsUs}, got ${record.tsUs}`)
-        return record
+        return this.#makeRecord(buf, offset)
     }
 
     get (index) {
