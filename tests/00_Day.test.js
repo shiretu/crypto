@@ -1,99 +1,45 @@
 import { expect } from 'chai'
 import Day from '../src/utils/Day.js'
 
+// Helper: midnight UTC microseconds for a given date
+const utc = (y, m, d) => Date.UTC(y, m - 1, d) * 1000
+
 describe('Day', () => {
-    describe('normalize', () => {
-        it('should return same date for valid dates', () => {
-            expect(Day.normalize({ year: 2024, month: 1, day: 15 })).to.deep.equal({ year: 2024, month: 1, day: 15 })
-            expect(Day.normalize({ year: 2024, month: 12, day: 31 })).to.deep.equal({ year: 2024, month: 12, day: 31 })
-        })
-
-        it('should keep leap day', () => {
-            expect(Day.normalize({ year: 2024, month: 2, day: 29 })).to.deep.equal({ year: 2024, month: 2, day: 29 })
-        })
-
-        it('should wrap Feb 29 on non-leap year to Mar 1', () => {
-            expect(Day.normalize({ year: 2025, month: 2, day: 29 })).to.deep.equal({ year: 2025, month: 3, day: 1 })
-        })
-
-        it('should wrap day 0 to previous month last day', () => {
-            expect(Day.normalize({ year: 2024, month: 1, day: 0 })).to.deep.equal({ year: 2023, month: 12, day: 31 })
-        })
-
-        it('should wrap day 32 in January to Feb 1', () => {
-            expect(Day.normalize({ year: 2024, month: 1, day: 32 })).to.deep.equal({ year: 2024, month: 2, day: 1 })
-        })
-
-        it('should wrap month 0 to previous year December', () => {
-            expect(Day.normalize({ year: 2024, month: 0, day: 1 })).to.deep.equal({ year: 2023, month: 12, day: 1 })
-        })
-
-        it('should wrap month 13 to next year January', () => {
-            expect(Day.normalize({ year: 2024, month: 13, day: 1 })).to.deep.equal({ year: 2025, month: 1, day: 1 })
-        })
-
-        it('should wrap day 45 in January to Feb 14', () => {
-            expect(Day.normalize({ year: 2024, month: 1, day: 45 })).to.deep.equal({ year: 2024, month: 2, day: 14 })
-        })
-
-        it('should wrap month 99', () => {
-            expect(Day.normalize({ year: 2024, month: 99, day: 1 })).to.deep.equal({ year: 2032, month: 3, day: 1 })
-        })
-    })
-
-    describe('toStr', () => {
-        it('should format with zero padding', () => {
-            expect(Day.toStr({ year: 2024, month: 1, day: 5 })).to.equal('2024-01-05')
-        })
-
-        it('should format without padding when not needed', () => {
-            expect(Day.toStr({ year: 2024, month: 12, day: 31 })).to.equal('2024-12-31')
-        })
-
-        it('should handle single digit month and day', () => {
-            expect(Day.toStr({ year: 2025, month: 3, day: 7 })).to.equal('2025-03-07')
-        })
-    })
-
     describe('fromStr', () => {
         it('should parse dash-separated date', () => {
-            expect(Day.fromStr('2024-01-15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024-01-15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse space-separated date', () => {
-            expect(Day.fromStr('2024 01 15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024 01 15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse spaces around dash', () => {
-            expect(Day.fromStr('2024 - 01 - 15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024 - 01 - 15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse multiple spaces around dash', () => {
-            expect(Day.fromStr('2024  -  01  -  15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024  -  01  -  15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse multiple spaces without dash', () => {
-            expect(Day.fromStr('2024   01   15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024   01   15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse space before dash only', () => {
-            expect(Day.fromStr('2024 -01 -15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
+            expect(Day.fromStr('2024 -01 -15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should parse space after dash only', () => {
-            expect(Day.fromStr('2024- 01- 15')).to.deep.equal({ year: 2024, month: 1, day: 15 })
-        })
-
-        it('should normalize invalid date values', () => {
-            expect(Day.fromStr('2025-02-29')).to.deep.equal({ year: 2025, month: 3, day: 1 })
+            expect(Day.fromStr('2024- 01- 15')).to.equal(utc(2024, 1, 15))
         })
 
         it('should default day to 1 when omitted with dash', () => {
-            expect(Day.fromStr('2024-03')).to.deep.equal({ year: 2024, month: 3, day: 1 })
+            expect(Day.fromStr('2024-03')).to.equal(utc(2024, 3, 1))
         })
 
         it('should default day to 1 when omitted with space', () => {
-            expect(Day.fromStr('2024 03')).to.deep.equal({ year: 2024, month: 3, day: 1 })
+            expect(Day.fromStr('2024 03')).to.equal(utc(2024, 3, 1))
         })
 
         it('should reject single digit month', () => {
@@ -109,52 +55,169 @@ describe('Day', () => {
         })
     })
 
-    describe('prev', () => {
-        it('should go to previous day within month', () => {
-            expect(Day.prevDay({ year: 2024, month: 3, day: 15 })).to.deep.equal({ year: 2024, month: 3, day: 14 })
+    describe('fromTsUs', () => {
+        it('should truncate to midnight UTC', () => {
+            const midday = utc(2024, 6, 15) + 12 * 3600 * 1_000_000
+            expect(Day.fromTsUs(midday)).to.equal(utc(2024, 6, 15))
+        })
+
+        it('should keep midnight unchanged', () => {
+            const midnight = utc(2024, 1, 1)
+            expect(Day.fromTsUs(midnight)).to.equal(midnight)
+        })
+
+        it('should truncate 1 microsecond before midnight to previous day', () => {
+            const justBefore = utc(2024, 3, 15) - 1
+            expect(Day.fromTsUs(justBefore)).to.equal(utc(2024, 3, 14))
+        })
+
+        it('should truncate last microsecond of the day', () => {
+            const usPerDay = 24 * 3600 * 1_000_000
+            const lastUs = utc(2024, 7, 20) + usPerDay - 1
+            expect(Day.fromTsUs(lastUs)).to.equal(utc(2024, 7, 20))
+        })
+    })
+
+    describe('toStr', () => {
+        it('should format with zero padding', () => {
+            expect(Day.toStr(utc(2024, 1, 5))).to.equal('2024-01-05')
+        })
+
+        it('should format without padding when not needed', () => {
+            expect(Day.toStr(utc(2024, 12, 31))).to.equal('2024-12-31')
+        })
+
+        it('should format mid-day timestamp using its UTC date', () => {
+            const midday = utc(2025, 3, 7) + 15 * 3600 * 1_000_000
+            expect(Day.toStr(midday)).to.equal('2025-03-07')
+        })
+    })
+
+    describe('toMonth', () => {
+        it('should truncate to 1st of the month', () => {
+            expect(Day.toMonth(utc(2024, 6, 15))).to.equal(utc(2024, 6, 1))
+        })
+
+        it('should keep 1st unchanged', () => {
+            expect(Day.toMonth(utc(2024, 1, 1))).to.equal(utc(2024, 1, 1))
+        })
+    })
+
+    describe('toYear', () => {
+        it('should truncate to Jan 1', () => {
+            expect(Day.toYear(utc(2024, 8, 20))).to.equal(utc(2024, 1, 1))
+        })
+
+        it('should keep Jan 1 unchanged', () => {
+            expect(Day.toYear(utc(2024, 1, 1))).to.equal(utc(2024, 1, 1))
+        })
+    })
+
+    describe('offsetByDays', () => {
+        it('should offset forward', () => {
+            expect(Day.offsetByDays(utc(2024, 1, 15), 3)).to.equal(utc(2024, 1, 18))
+        })
+
+        it('should offset backward', () => {
+            expect(Day.offsetByDays(utc(2024, 3, 1), -1)).to.equal(utc(2024, 2, 29))
         })
 
         it('should cross month boundary', () => {
-            expect(Day.prevDay({ year: 2024, month: 3, day: 1 })).to.deep.equal({ year: 2024, month: 2, day: 29 })
+            expect(Day.offsetByDays(utc(2024, 1, 31), 1)).to.equal(utc(2024, 2, 1))
         })
 
         it('should cross year boundary', () => {
-            expect(Day.prevDay({ year: 2025, month: 1, day: 1 })).to.deep.equal({ year: 2024, month: 12, day: 31 })
+            expect(Day.offsetByDays(utc(2024, 12, 31), 1)).to.equal(utc(2025, 1, 1))
+        })
+
+        it('should truncate input before offsetting', () => {
+            const midday = utc(2024, 1, 15) + 12 * 3600 * 1_000_000
+            expect(Day.offsetByDays(midday, 1)).to.equal(utc(2024, 1, 16))
+        })
+    })
+
+    describe('offsetByMonths', () => {
+        it('should offset forward', () => {
+            expect(Day.offsetByMonths(utc(2024, 1, 15), 2)).to.equal(utc(2024, 3, 15))
+        })
+
+        it('should offset backward', () => {
+            expect(Day.offsetByMonths(utc(2024, 3, 15), -1)).to.equal(utc(2024, 2, 15))
+        })
+
+        it('should cross year boundary', () => {
+            expect(Day.offsetByMonths(utc(2024, 11, 1), 3)).to.equal(utc(2025, 2, 1))
+        })
+    })
+
+    describe('offsetByYears', () => {
+        it('should offset forward', () => {
+            expect(Day.offsetByYears(utc(2024, 6, 15), 2)).to.equal(utc(2026, 6, 15))
+        })
+
+        it('should offset backward', () => {
+            expect(Day.offsetByYears(utc(2024, 6, 15), -1)).to.equal(utc(2023, 6, 15))
         })
     })
 
     describe('nextDay', () => {
-        it('should go to next day within month', () => {
-            expect(Day.nextDay({ year: 2024, month: 1, day: 15 })).to.deep.equal({ year: 2024, month: 1, day: 16 })
+        it('should return the next day', () => {
+            expect(Day.nextDay(utc(2024, 1, 15))).to.equal(utc(2024, 1, 16))
         })
 
         it('should cross month boundary', () => {
-            expect(Day.nextDay({ year: 2024, month: 1, day: 31 })).to.deep.equal({ year: 2024, month: 2, day: 1 })
+            expect(Day.nextDay(utc(2024, 1, 31))).to.equal(utc(2024, 2, 1))
         })
 
         it('should cross year boundary', () => {
-            expect(Day.nextDay({ year: 2024, month: 12, day: 31 })).to.deep.equal({ year: 2025, month: 1, day: 1 })
+            expect(Day.nextDay(utc(2024, 12, 31))).to.equal(utc(2025, 1, 1))
         })
     })
 
-    describe('compare', () => {
-        it('should compare dates correctly', () => {
-            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 2 })).to.be.lessThan(0)
-            expect(Day.compare({ year: 2024, month: 1, day: 2 }, { year: 2024, month: 1, day: 1 })).to.be.greaterThan(0)
-            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2024, month: 1, day: 1 })).to.equal(0)
-            expect(Day.compare({ year: 2024, month: 1, day: 1 }, { year: 2025, month: 1, day: 1 })).to.be.lessThan(0)
-            expect(Day.compare({ year: 2024, month: 6, day: 1 }, { year: 2024, month: 1, day: 1 })).to.be.greaterThan(0)
+    describe('prevDay', () => {
+        it('should return the previous day', () => {
+            expect(Day.prevDay(utc(2024, 3, 15))).to.equal(utc(2024, 3, 14))
+        })
+
+        it('should cross month boundary', () => {
+            expect(Day.prevDay(utc(2024, 3, 1))).to.equal(utc(2024, 2, 29))
+        })
+
+        it('should cross year boundary', () => {
+            expect(Day.prevDay(utc(2025, 1, 1))).to.equal(utc(2024, 12, 31))
         })
     })
 
-    describe('yesterday', () => {
-        it('should return yesterday in UTC', () => {
-            const y = Day.yesterday()
-            expect(y).to.have.keys('year', 'month', 'day')
-            const expected = new Date(Date.now() - 86400000)
-            expect(y.year).to.equal(expected.getUTCFullYear())
-            expect(y.month).to.equal(expected.getUTCMonth() + 1)
-            expect(y.day).to.equal(expected.getUTCDate())
+    describe('today / yesterday / tomorrow', () => {
+        it('today should be midnight UTC of current day', () => {
+            const now = Date.now() * 1000
+            expect(Day.today()).to.equal(Day.fromTsUs(now))
+        })
+
+        it('yesterday should be one day before today', () => {
+            expect(Day.yesterday()).to.equal(Day.offsetByDays(Day.today(), -1))
+        })
+
+        it('tomorrow should be one day after today', () => {
+            expect(Day.tomorrow()).to.equal(Day.offsetByDays(Day.today(), 1))
+        })
+    })
+
+    describe('thisMonth / thisYear', () => {
+        it('thisMonth should be 1st of current month', () => {
+            expect(Day.thisMonth()).to.equal(Day.toMonth(Day.today()))
+        })
+
+        it('thisYear should be Jan 1 of current year', () => {
+            expect(Day.thisYear()).to.equal(Day.toYear(Day.today()))
+        })
+    })
+
+    describe('roundtrip', () => {
+        it('fromStr and toStr should roundtrip', () => {
+            expect(Day.toStr(Day.fromStr('2024-06-15'))).to.equal('2024-06-15')
+            expect(Day.toStr(Day.fromStr('2025-12-31'))).to.equal('2025-12-31')
+            expect(Day.toStr(Day.fromStr('2024-01'))).to.equal('2024-01-01')
         })
     })
 })
