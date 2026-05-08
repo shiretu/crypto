@@ -16,6 +16,9 @@ export default class Store {
     #maxDay
     #onActivity
     #extraPathComponents
+    #count
+    #firstTsUs
+    #lastTsUs
 
     constructor (dataDir, symbol, storeType, recordSize, extraPathComponents = []) {
         this.#dataDir = dataDir
@@ -27,6 +30,9 @@ export default class Store {
         this.#minDay = null
         this.#maxDay = null
         this.#onActivity = null
+        this.#count = 0
+        this.#firstTsUs = null
+        this.#lastTsUs = null
     }
 
     get dataDir () { return this.#dataDir }
@@ -37,7 +43,7 @@ export default class Store {
     get recordSize () { return this.#recordSize }
 
     readTsUs (buf, offset) {
-        return Number(buf.readBigUInt64LE(offset + 8) & 0x7FFFFFFFFFFFFFFFn)
+        return Number(buf.readBigUInt64LE(offset) & 0x7FFFFFFFFFFFFFFFn)
     }
 
     /**
@@ -72,20 +78,21 @@ export default class Store {
     async #ensureDay (dayTsUs) {
         if (this.#buffers.has(dayTsUs)) return
         const filePath = this.#dayFilePath(dayTsUs)
+        let buf, source
         try {
-            const buf = await fs.promises.readFile(filePath)
-            this.#buffers.set(dayTsUs, buf)
-            this.emit({ type: 'loaded', dayTsUs, source: 'disk', records: buf.length / this.#recordSize })
-            return
+            buf = await fs.promises.readFile(filePath)
+            source = 'disk'
         } catch (err) {
             if (err.code !== 'ENOENT') throw err
+            this.emit({ type: 'computing', dayTsUs })
+            buf = await this.computeDayBuffer(dayTsUs)
+            await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+            await fs.promises.writeFile(filePath, buf)
+            source = 'computed'
         }
-        this.emit({ type: 'computing', dayTsUs })
-        const buf = await this.computeDay(dayTsUs)
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.promises.writeFile(filePath, buf)
-        this.#buffers.set(dayTsUs, buf)
-        this.emit({ type: 'loaded', dayTsUs, source: 'computed', records: buf.length / this.#recordSize })
+        const count = buf.length / this.#recordSize
+        this.#buffers.set(dayTsUs, { buffer: buf, day: dayTsUs, count, absoluteStartIndex: 0 })
+        this.emit({ type: 'loaded', dayTsUs, source, records: count })
     }
 
     /**
@@ -112,6 +119,24 @@ export default class Store {
         }
         this.#minDay = Math.min(startDay, this.#minDay ?? startDay)
         this.#maxDay = Math.max(endDay, this.#maxDay ?? endDay)
+        this.#reindex()
+    }
+
+    #reindex () {
+        let index = 0
+        for (let day = this.#minDay; day <= this.#maxDay; day += Day.usPerDay) {
+            const entry = this.#buffers.get(day)
+            if (!entry) continue
+            entry.absoluteStartIndex = index
+            index += entry.count
+        }
+        this.#count = index
+
+        const minEntry = this.#buffers.get(this.#minDay)
+        this.#firstTsUs = minEntry && minEntry.count > 0 ? this.readTsUs(minEntry.buffer, 0) : null
+
+        const maxEntry = this.#buffers.get(this.#maxDay)
+        this.#lastTsUs = maxEntry && maxEntry.count > 0 ? this.readTsUs(maxEntry.buffer, maxEntry.buffer.length - this.#recordSize) : null
     }
 
     /**
@@ -120,44 +145,38 @@ export default class Store {
      * @param {number} dayTsUs - midnight-UTC microsecond timestamp of the day
      * @returns {Promise<Buffer>}
      */
-    async computeDay (dayTsUs) {
-        throw new Error('computeDay() not implemented')
+    async computeDayBuffer (dayTsUs) {
+        throw new Error('computeDayBuffer() not implemented')
     }
 
     /**
      * Total number of records across all loaded day buffers
      * @returns {number}
      */
-    get count () {
-        let total = 0
-        for (const buf of this.#buffers.values()) {
-            total += buf.length / this.#recordSize
-        }
-        return total
-    }
+    get count () { return this.#count }
 
     /**
      * Timestamp (microseconds) of the first record in the loaded range
      * @returns {number}
      */
-    get firstTsUs () {
-        if (!this.#minDay) return null
-        const buf = this.#buffers.get(this.#minDay)
-        if (!buf) throw new Error(`Buffer missing for minDay ${this.#minDay}`)
-        if (buf.length < this.#recordSize) return null
-        return this.readTsUs(buf, 0)
-    }
+    get firstTsUs () { return this.#firstTsUs }
 
     /**
      * Timestamp (microseconds) of the last record in the loaded range
      * @returns {number}
      */
-    get lastTsUs () {
-        if (!this.#maxDay) return null
-        const buf = this.#buffers.get(this.#maxDay)
-        if (!buf) throw new Error(`Buffer missing for maxDay ${this.#maxDay}`)
-        if (buf.length < this.#recordSize) return null
-        return this.readTsUs(buf, buf.length - this.#recordSize)
+    get lastTsUs () { return this.#lastTsUs }
+
+    /**
+     * Create a record from a buffer subarray. Override in subclasses.
+     * @param {Buffer} buf - the day buffer
+     * @param {number} offset - byte offset within the buffer
+     * @param {number} dayIndex - 0-based index within the day
+     * @param {number} absoluteIndex - global index across all loaded days
+     * @returns {object}
+     */
+    makeRecord (buf, offset, dayIndex, absoluteIndex) {
+        throw new Error('makeRecord() not implemented')
     }
 
     /**
@@ -171,16 +190,26 @@ export default class Store {
      * @throws {Error} if the record at dayIndex has a different tsUs
      */
     getAt (tsUs, dayIndex) {
-        throw new Error('getAt() not implemented')
+        const dayKey = Day.fromTsUs(tsUs)
+        const entry = this.#buffers.get(dayKey)
+        if (!entry) throw new Error(`Day not loaded for tsUs=${tsUs}`)
+        if (dayIndex >= entry.count) throw new Error(`dayIndex ${dayIndex} out of bounds (day has ${entry.count} records)`)
+        const offset = dayIndex * this.#recordSize
+        const record = this.makeRecord(entry.buffer, offset, dayIndex, entry.absoluteStartIndex + dayIndex)
+        if (record.tsUs !== tsUs) throw new Error(`tsUs mismatch at dayIndex ${dayIndex}: expected ${tsUs}, got ${record.tsUs}`)
+        return record
     }
 
     /**
-     * Get a record by its sequential index across all loaded days
-     * @param {number} index
+     * Get a record by its absolute index across all loaded days
+     * @param {number} absoluteIndex
      * @returns {object}
      */
-    get (index) {
-        throw new Error('get() not implemented')
+    get (absoluteIndex) {
+        const entry = this.#buffers.values().find(e => absoluteIndex >= e.absoluteStartIndex && absoluteIndex < e.absoluteStartIndex + e.count)
+        if (!entry) throw new Error(`Index ${absoluteIndex} out of bounds (store has ${this.#count} records)`)
+        const dayIndex = absoluteIndex - entry.absoluteStartIndex
+        return this.makeRecord(entry.buffer, dayIndex * this.#recordSize, dayIndex, absoluteIndex)
     }
 
     /**
@@ -189,6 +218,18 @@ export default class Store {
      * @returns {object}
      */
     findByTsUs (tsUs) {
-        throw new Error('findByTsUs() not implemented')
+        const dayKey = Day.fromTsUs(tsUs)
+        const entry = this.#buffers.get(dayKey)
+        if (!entry) throw new Error(`Day not loaded for tsUs=${tsUs}`)
+        let lo = 0
+        let hi = entry.count - 1
+        while (lo <= hi) {
+            const mid = (lo + hi) >>> 1
+            const midTsUs = this.readTsUs(entry.buffer, mid * this.#recordSize)
+            if (midTsUs === tsUs) return this.makeRecord(entry.buffer, mid * this.#recordSize, mid, entry.absoluteStartIndex + mid)
+            if (midTsUs < tsUs) lo = mid + 1
+            else hi = mid - 1
+        }
+        throw new Error(`No record found for tsUs=${tsUs}`)
     }
 }

@@ -31,7 +31,6 @@ class BinanceDownloader {
     async #csvToBuffer (csvStream) {
         const chunks = []
         let lastTsUs = -1
-        let recordIndex = 0
 
         const csvParser = parse({ relax_column_count: true })
 
@@ -58,7 +57,7 @@ class BinanceDownloader {
                 lastTsUs = tsUs
 
                 const buf = Buffer.allocUnsafe(Trade.RECORD_SIZE)
-                Trade.writeRecord(buf, 0, recordIndex++, tsUs, price, baseQty, quoteQty, isBuyerMaker)
+                Trade.writeRecord(buf, 0, tsUs, price, baseQty, quoteQty, isBuyerMaker)
                 chunks.push(buf)
                 callback()
             }

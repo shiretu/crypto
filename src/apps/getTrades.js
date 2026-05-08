@@ -22,12 +22,15 @@ const end = args[2] ? Day.fromStr(args[2]) : Day.prevDay(thisMonth)
 console.log(`Fetching ${sym.id}`)
 console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
 
+const totalDays = (end - start) / Day.usPerDay + 1
+
 const store = new Trades('data', sym)
 store.onActivity = (e) => {
+    const pct = ((e.dayTsUs - start) / Day.usPerDay / totalDays * 100).toFixed(1)
     if (e.type === 'computing') {
-        process.stdout.write(`\r${Day.toStr(e.dayTsUs)} downloading...        `)
+        process.stdout.write(`\r${Day.toStr(e.dayTsUs)} downloading... (${pct}%)        `)
     } else if (e.type === 'loaded') {
-        process.stdout.write(`\r${Day.toStr(e.dayTsUs)} ${e.source} (${e.records} records)        `)
+        process.stdout.write(`\r${Day.toStr(e.dayTsUs)} ${e.source} (${e.records} records) (${pct}%)        `)
     }
 }
 await store.loadAsync(start, end)
@@ -40,17 +43,8 @@ const first = store.get(0)
 const mid = store.get(Math.floor(store.count / 2))
 const last = store.get(store.count - 1)
 
-const fmt = (t) => `tsUs=${t.tsUs} index=${t.index} price=${t.price} qty=${t.baseQty} ${t.isBuyerMaker ? 'sell' : 'buy'}`
+const fmt = (t) => `tsUs=${t.tsUs} price=${t.price} qty=${t.baseQty} ${t.isBuyerMaker ? 'sell' : 'buy'}`
 console.log('\nget():')
 console.log(`  [0] ${fmt(first)}`)
 console.log(`  [${Math.floor(store.count / 2)}] ${fmt(mid)}`)
 console.log(`  [${store.count - 1}] ${fmt(last)}`)
-
-const firstAt = store.getAt(first.tsUs, first.index)
-const midAt = store.getAt(mid.tsUs, mid.index)
-const lastAt = store.getAt(last.tsUs, last.index)
-
-console.log('\ngetAt():')
-console.log(`  ${fmt(firstAt)}`)
-console.log(`  ${fmt(midAt)}`)
-console.log(`  ${fmt(lastAt)}`)
