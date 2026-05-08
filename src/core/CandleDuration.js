@@ -1,4 +1,5 @@
 const CandleDuration = Object.freeze({
+    SEC_30: 30,
     MIN_1: 60,
     MIN_5: 300,
     MIN_15: 900,

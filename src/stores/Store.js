@@ -212,6 +212,13 @@ export default class Store {
         return this.makeRecord(entry.buffer, dayIndex * this.#recordSize, dayIndex, absoluteIndex)
     }
 
+    getDay (tsUs) {
+        const dayKey = Day.fromTsUs(tsUs)
+        const entry = this.#buffers.get(dayKey)
+        if (!entry) throw new Error(`Day not loaded for tsUs=${tsUs}`)
+        return Array.from({ length: entry.count }, (_, i) => this.makeRecord(entry.buffer, i * this.#recordSize, i, entry.absoluteStartIndex + i))
+    }
+
     /**
      * Binary search for a record by timestamp
      * @param {number} tsUs

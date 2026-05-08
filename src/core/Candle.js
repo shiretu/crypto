@@ -8,6 +8,7 @@ export default class Candle {
     #close
     #high
     #low
+    #trades
 
     constructor (durationSec, firstTrade) {
         if (!isValidDuration(durationSec)) throw new Error(`Invalid candle duration: ${durationSec}`)
@@ -18,6 +19,7 @@ export default class Candle {
         this.#close = firstTrade
         this.#high = firstTrade
         this.#low = firstTrade
+        this.#trades = null
     }
 
     get durationSec () { return this.#durationSec }
@@ -43,6 +45,21 @@ export default class Candle {
         candle.#high = high
         candle.#low = low
         return candle
+    }
+
+    getTrades (tradesStore) {
+        if (!this.#trades) {
+            this.#trades = tradesStore.getDay(this.#open.tsUs).slice(this.#open.dayIndex, this.#close.dayIndex + 1)
+            console.log(`Loaded trades for ${this.ordinal}`)
+        }
+        return this.#trades
+    }
+
+    containsPrice (p1, p2, p3, p4) {
+        return ((this.#low.price <= p1) && (p1 <= this.#high.price)) ||
+        ((this.#low.price <= p2) && (p2 <= this.#high.price)) ||
+        ((this.#low.price <= p3) && (p3 <= this.#high.price)) ||
+        ((this.#low.price <= p4) && (p4 <= this.#high.price))
     }
 }
 
