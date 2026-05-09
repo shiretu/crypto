@@ -26,7 +26,7 @@ export default class Outcomes extends Store {
 
         const progress = { type: 'progress', dayTsUs, total: trades.length, chunkStart: 0, chunkSize: 0, processed: 0 }
         const generalProgress = (chunkStart, chunkSize, currentIndex) => {
-            if ((currentIndex % 1000 === 0) || (currentIndex === chunkStart + chunkSize)) {
+            if ((currentIndex % 1000 === 0) || (currentIndex === chunkStart + chunkSize - 1)) {
                 progress.chunkStart = chunkStart
                 progress.chunkSize = chunkSize
                 progress.processed = currentIndex - chunkStart

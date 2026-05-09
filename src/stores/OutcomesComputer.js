@@ -44,7 +44,9 @@ export default class OutcomesComputer {
         const tradesFromStorageLimit = candles.at(-1).ordinal
 
         for (let i = startIndex; i < endIndex; i++) {
-            emitProgress(i)
+            if ((i % 100 === 0) || (i === endIndex - 1)) {
+                emitProgress(i)
+            }
             const trade = trades[i]
             outcome.reset(trade)
 
