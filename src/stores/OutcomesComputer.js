@@ -67,7 +67,7 @@ export default class OutcomesComputer {
                 if (candle.ordinal <= tradesFromStorageLimit) {
                     if (outcome.multiUpdate(trades, candle.open.dayIndex, candle.close.dayIndex + 1)) break
                 } else {
-                    const candleTrades = candle.getTrades()
+                    const candleTrades = candle.getTrades(localTradesStore)
                     if (outcome.multiUpdate(candleTrades)) break
                 }
             }
@@ -87,7 +87,7 @@ export default class OutcomesComputer {
                 candles = candles.concat(newCandles)
                 for (const candle of newCandles) {
                     if (!containsPrices(candle, outcome)) continue
-                    const candleTrades = candle.getTrades()
+                    const candleTrades = candle.getTrades(localTradesStore)
                     if (outcome.multiUpdate(candleTrades)) break
                 }
                 if (outcome.completed) {

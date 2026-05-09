@@ -105,7 +105,18 @@ export default class Store {
             this.emit({ type: 'computing', dayTsUs })
             buf = await this.computeDayBuffer(dayTsUs)
             await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-            await fs.promises.writeFile(filePath, buf)
+            const tmpFile = `${filePath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+            try {
+                await fs.promises.writeFile(tmpFile, buf)
+                try {
+                    await fs.promises.link(tmpFile, filePath)
+                } catch (linkErr) {
+                    if (linkErr.code !== 'EEXIST') throw linkErr
+                    buf = await fs.promises.readFile(filePath)
+                }
+            } finally {
+                await fs.promises.unlink(tmpFile).catch(() => {})
+            }
             source = 'computed'
         }
         const count = buf.length / this.#recordSize
