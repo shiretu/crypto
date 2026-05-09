@@ -80,6 +80,7 @@ export default class Store {
         const filePath = this.#dayFilePath(dayTsUs)
         let buf, source
         try {
+            this.emit({ type: 'readFile', filePath })
             buf = await fs.promises.readFile(filePath)
             source = 'disk'
         } catch (err) {
@@ -91,7 +92,7 @@ export default class Store {
             source = 'computed'
         }
         const count = buf.length / this.#recordSize
-        this.#buffers.set(dayTsUs, { buffer: buf, day: dayTsUs, count, absoluteStartIndex: 0 })
+        this.#buffers.set(dayTsUs, { buffer: buf, day: dayTsUs, count, absoluteStartIndex: 0, filePath })
         this.emit({ type: 'loaded', dayTsUs, source, records: count })
     }
 

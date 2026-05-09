@@ -35,6 +35,10 @@ console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)
 
 const tradesStore = new Trades('data', sym)
 tradesStore.onActivity = (e) => {
+    if (e.type === 'readFile') {
+        console.log(`\nLoading file ${e.filePath}               `)
+        return
+    }
     const pct = ((e.dayTsUs - start) / Day.usPerDay / totalDays * 100).toFixed(1)
     if (e.type === 'computing') {
         process.stdout.write(`\rTrades: ${Day.toStr(e.dayTsUs)} downloading... (${pct}%)        `)
@@ -48,6 +52,10 @@ console.log(`${tradesStore.count} trades loaded.`)
 
 const candlesStore = new Candles('data', sym, 30, tradesStore)
 candlesStore.onActivity = (e) => {
+    if (e.type === 'readFile') {
+        console.log(`\nLoading file ${e.filePath}               `)
+        return
+    }
     const pct = ((e.dayTsUs - start) / Day.usPerDay / totalDays * 100).toFixed(1)
     if (e.type === 'computing') {
         process.stdout.write(`\rCandles: ${Day.toStr(e.dayTsUs)} computing... (${pct}%)        `)

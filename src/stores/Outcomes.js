@@ -17,6 +17,13 @@ export default class Outcomes extends Store {
         this.#candlesStore = candlesStore
     }
 
+    #containsPrice (candle, outcome) {
+        if (outcome.completed) { return false }
+        if (!outcome.longOrder && candle.containsPrices(outcome.limits.long.tp, outcome.limits.long.sl)) { return true }
+        if (!outcome.shortOrder && candle.containsPrices(outcome.limits.short.tp, outcome.limits.short.sl)) { return true }
+        return false
+    }
+
     async computeDayBuffer (dayTsUs) {
         const trades = this.#tradesStore.getDay(dayTsUs)
         const buf = Buffer.alloc(OutcomeRef.RECORD_SIZE * trades.length)
@@ -27,24 +34,24 @@ export default class Outcomes extends Store {
             if ((i % 5000) === 0) { console.log(`${i}`) }
             const trade = trades[i]
             outcome.reset(trade)
-            const limits = outcome.limits
             const parentCandleOrdinal = Math.floor(trade.tsUs / (candles[0].durationSec * 1000000))
             const parentCandleIndex = parentCandleOrdinal - candles[0].ordinal
             const parentCandle = candles[parentCandleIndex]
-            if (parentCandle.containsPrice(limits.long.tp, limits.long.sl, limits.short.tp, limits.short.sl)) {
-                const parentCandleTrades = trades.slice(trade.dayIndex + 1, parentCandle.close.dayIndex + 1)
-                if (outcome.multiUpdate(parentCandleTrades)) {
+            if (this.#containsPrice(parentCandle, outcome)) {
+                if (outcome.multiUpdate(trades, trade.dayIndex + 1, parentCandle.close.dayIndex + 1)) {
                     OutcomeRef.writeRecord(buf, trade.dayIndex * OutcomeRef.RECORD_SIZE, outcome)
                     continue
                 }
             }
-            const restOfCandles = candles.slice(parentCandleIndex + 1)
-            for (const candle of restOfCandles) {
-                if (!candle.containsPrice(limits.long.tp, limits.long.sl, limits.short.tp, limits.short.sl)) continue
-                const candleTrades = candle.ordinal <= tradesFromStorageLimit
-                    ? trades.slice(candle.open.dayIndex, candle.close.dayIndex + 1)
-                    : candle.getTrades(this.#tradesStore)
-                if (outcome.multiUpdate(candleTrades)) break
+            for (let ci = parentCandleIndex + 1; ci < candles.length; ci++) {
+                const candle = candles[ci]
+                if (!this.#containsPrice(candle, outcome)) continue
+                if (candle.ordinal <= tradesFromStorageLimit) {
+                    if (outcome.multiUpdate(trades, candle.open.dayIndex, candle.close.dayIndex + 1)) break
+                } else {
+                    const candleTrades = candle.getTrades(this.#tradesStore)
+                    if (outcome.multiUpdate(candleTrades)) break
+                }
             }
             if (outcome.completed) {
                 OutcomeRef.writeRecord(buf, trade.dayIndex * OutcomeRef.RECORD_SIZE, outcome)
@@ -52,12 +59,13 @@ export default class Outcomes extends Store {
             }
             let nextDay = Day.nextDay(candles.at(-1).open.tsUs)
             while (true) {
+                await this.#candlesStore.loadAsync(nextDay, nextDay)
+                await this.#tradesStore.loadAsync(nextDay, nextDay)
                 const newCandles = this.#candlesStore.getDay(nextDay).map(ref => fromCandleRef(ref, this.#candlesStore.durationSec, this.#tradesStore))
-                if ((!newCandles) || (newCandles.length === 0)) { throw new Error('No more data') }
-                nextDay = Day.nextDay(candles.at(-1).open.tsUs)
+                if (!newCandles || newCandles.length === 0) throw new Error(`No more candle data available to resolve outcome for trade at tsUs=${trade.tsUs}`)
                 candles = candles.concat(newCandles)
                 for (const candle of newCandles) {
-                    if (!candle.containsPrice(limits.long.tp, limits.long.sl, limits.short.tp, limits.short.sl)) continue
+                    if (!this.#containsPrice(candle, outcome)) continue
                     const candleTrades = candle.getTrades(this.#tradesStore)
                     if (outcome.multiUpdate(candleTrades)) break
                 }
@@ -65,6 +73,7 @@ export default class Outcomes extends Store {
                     OutcomeRef.writeRecord(buf, trade.dayIndex * OutcomeRef.RECORD_SIZE, outcome)
                     break
                 }
+                nextDay = Day.nextDay(nextDay)
             }
         }
 

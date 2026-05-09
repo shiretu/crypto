@@ -48,20 +48,16 @@ export default class Outcome {
     update (trade) {
         if (this.completed || trade.tsUs <= this.#openTrade.tsUs) return this.completed
         const price = trade.price
-        const openPrice = this.#openTrade.price
+        const limits = this.limits
 
         if (this.#longTrade === null) {
-            if (price >= openPrice * (1 + this.#tpPercent / 100)) {
-                this.#longTrade = trade
-            } else if (price <= openPrice * (1 - this.#slPercent / 100)) {
+            if (price >= limits.long.tp || price <= limits.long.sl) {
                 this.#longTrade = trade
             }
         }
 
         if (this.#shortTrade === null) {
-            if (price <= openPrice * (1 - this.#tpPercent / 100)) {
-                this.#shortTrade = trade
-            } else if (price >= openPrice * (1 + this.#slPercent / 100)) {
+            if (price <= limits.short.tp || price >= limits.short.sl) {
                 this.#shortTrade = trade
             }
         }
@@ -69,10 +65,9 @@ export default class Outcome {
         return this.completed
     }
 
-    multiUpdate (trades) {
-        if (this.completed) { return }
-        for (const trade of trades) {
-            if (this.update(trade)) { return true }
+    multiUpdate (trades, start = 0, end = trades.length) {
+        for (let i = start; i < end; i++) {
+            if (this.update(trades[i])) return true
         }
         return this.completed
     }

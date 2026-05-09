@@ -55,11 +55,9 @@ export default class Candle {
         return this.#trades
     }
 
-    containsPrice (p1, p2, p3, p4) {
+    containsPrices (p1, p2) {
         return ((this.#low.price <= p1) && (p1 <= this.#high.price)) ||
-        ((this.#low.price <= p2) && (p2 <= this.#high.price)) ||
-        ((this.#low.price <= p3) && (p3 <= this.#high.price)) ||
-        ((this.#low.price <= p4) && (p4 <= this.#high.price))
+        ((this.#low.price <= p2) && (p2 <= this.#high.price))
     }
 }
 
