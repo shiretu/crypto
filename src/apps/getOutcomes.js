@@ -74,6 +74,9 @@ outcomeStore.onActivity = (e) => {
         process.stdout.write(`\rOutcomes: ${Day.toStr(e.dayTsUs)} computing... (${pct}%)        `)
     } else if (e.type === 'loaded') {
         process.stdout.write(`\rOutcomes: ${Day.toStr(e.dayTsUs)} ${e.source} (${e.records} outcomes) (${pct}%)        `)
+    } else if (e.type === 'progress') {
+        const chunkPct = (e.processed / e.chunkSize * 100).toFixed(1)
+        process.stdout.write(`\rOutcomes: ${Day.toStr(e.dayTsUs)} chunk@${e.chunkStart} ${e.processed}/${e.chunkSize} (${chunkPct}%)        `)
     }
 }
 await outcomeStore.loadAsync(start, end)
