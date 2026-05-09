@@ -6,8 +6,33 @@
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/src/apps/getOutcomes.js",
-            "args": ["binance:eth:usdc", "1.5", "1", "2025-04-09", "2025-04-11"],
-            "skipFiles": ["<node_internals>/**"],
+            "args": [
+                "binance:eth:usdc",
+                "1.5",
+                "1",
+                "2025-04-09",
+                "2025-04-11"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "workerPlayground",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/apps/workerPlayground.js",
+            "args": [
+                "binance:eth:usdc",
+                "1.5",
+                "1",
+                "2025-04-09",
+                "2025-04-11"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "console": "integratedTerminal"
         }
     ]

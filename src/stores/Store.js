@@ -75,6 +75,23 @@ export default class Store {
         )
     }
 
+    /**
+     * Get the record count for a day without loading the data.
+     * Reads the file size and divides by record size.
+     * @param {number} dayTsUs - midnight-UTC microsecond timestamp
+     * @returns {number} record count, or 0 if file doesn't exist
+     */
+    async getRecordCount (dayTsUs) {
+        const filePath = this.#dayFilePath(dayTsUs)
+        try {
+            const stat = await fs.promises.stat(filePath)
+            return stat.size / this.#recordSize
+        } catch (err) {
+            if (err.code === 'ENOENT') return 0
+            throw err
+        }
+    }
+
     async #ensureDay (dayTsUs) {
         if (this.#buffers.has(dayTsUs)) return
         const filePath = this.#dayFilePath(dayTsUs)
@@ -239,5 +256,31 @@ export default class Store {
             else hi = mid - 1
         }
         throw new Error(`No record found for tsUs=${tsUs}`)
+    }
+
+    toAnonymousObject () {
+        return {
+            dataDir: this.#dataDir,
+            symbolId: this.#symbol.id,
+            storeType: this.#storeType,
+            recordSize: this.#recordSize,
+            buffers: this.#buffers,
+            minDay: this.#minDay,
+            maxDay: this.#maxDay,
+            extraPathComponents: this.#extraPathComponents,
+            count: this.#count,
+            firstTsUs: this.#firstTsUs,
+            lastTsUs: this.#lastTsUs
+        }
+    }
+
+    _restoreFrom (obj) {
+        this.#buffers = obj.buffers
+        this.#buffers.forEach(entry => { entry.buffer = Buffer.from(entry.buffer.buffer, entry.buffer.byteOffset, entry.buffer.byteLength) })
+        this.#minDay = obj.minDay
+        this.#maxDay = obj.maxDay
+        this.#count = obj.count
+        this.#firstTsUs = obj.firstTsUs
+        this.#lastTsUs = obj.lastTsUs
     }
 }

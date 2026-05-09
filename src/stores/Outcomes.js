@@ -1,62 +1,41 @@
 import Store from './Store.js'
+import os from 'os'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { Worker } from 'worker_threads'
 import { OutcomeRef } from '../core/Outcome.js'
-import { fromCandleRef } from '../core/Candle.js'
-import OutcomesComputer from './OutcomesComputer.js'
+import Trades from './Trades.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const WORKER_PATH = path.join(__dirname, 'OutcomesWorker.js')
 
 export default class Outcomes extends Store {
     #tpPercent
     #slPercent
-    #tradesStore
-    #candlesStore
 
-    constructor (dataDir, symbol, tpPercent, slPercent, tradesStore, candlesStore) {
+    constructor (dataDir, symbol, tpPercent, slPercent) {
         super(dataDir, symbol, 'outcomes', OutcomeRef.RECORD_SIZE, [`${tpPercent}`, `${slPercent}`])
         this.#tpPercent = tpPercent
         this.#slPercent = slPercent
-        this.#tradesStore = tradesStore
-        this.#candlesStore = candlesStore
     }
 
     async computeDayBuffer (dayTsUs) {
-        const trades = this.#tradesStore.getDay(dayTsUs)
-        if (trades.length === 0) return Buffer.alloc(0)
-
-        const candles = this.#candlesStore.getDay(dayTsUs).map(ref => fromCandleRef(ref, this.#candlesStore.durationSec, this.#tradesStore))
-        if (candles.length === 0) return Buffer.alloc(0)
-
-        const progress = { type: 'progress', dayTsUs, total: trades.length, chunkStart: 0, chunkSize: 0, processed: 0 }
-        const generalProgress = (chunkStart, chunkSize, currentIndex) => {
-            if ((currentIndex % 1000 === 0) || (currentIndex === chunkStart + chunkSize - 1)) {
-                progress.chunkStart = chunkStart
-                progress.chunkSize = chunkSize
-                progress.processed = currentIndex - chunkStart
-                this.emit(progress)
-            }
-        }
-
-        const cpusCount = 12
-        const workersCount = cpusCount * 4
-        const chunkSize = Math.ceil(trades.length / workersCount)
-        const promises = []
-        for (let startIndex = 0; startIndex < trades.length; startIndex += chunkSize) {
-            const size = Math.min(chunkSize, trades.length - startIndex)
-            promises.push(OutcomesComputer.compute({
-                dataDir: this.dataDir,
-                symbol: this.symbol,
-                tpPercent: this.#tpPercent,
-                slPercent: this.#slPercent,
-                trades,
-                candles,
-                startIndex,
-                endIndex: startIndex + size,
-                progressCallback: index => generalProgress(startIndex, size, index)
-            }))
-        }
-        const buffers = await Promise.all(promises)
-        return Buffer.concat(buffers)
+        throw new Error('Not yet implemented')
     }
 
     makeRecord (buf, offset, dayIndex, absoluteIndex) {
-        return new OutcomeRef(buf.subarray(offset, offset + this.recordSize))
+        throw new Error('Not yet implemented')
+    }
+
+    toAnonymousObject () {
+        return { ...super.toAnonymousObject(), tpPercent: this.#tpPercent, slPercent: this.#slPercent }
+    }
+
+    static fromAnonymousObject (obj) {
+        const store = new Outcomes(obj.dataDir, resolveSymbol(obj.symbolId), obj.tpPercent, obj.slPercent)
+        store._restoreFrom(obj)
+        return store
     }
 }

@@ -50,7 +50,6 @@ export default class Candle {
     getTrades (tradesStore) {
         if (!this.#trades) {
             this.#trades = tradesStore.getDay(this.#open.tsUs).slice(this.#open.dayIndex, this.#close.dayIndex + 1)
-            console.log(`Loaded trades for ${this.ordinal}`)
         }
         return this.#trades
     }

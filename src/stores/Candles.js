@@ -1,6 +1,7 @@
 import Store from './Store.js'
 import Candle, { CandleRef, toCandleRefBuffer } from '../core/Candle.js'
 import Trades from './Trades.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
 
 export default class Candles extends Store {
     #durationSec
@@ -43,5 +44,15 @@ export default class Candles extends Store {
 
     makeRecord (buf, offset, dayIndex, absoluteIndex) {
         return new CandleRef(buf.subarray(offset, offset + this.recordSize))
+    }
+
+    toAnonymousObject () {
+        return { ...super.toAnonymousObject(), durationSec: this.#durationSec }
+    }
+
+    static fromAnonymousObject (obj, tradesStore) {
+        const store = new Candles(obj.dataDir, resolveSymbol(obj.symbolId), obj.durationSec, tradesStore)
+        store._restoreFrom(obj)
+        return store
     }
 }
