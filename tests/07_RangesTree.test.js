@@ -9,6 +9,10 @@ const root = (items, levels = 10) => {
     const indexed = items.map((item, i) => ({ ...item, index: i }))
     return new RangesTree({ collectionDescriptor: makeDescriptor(indexed), maxLevels: levels }).root
 }
+const tree = (items, levels = 10) => {
+    const indexed = items.map((item, i) => ({ ...item, index: i }))
+    return new RangesTree({ collectionDescriptor: makeDescriptor(indexed), maxLevels: levels })
+}
 
 describe('RangesTree', () => {
     describe('construction - basic', () => {
@@ -405,6 +409,183 @@ describe('RangesTree', () => {
             }
 
             checkInvariants(node)
+        })
+    })
+
+    describe('search', () => {
+        it('should return null when value is outside range', () => {
+            const t = tree([v(10), v(20), v(30)])
+            expect(t.search(5)).to.be.null
+            expect(t.search(35)).to.be.null
+        })
+
+        it('should find exact value match', () => {
+            const t = tree([v(10), v(20), v(30)])
+            const result = t.search(20)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(20)
+            expect(result[1].value).to.equal(20)
+        })
+
+        it('should find crossing where value jumps over target', () => {
+            // 10 → 30, target 20: crosses at the boundary
+            const t = tree([v(10), v(30)])
+            const result = t.search(20)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(10)
+            expect(result[1].value).to.equal(30)
+        })
+
+        it('should find crossing in descending sequence', () => {
+            // 30 → 10, target 20
+            const t = tree([v(30), v(10)])
+            const result = t.search(20)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(30)
+            expect(result[1].value).to.equal(10)
+        })
+
+        it('should find first crossing in longer sequence', () => {
+            // [10, 15, 25, 30] target 20: crossing between 15 and 25
+            const t = tree([v(10), v(15), v(25), v(30)])
+            const result = t.search(20)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(15)
+            expect(result[1].value).to.equal(25)
+        })
+
+        it('should find exact match at first element', () => {
+            const t = tree([v(20), v(30), v(40)])
+            const result = t.search(20)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(20)
+            expect(result[1].value).to.equal(20)
+        })
+
+        it('should find exact match at last element', () => {
+            const t = tree([v(10), v(20), v(30)])
+            const result = t.search(30)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(30)
+            expect(result[1].value).to.equal(30)
+        })
+
+        it('should find crossing in gap between children', () => {
+            // [10, 20, 50, 60] → left max=20, right min=50, target 30 is in the gap
+            const t = tree([v(10), v(20), v(50), v(60)])
+            const result = t.search(30)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(20)
+            expect(result[1].value).to.equal(50)
+        })
+
+        it('should return null for value in same-value tree', () => {
+            const t = tree([v(50), v(50), v(50)])
+            expect(t.search(60)).to.be.null
+            expect(t.search(40)).to.be.null
+        })
+
+        it('should find exact match in same-value tree', () => {
+            const t = tree([v(50), v(50), v(50)])
+            const result = t.search(50)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(50)
+            expect(result[1].value).to.equal(50)
+        })
+    })
+
+    describe('search with startFromIndex', () => {
+        it('should skip crossings before startFromIndex', () => {
+            // [10, 30, 10, 30] target 20: first crossing at (0,1), second at (1,2)
+            const t = tree([v(10), v(30), v(10), v(30)])
+            const result = t.search(20, 2)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(10)
+            expect(result[0].index).to.equal(2)
+            expect(result[1].value).to.equal(30)
+            expect(result[1].index).to.equal(3)
+        })
+
+        it('should find crossing starting exactly at startFromIndex', () => {
+            // [10, 30, 10, 30] target 20, start from 1
+            const t = tree([v(10), v(30), v(10), v(30)])
+            const result = t.search(20, 1)
+            expect(result).to.not.be.null
+            // Crossing at (1,2): 30→10 crosses 20
+            expect(result[0].index).to.be.at.least(1)
+        })
+
+        it('should return null when no crossing exists after startFromIndex', () => {
+            // [10, 30, 50, 50] target 20, start from 2: no crossing at or after index 2
+            const t = tree([v(10), v(30), v(50), v(50)])
+            expect(t.search(20, 2)).to.be.null
+        })
+
+        it('should work with startFromIndex at 0 (same as no startFromIndex)', () => {
+            const t = tree([v(10), v(30)])
+            const withStart = t.search(20, 0)
+            const withoutStart = t.search(20)
+            expect(withStart[0].value).to.equal(withoutStart[0].value)
+            expect(withStart[1].value).to.equal(withoutStart[1].value)
+        })
+    })
+
+    describe('search with realistic data', () => {
+        it('should find crossing in volatile sequence', () => {
+            const values = [100, 105, 98, 110, 95, 120, 88, 130]
+            const t = tree(values.map(val => v(val)), 3)
+            // Target 100: first exact match at index 0
+            const result = t.search(100)
+            expect(result).to.not.be.null
+            expect(result[0].value).to.equal(100)
+        })
+
+        it('should find crossing that does not match any exact value', () => {
+            const values = [100, 105, 98, 110, 95, 120, 88, 130]
+            const t = tree(values.map(val => v(val)), 3)
+            // Target 99: between 100 and 98, or 98 and 110
+            const result = t.search(99)
+            expect(result).to.not.be.null
+            const v0 = result[0].value
+            const v1 = result[1].value
+            expect((v0 < 99 && v1 > 99) || (v0 > 99 && v1 < 99) || v0 === 99 || v1 === 99).to.be.true
+        })
+    })
+
+    describe('search result ordering invariant', () => {
+        it('should return chronologically ordered results (index[0] <= index[1])', () => {
+            const values = [100, 105, 98, 110, 95, 120, 88, 130, 85, 140]
+            const t = tree(values.map(val => v(val)), 3)
+            for (const target of [90, 95, 100, 105, 110, 115, 120, 125, 130]) {
+                const result = t.search(target)
+                if (result) {
+                    expect(result[0].index).to.be.at.most(result[1].index, `target=${target}: index[0] should be <= index[1]`)
+                }
+            }
+        })
+
+        it('should return adjacent items (index[1] - index[0] <= 1)', () => {
+            const values = [100, 105, 98, 110, 95, 120, 88, 130, 85, 140]
+            const t = tree(values.map(val => v(val)), 3)
+            for (const target of [90, 95, 100, 105, 110, 115, 120, 125, 130]) {
+                const result = t.search(target)
+                if (result) {
+                    const diff = result[1].index - result[0].index
+                    expect(diff).to.be.at.most(1, `target=${target}: items should be same or adjacent`)
+                }
+            }
+        })
+
+        it('should preserve ordering with startFromIndex', () => {
+            const values = [10, 30, 10, 30, 10, 30]
+            const t = tree(values.map(val => v(val)), 3)
+            for (let start = 0; start < values.length; start++) {
+                const result = t.search(20, start)
+                if (result) {
+                    expect(result[0].index).to.be.at.most(result[1].index, `start=${start}: index[0] should be <= index[1]`)
+                    expect(result[0].index).to.be.at.least(start, `start=${start}: result should be at or after startFromIndex`)
+                }
+            }
         })
     })
 })
