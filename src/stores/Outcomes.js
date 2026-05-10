@@ -73,7 +73,7 @@ export default class Outcomes extends Store {
     async computeDayBuffer (dayTsUs) {
         const tradesStore = new Trades(this.dataDir, this.symbol)
         await tradesStore.loadAsync(dayTsUs, dayTsUs)
-        const totalTrades = tradesStore.buffers.get(dayTsUs)?.count ?? 0
+        const totalTrades = await tradesStore.getRecordCount(dayTsUs)
         if (totalTrades === 0) return Buffer.alloc(0)
 
         const candlesStore = new Candles(this.dataDir, this.symbol, Outcomes.#candleDurationSec, tradesStore)

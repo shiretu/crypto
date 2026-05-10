@@ -17,15 +17,14 @@ export default class Candles extends Store {
 
     async computeDayBuffer (dayTsUs) {
         await this.#tradesStore.loadAsync(dayTsUs, dayTsUs)
-        const dayEntry = this.#tradesStore.buffers.get(dayTsUs)
-        if (!dayEntry || dayEntry.count === 0) return Buffer.alloc(0)
+        const trades = this.#tradesStore.getDay(dayTsUs)
+        if (trades.length === 0) return Buffer.alloc(0)
 
         const durationUs = this.#durationSec * 1_000_000
         const candles = []
         let current = null
 
-        for (let i = 0; i < dayEntry.count; i++) {
-            const trade = this.#tradesStore.get(dayEntry.absoluteStartIndex + i)
+        for (const trade of trades) {
             const ordinal = Math.floor(trade.tsUs / durationUs)
             if (current && current.ordinal === ordinal) {
                 current.update(trade)

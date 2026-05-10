@@ -37,7 +37,6 @@ export default class Store {
 
     get dataDir () { return this.#dataDir }
     get symbol () { return this.#symbol }
-    get buffers () { return this.#buffers }
     get minDay () { return this.#minDay }
     get maxDay () { return this.#maxDay }
     get recordSize () { return this.#recordSize }
