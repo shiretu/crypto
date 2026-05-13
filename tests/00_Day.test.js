@@ -53,6 +53,20 @@ describe('Day', () => {
         it('should reject no separator', () => {
             expect(() => Day.fromStr('20240115')).to.throw('Invalid date format')
         })
+
+        it('should reject empty string', () => {
+            expect(() => Day.fromStr('')).to.throw('Invalid date format')
+        })
+
+        it('should reject year only', () => {
+            expect(() => Day.fromStr('2024')).to.throw('Invalid date format')
+        })
+    })
+
+    describe('usPerDay', () => {
+        it('should be 86400 seconds worth of microseconds', () => {
+            expect(Day.usPerDay).to.equal(86_400_000_000)
+        })
     })
 
     describe('fromTsUs', () => {
@@ -72,8 +86,7 @@ describe('Day', () => {
         })
 
         it('should truncate last microsecond of the day', () => {
-            const usPerDay = 24 * 3600 * 1_000_000
-            const lastUs = utc(2024, 7, 20) + usPerDay - 1
+            const lastUs = utc(2024, 7, 20) + Day.usPerDay - 1
             expect(Day.fromTsUs(lastUs)).to.equal(utc(2024, 7, 20))
         })
     })
@@ -133,6 +146,10 @@ describe('Day', () => {
         it('should truncate input before offsetting', () => {
             const midday = utc(2024, 1, 15) + 12 * 3600 * 1_000_000
             expect(Day.offsetByDays(midday, 1)).to.equal(utc(2024, 1, 16))
+        })
+
+        it('should handle zero offset', () => {
+            expect(Day.offsetByDays(utc(2024, 5, 10), 0)).to.equal(utc(2024, 5, 10))
         })
     })
 

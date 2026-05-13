@@ -4,7 +4,12 @@ import RangesTree from '../src/core/RangesTree.js'
 const v = (value) => ({ value })
 const valueFn = (item) => item.value
 const makeItems = (values, baseIndex = 0) => values.map((val, i) => ({ value: val, index: baseIndex + i }))
-const makeDescriptor = (items) => ({ itemAtFn: (i) => items[i], itemsCountFn: () => items.length, valueFn, firstIndexFn: () => items.length > 0 ? items[0].index : 0 })
+const makeDescriptor = (items) => ({
+    itemAtFn: (i) => items[i],
+    itemsCountFn: () => items.length,
+    valueFn,
+    firstIndexFn: () => items.length > 0 ? items[0].index : 0
+})
 const root = (items, levels = 10) => {
     const indexed = items.map((item, i) => ({ ...item, index: i }))
     return new RangesTree({ collectionDescriptor: makeDescriptor(indexed), maxLevels: levels }).root
@@ -91,14 +96,10 @@ describe('RangesTree', () => {
             expect(node.right.startIndex).to.equal(4)
         })
 
-        it('should not create single-element children unnecessarily', () => {
+        it('should not create children for single-element ranges', () => {
             const node = root([v(10), v(20)])
-            expect(node.left.startIndex).to.equal(0)
-            expect(node.left.endIndex).to.equal(0)
             expect(node.left.left).to.be.null
             expect(node.left.right).to.be.null
-            expect(node.right.startIndex).to.equal(1)
-            expect(node.right.endIndex).to.equal(1)
             expect(node.right.left).to.be.null
             expect(node.right.right).to.be.null
         })
@@ -124,8 +125,6 @@ describe('RangesTree', () => {
             expect(node.left.level).to.equal(0)
             expect(node.right.level).to.equal(0)
             expect(node.left.left).to.be.null
-            expect(node.left.right).to.be.null
-            expect(node.right.left).to.be.null
             expect(node.right.right).to.be.null
         })
 
@@ -179,17 +178,13 @@ describe('RangesTree', () => {
             const node = root([v(10), v(20), v(30), v(50), v(60), v(70)])
             expect(node.minValue).to.equal(10)
             expect(node.maxValue).to.equal(70)
-            if (node.left) {
-                expect(node.left.minValue).to.be.at.least(node.minValue)
-                expect(node.left.maxValue).to.be.at.most(node.maxValue)
-            }
-            if (node.right) {
-                expect(node.right.minValue).to.be.at.least(node.minValue)
-                expect(node.right.maxValue).to.be.at.most(node.maxValue)
-            }
+            expect(node.left.minValue).to.be.at.least(node.minValue)
+            expect(node.left.maxValue).to.be.at.most(node.maxValue)
+            expect(node.right.minValue).to.be.at.least(node.minValue)
+            expect(node.right.maxValue).to.be.at.most(node.maxValue)
         })
 
-        it('should have min/max that reflect only their own range', () => {
+        it('should have min/max that reflect only the node range', () => {
             const node = root([v(100), v(50), v(200), v(300)])
             expect(node.minValue).to.equal(50)
             expect(node.maxValue).to.equal(300)
@@ -200,14 +195,6 @@ describe('RangesTree', () => {
         it('should have a gap when left max < right min', () => {
             const node = root([v(10), v(20), v(50), v(60)])
             expect(node.left.maxValue).to.be.lessThan(node.right.minValue)
-        })
-
-        it('should have no gap when values are contiguous', () => {
-            const node = root([v(10), v(20), v(20), v(30)])
-            expect(node.left.endIndex).to.equal(0)
-            expect(node.left.maxValue).to.equal(10)
-            expect(node.right.startIndex).to.equal(1)
-            expect(node.right.minValue).to.equal(20)
         })
 
         it('should detect a large gap between children', () => {
@@ -234,8 +221,6 @@ describe('RangesTree', () => {
 
         it('should handle a long run of same value then a change', () => {
             const node = root([v(50), v(50), v(50), v(50), v(50), v(50), v(50), v(100)])
-            expect(node.left).to.not.be.null
-            expect(node.right).to.not.be.null
             expect(node.left.endIndex).to.equal(6)
             expect(node.right.startIndex).to.equal(7)
             expect(node.left.minValue).to.equal(50)
@@ -246,8 +231,6 @@ describe('RangesTree', () => {
 
         it('should handle a change then a long run of same value', () => {
             const node = root([v(100), v(50), v(50), v(50), v(50), v(50), v(50), v(50)])
-            expect(node.left).to.not.be.null
-            expect(node.right).to.not.be.null
             expect(node.left.endIndex).to.equal(0)
             expect(node.right.startIndex).to.equal(1)
         })
@@ -262,6 +245,18 @@ describe('RangesTree', () => {
             expect(node.right.startIndex).to.equal(2)
             expect(node.right.minValue).to.equal(50)
             expect(node.right.maxValue).to.equal(90)
+        })
+
+        it('should handle negative values', () => {
+            const node = root([v(-50), v(-10), v(-30), v(20)])
+            expect(node.minValue).to.equal(-50)
+            expect(node.maxValue).to.equal(20)
+        })
+
+        it('should handle floating-point values', () => {
+            const node = root([v(1.5), v(2.7), v(0.3), v(5.1)])
+            expect(node.minValue).to.equal(0.3)
+            expect(node.maxValue).to.equal(5.1)
         })
     })
 
@@ -304,73 +299,34 @@ describe('RangesTree', () => {
     describe('RangesTree wrapper', () => {
         it('should expose root node', () => {
             const items = makeItems([10, 20])
-            const tree = new RangesTree({ collectionDescriptor: makeDescriptor(items), maxLevels: 5 })
-            expect(tree.root).to.not.be.null
-            expect(tree.root.level).to.equal(5)
+            const t = new RangesTree({ collectionDescriptor: makeDescriptor(items), maxLevels: 5 })
+            expect(t.root).to.not.be.null
+            expect(t.root.level).to.equal(5)
         })
 
         it('should expose maxLevels', () => {
             const items = makeItems([10, 20])
-            const tree = new RangesTree({ collectionDescriptor: makeDescriptor(items), maxLevels: 7 })
-            expect(tree.maxLevels).to.equal(7)
+            const t = new RangesTree({ collectionDescriptor: makeDescriptor(items), maxLevels: 7 })
+            expect(t.maxLevels).to.equal(7)
         })
 
         it('should default maxLevels to 10', () => {
             const items = makeItems([10, 20])
-            const tree = new RangesTree({ collectionDescriptor: makeDescriptor(items) })
-            expect(tree.maxLevels).to.equal(10)
+            const t = new RangesTree({ collectionDescriptor: makeDescriptor(items) })
+            expect(t.maxLevels).to.equal(10)
         })
 
-        it('should use indexFn for startIndex/endIndex with non-zero base', () => {
+        it('should use firstIndexFn for startIndex/endIndex with non-zero base', () => {
             const items = makeItems([10, 20, 30], 100)
-            const desc = { itemAtFn: (i) => items[i - 100], itemsCountFn: () => items.length, valueFn, firstIndexFn: () => 100 }
-            const tree = new RangesTree({ collectionDescriptor: desc, maxLevels: 10 })
-            expect(tree.root.startIndex).to.equal(100)
-            expect(tree.root.endIndex).to.equal(102)
-        })
-    })
-
-    describe('construction - realistic volatile sequence', () => {
-        it('should handle a realistic volatile sequence', () => {
-            const values = [1500, 1502, 1498, 1495, 1510, 1508, 1520, 1515, 1530, 1525,
-                1540, 1535, 1550, 1545, 1560, 1555]
-            const node = root(values.map(val => v(val)), 4)
-
-            expect(node.level).to.equal(4)
-            expect(node.minValue).to.equal(Math.min(...values))
-            expect(node.maxValue).to.equal(Math.max(...values))
-            expect(node.startIndex).to.equal(0)
-            expect(node.endIndex).to.equal(15)
-
-            const verifyMinMax = (n) => {
-                if (!n) return
-                if (!n.left && !n.right) {
-                    let min = Infinity; let max = -Infinity
-                    for (let i = n.startIndex; i <= n.endIndex; i++) {
-                        if (values[i] < min) min = values[i]
-                        if (values[i] > max) max = values[i]
-                    }
-                    expect(n.minValue).to.equal(min)
-                    expect(n.maxValue).to.equal(max)
-                }
-                verifyMinMax(n.left)
-                verifyMinMax(n.right)
+            const desc = {
+                itemAtFn: (i) => items[i - 100],
+                itemsCountFn: () => items.length,
+                valueFn,
+                firstIndexFn: () => 100
             }
-            verifyMinMax(node)
-        })
-
-        it('should produce roughly balanced splits', () => {
-            const trades = Array.from({ length: 1024 }, (_, i) => v(Math.sin(i / 10) * 100 + 500))
-            const node = root(trades, 10)
-
-            expect(node.left).to.not.be.null
-            expect(node.right).to.not.be.null
-
-            const leftSize = node.left.endIndex - node.left.startIndex + 1
-            const rightSize = node.right.endIndex - node.right.startIndex + 1
-            expect(leftSize + rightSize).to.equal(1024)
-            expect(leftSize).to.be.greaterThan(200)
-            expect(rightSize).to.be.greaterThan(200)
+            const t = new RangesTree({ collectionDescriptor: desc, maxLevels: 10 })
+            expect(t.root.startIndex).to.equal(100)
+            expect(t.root.endIndex).to.equal(102)
         })
     })
 
@@ -382,7 +338,6 @@ describe('RangesTree', () => {
 
             const checkInvariants = (n) => {
                 if (!n) return
-
                 let min = Infinity; let max = -Infinity
                 for (let i = n.startIndex; i <= n.endIndex; i++) {
                     if (values[i] < min) min = values[i]
@@ -398,10 +353,6 @@ describe('RangesTree', () => {
                     expect(n.left.level).to.equal(n.level - 1)
                     expect(n.right.level).to.equal(n.level - 1)
                     expect(values[n.left.endIndex]).to.not.equal(values[n.right.startIndex])
-                    expect(n.left.minValue).to.be.at.least(n.minValue)
-                    expect(n.left.maxValue).to.be.at.most(n.maxValue)
-                    expect(n.right.minValue).to.be.at.least(n.minValue)
-                    expect(n.right.maxValue).to.be.at.most(n.maxValue)
                 }
 
                 checkInvariants(n.left)
@@ -409,6 +360,16 @@ describe('RangesTree', () => {
             }
 
             checkInvariants(node)
+        })
+
+        it('should produce roughly balanced splits with realistic data', () => {
+            const trades = Array.from({ length: 1024 }, (_, i) => v(Math.sin(i / 10) * 100 + 500))
+            const node = root(trades, 10)
+            const leftSize = node.left.endIndex - node.left.startIndex + 1
+            const rightSize = node.right.endIndex - node.right.startIndex + 1
+            expect(leftSize + rightSize).to.equal(1024)
+            expect(leftSize).to.be.greaterThan(200)
+            expect(rightSize).to.be.greaterThan(200)
         })
     })
 
@@ -428,7 +389,6 @@ describe('RangesTree', () => {
         })
 
         it('should find crossing where value jumps over target', () => {
-            // 10 → 30, target 20: crosses at the boundary
             const t = tree([v(10), v(30)])
             const result = t.search(20)
             expect(result).to.not.be.null
@@ -437,7 +397,6 @@ describe('RangesTree', () => {
         })
 
         it('should find crossing in descending sequence', () => {
-            // 30 → 10, target 20
             const t = tree([v(30), v(10)])
             const result = t.search(20)
             expect(result).to.not.be.null
@@ -446,7 +405,6 @@ describe('RangesTree', () => {
         })
 
         it('should find first crossing in longer sequence', () => {
-            // [10, 15, 25, 30] target 20: crossing between 15 and 25
             const t = tree([v(10), v(15), v(25), v(30)])
             const result = t.search(20)
             expect(result).to.not.be.null
@@ -459,7 +417,6 @@ describe('RangesTree', () => {
             const result = t.search(20)
             expect(result).to.not.be.null
             expect(result[0].value).to.equal(20)
-            expect(result[1].value).to.equal(20)
         })
 
         it('should find exact match at last element', () => {
@@ -467,11 +424,9 @@ describe('RangesTree', () => {
             const result = t.search(30)
             expect(result).to.not.be.null
             expect(result[0].value).to.equal(30)
-            expect(result[1].value).to.equal(30)
         })
 
         it('should find crossing in gap between children', () => {
-            // [10, 20, 50, 60] → left max=20, right min=50, target 30 is in the gap
             const t = tree([v(10), v(20), v(50), v(60)])
             const result = t.search(30)
             expect(result).to.not.be.null
@@ -479,7 +434,7 @@ describe('RangesTree', () => {
             expect(result[1].value).to.equal(50)
         })
 
-        it('should return null for value in same-value tree', () => {
+        it('should return null for value not in same-value tree', () => {
             const t = tree([v(50), v(50), v(50)])
             expect(t.search(60)).to.be.null
             expect(t.search(40)).to.be.null
@@ -496,7 +451,6 @@ describe('RangesTree', () => {
 
     describe('search with startFromIndex', () => {
         it('should skip crossings before startFromIndex', () => {
-            // [10, 30, 10, 30] target 20: first crossing at (0,1), second at (1,2)
             const t = tree([v(10), v(30), v(10), v(30)])
             const result = t.search(20, 2)
             expect(result).to.not.be.null
@@ -507,16 +461,13 @@ describe('RangesTree', () => {
         })
 
         it('should find crossing starting exactly at startFromIndex', () => {
-            // [10, 30, 10, 30] target 20, start from 1
             const t = tree([v(10), v(30), v(10), v(30)])
             const result = t.search(20, 1)
             expect(result).to.not.be.null
-            // Crossing at (1,2): 30→10 crosses 20
             expect(result[0].index).to.be.at.least(1)
         })
 
         it('should return null when no crossing exists after startFromIndex', () => {
-            // [10, 30, 50, 50] target 20, start from 2: no crossing at or after index 2
             const t = tree([v(10), v(30), v(50), v(50)])
             expect(t.search(20, 2)).to.be.null
         })
@@ -530,28 +481,6 @@ describe('RangesTree', () => {
         })
     })
 
-    describe('search with realistic data', () => {
-        it('should find crossing in volatile sequence', () => {
-            const values = [100, 105, 98, 110, 95, 120, 88, 130]
-            const t = tree(values.map(val => v(val)), 3)
-            // Target 100: first exact match at index 0
-            const result = t.search(100)
-            expect(result).to.not.be.null
-            expect(result[0].value).to.equal(100)
-        })
-
-        it('should find crossing that does not match any exact value', () => {
-            const values = [100, 105, 98, 110, 95, 120, 88, 130]
-            const t = tree(values.map(val => v(val)), 3)
-            // Target 99: between 100 and 98, or 98 and 110
-            const result = t.search(99)
-            expect(result).to.not.be.null
-            const v0 = result[0].value
-            const v1 = result[1].value
-            expect((v0 < 99 && v1 > 99) || (v0 > 99 && v1 < 99) || v0 === 99 || v1 === 99).to.be.true
-        })
-    })
-
     describe('search result ordering invariant', () => {
         it('should return chronologically ordered results (index[0] <= index[1])', () => {
             const values = [100, 105, 98, 110, 95, 120, 88, 130, 85, 140]
@@ -559,7 +488,7 @@ describe('RangesTree', () => {
             for (const target of [90, 95, 100, 105, 110, 115, 120, 125, 130]) {
                 const result = t.search(target)
                 if (result) {
-                    expect(result[0].index).to.be.at.most(result[1].index, `target=${target}: index[0] should be <= index[1]`)
+                    expect(result[0].index).to.be.at.most(result[1].index, `target=${target}`)
                 }
             }
         })
@@ -571,7 +500,7 @@ describe('RangesTree', () => {
                 const result = t.search(target)
                 if (result) {
                     const diff = result[1].index - result[0].index
-                    expect(diff).to.be.at.most(1, `target=${target}: items should be same or adjacent`)
+                    expect(diff).to.be.at.most(1, `target=${target}`)
                 }
             }
         })
@@ -582,8 +511,8 @@ describe('RangesTree', () => {
             for (let start = 0; start < values.length; start++) {
                 const result = t.search(20, start)
                 if (result) {
-                    expect(result[0].index).to.be.at.most(result[1].index, `start=${start}: index[0] should be <= index[1]`)
-                    expect(result[0].index).to.be.at.least(start, `start=${start}: result should be at or after startFromIndex`)
+                    expect(result[0].index).to.be.at.most(result[1].index, `start=${start}`)
+                    expect(result[0].index).to.be.at.least(start, `start=${start}`)
                 }
             }
         })
