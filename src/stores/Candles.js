@@ -29,6 +29,11 @@ export default class Candles extends Store {
             if (current && current.ordinal === ordinal) {
                 current.update(trade)
             } else {
+                if (current) {
+                    for (let missingOrdinal = current.ordinal + 1; missingOrdinal < ordinal; missingOrdinal++) {
+                        candles.push(Candle.empty(this.#durationSec, missingOrdinal))
+                    }
+                }
                 current = new Candle(this.#durationSec, trade)
                 candles.push(current)
             }

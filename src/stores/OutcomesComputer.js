@@ -19,15 +19,24 @@ export default class OutcomesComputer {
         const localCandlesStore = new Candles(dataDir, symbol, candles[0].durationSec, localTradesStore)
 
         const loadMoreCandles = async (lastCandle) => {
-            const nextDay = Day.nextDay(lastCandle.open.tsUs)
-            await localTradesStore.loadAsync(nextDay, nextDay)
-            await localCandlesStore.loadAsync(nextDay, nextDay)
-            return localCandlesStore.getDay(nextDay).map(ref => fromCandleRef(ref, candles[0].durationSec, localTradesStore))
+            const lastTsUs = lastCandle.isEmpty
+                ? lastCandle.ordinal * candles[0].durationSec * 1_000_000
+                : lastCandle.open.tsUs
+            let nextDay = Day.nextDay(lastTsUs)
+            const maxDay = Day.fromTsUs(Date.now() * 1000)
+            while (nextDay <= maxDay) {
+                await localTradesStore.loadAsync(nextDay, nextDay)
+                await localCandlesStore.loadAsync(nextDay, nextDay)
+                const dayCandles = localCandlesStore.getDay(nextDay).map(ref => fromCandleRef(ref, candles[0].durationSec, localTradesStore))
+                if (dayCandles.length > 0) return dayCandles
+                nextDay = Day.nextDay(nextDay)
+            }
+            return []
         }
 
         const containsPrices = (candle, outcome) => {
             if (outcome.completed) return false
-            if (!outcome.longOrder && candle.containsPrices(outcome.limits.long.tp, outcome.limits.long.sl)) return true
+            if (!outcome.longOrder && candle.containsPrices(outcome.limits.long.sl, outcome.limits.long.tp)) return true
             if (!outcome.shortOrder && candle.containsPrices(outcome.limits.short.tp, outcome.limits.short.sl)) return true
             return false
         }
@@ -80,9 +89,10 @@ export default class OutcomesComputer {
 
             // Need more candles from subsequent days
             while (true) {
-                const newCandles = await loadMoreCandles(candles.at(-1))
+                const lastCandle = candles.at(-1)
+                const newCandles = await loadMoreCandles(lastCandle)
                 if (!newCandles || newCandles.length === 0) {
-                    throw new Error(`No more candle data available to resolve outcome for trade at tsUs=${trade.tsUs}`)
+                    throw new Error(`No more candle data available to resolve outcome for trade at tsUs=${trade.tsUs} price=${trade.price} lastCandle.isEmpty=${lastCandle.isEmpty}`)
                 }
                 candles = candles.concat(newCandles)
                 for (const candle of newCandles) {

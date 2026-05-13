@@ -10,16 +10,32 @@ export default class Candle {
     #low
     #trades
 
+    static #EMPTY = Symbol('empty')
+
+    static empty (durationSec, ordinal) {
+        const candle = new Candle(durationSec, Candle.#EMPTY)
+        candle.#ordinal = ordinal
+        return candle
+    }
+
     constructor (durationSec, firstTrade) {
         if (!isValidDuration(durationSec)) throw new Error(`Invalid candle duration: ${durationSec}`)
-        if (!(firstTrade instanceof Trade)) throw new Error('firstTrade must be a Trade')
         this.#durationSec = durationSec
+        this.#trades = null
+        if (firstTrade === Candle.#EMPTY) {
+            this.#ordinal = 0
+            this.#open = null
+            this.#close = null
+            this.#high = null
+            this.#low = null
+            return
+        }
+        if (!(firstTrade instanceof Trade)) throw new Error('firstTrade must be a Trade')
         this.#ordinal = Math.floor(firstTrade.tsUs / (durationSec * 1_000_000))
         this.#open = firstTrade
         this.#close = firstTrade
         this.#high = firstTrade
         this.#low = firstTrade
-        this.#trades = null
     }
 
     get durationSec () { return this.#durationSec }
@@ -28,6 +44,7 @@ export default class Candle {
     get close () { return this.#close }
     get high () { return this.#high }
     get low () { return this.#low }
+    get isEmpty () { return this.#open === null || this.#close === null || this.#high === null || this.#low === null }
 
     update (trade) {
         if (!(trade instanceof Trade)) throw new Error('trade must be a Trade')
@@ -54,9 +71,9 @@ export default class Candle {
         return this.#trades
     }
 
-    containsPrices (p1, p2) {
-        return ((this.#low.price <= p1) && (p1 <= this.#high.price)) ||
-        ((this.#low.price <= p2) && (p2 <= this.#high.price))
+    containsPrices (dipsBelow, crossesOver) {
+        if (this.isEmpty) return false
+        return this.#low.price <= dipsBelow || this.#high.price >= crossesOver
     }
 }
 
@@ -90,6 +107,17 @@ export class CandleRef {
     get lowDayIndex () { return Number(this.#buf.readBigUInt64LE(56)) }
 
     static writeRecord (buf, offset, candle) {
+        if (candle.isEmpty) {
+            buf.writeBigUInt64LE(0n, offset)
+            buf.writeBigUInt64LE(BigInt(candle.ordinal), offset + 8)
+            buf.writeBigUInt64LE(0n, offset + 16)
+            buf.writeBigUInt64LE(0n, offset + 24)
+            buf.writeBigUInt64LE(0n, offset + 32)
+            buf.writeBigUInt64LE(0n, offset + 40)
+            buf.writeBigUInt64LE(0n, offset + 48)
+            buf.writeBigUInt64LE(0n, offset + 56)
+            return
+        }
         buf.writeBigUInt64LE(BigInt(candle.open.tsUs), offset)
         buf.writeBigUInt64LE(BigInt(candle.open.dayIndex), offset + 8)
         buf.writeBigUInt64LE(BigInt(candle.close.tsUs), offset + 16)
@@ -120,6 +148,9 @@ export function toCandleRefBuffer (candle) {
  * @returns {Candle}
  */
 export function fromCandleRef (ref, durationSec, tradesStore) {
+    if (ref.openTsUs === 0) {
+        return Candle.empty(durationSec, ref.openDayIndex)
+    }
     const open = tradesStore.getAt(ref.openTsUs, ref.openDayIndex)
     const close = tradesStore.getAt(ref.closeTsUs, ref.closeDayIndex)
     const high = tradesStore.getAt(ref.highTsUs, ref.highDayIndex)

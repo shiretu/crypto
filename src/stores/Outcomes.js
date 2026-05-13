@@ -53,6 +53,9 @@ export default class Outcomes extends Store {
                     case 'done':
                         finish(Buffer.from(msg.buffer))
                         break
+                    case 'error':
+                        finish(null, new Error(msg.message))
+                        break
                     default:
                         console.error(`Unknown message type from worker: ${msg.type}`)
                         break
