@@ -13,6 +13,7 @@ import Normalisers from './Normalisers.js'
 export default class DataSet {
     static #ROOT_DIR = path.resolve('data', 'nn', 'datasets')
 
+    #name
     #data
     #fingerprint
     #rootPath
@@ -22,13 +23,19 @@ export default class DataSet {
     #featureSize
     #labelSize
 
-    constructor (data) {
+    constructor (name, data) {
+        if (typeof name !== 'string' || name === '') throw new Error('name is required')
+        if (name.includes('/') || name.includes(path.sep)) throw new Error('name must not contain path separators')
         if (!data) throw new Error('data is required')
+        this.#name = name
         this.#data = data
         this.#fingerprint = Fingerprint.compute(data)
-        this.#rootPath = path.join(DataSet.#ROOT_DIR, this.#fingerprint)
+        // data/nn/datasets/<name>/<fingerprint>/ — name is human-readable
+        // grouping, fingerprint disambiguates recipe variants under it.
+        this.#rootPath = path.join(DataSet.#ROOT_DIR, this.#name, this.#fingerprint)
     }
 
+    get name () { return this.#name }
     get data () { return this.#data }
     get samplesCount () { return this.#samplesCount }
     get featuresCount () { return this.#featuresCount }
@@ -42,7 +49,7 @@ export default class DataSet {
         return await this.#read()
     }
 
-    // True if data/nn/datasets/<fingerprint>/ already contains a produced dataset.
+    // True if data/nn/datasets/<name>/<fingerprint>/ already contains a produced dataset.
     // A produced dataset is identified by the presence of manifest.json + samples.bin.
     #exists () {
         return fs.existsSync(path.join(this.#rootPath, 'manifest.json')) &&

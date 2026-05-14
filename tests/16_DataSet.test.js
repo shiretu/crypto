@@ -5,6 +5,7 @@ import DataSet from '../src/nn/DataSet.js'
 import Fingerprint from '../src/utils/Fingerprint.js'
 
 const DATASETS_ROOT = path.resolve('data', 'nn', 'datasets')
+const TEST_NAME = 'testDataSet'
 
 const sampleData = (overrides = {}) => ({
     symbol: 'binance:eth:usdc',
@@ -21,38 +22,55 @@ const sampleData = (overrides = {}) => ({
 
 describe('DataSet', () => {
     describe('constructor validation', () => {
+        it('should reject missing name', () => {
+            expect(() => new DataSet()).to.throw('name is required')
+        })
+
+        it('should reject empty name', () => {
+            expect(() => new DataSet('', sampleData())).to.throw('name is required')
+        })
+
+        it('should reject name with path separator', () => {
+            expect(() => new DataSet('a/b', sampleData())).to.throw('name must not contain path separators')
+        })
+
         it('should reject missing data', () => {
-            expect(() => new DataSet()).to.throw('data is required')
+            expect(() => new DataSet(TEST_NAME)).to.throw('data is required')
         })
 
         it('should reject null data', () => {
-            expect(() => new DataSet(null)).to.throw('data is required')
+            expect(() => new DataSet(TEST_NAME, null)).to.throw('data is required')
         })
 
         it('should accept a non-empty data object', () => {
-            expect(() => new DataSet(sampleData())).to.not.throw()
+            expect(() => new DataSet(TEST_NAME, sampleData())).to.not.throw()
         })
 
         it('should not create any filesystem artifact on construction', () => {
             const data = sampleData({ symbol: 'binance:btc:usdc' })
             const fp = Fingerprint.compute(data)
-            const expectedDir = path.join(DATASETS_ROOT, fp)
+            const expectedDir = path.join(DATASETS_ROOT, TEST_NAME, fp)
             fs.rmSync(expectedDir, { recursive: true, force: true })
             // eslint-disable-next-line no-new
-            new DataSet(data)
+            new DataSet(TEST_NAME, data)
             expect(fs.existsSync(expectedDir)).to.equal(false)
         })
     })
 
     describe('public surface', () => {
+        it('should expose name via getter', () => {
+            const ds = new DataSet(TEST_NAME, sampleData())
+            expect(ds.name).to.equal(TEST_NAME)
+        })
+
         it('should expose data via getter', () => {
             const data = sampleData()
-            const ds = new DataSet(data)
+            const ds = new DataSet(TEST_NAME, data)
             expect(ds.data).to.equal(data)
         })
 
         it('should have geometry getters undefined before load()', () => {
-            const ds = new DataSet(sampleData())
+            const ds = new DataSet(TEST_NAME, sampleData())
             expect(ds.samplesCount).to.equal(undefined)
             expect(ds.featuresCount).to.equal(undefined)
             expect(ds.labelsCount).to.equal(undefined)
@@ -61,7 +79,7 @@ describe('DataSet', () => {
         })
 
         it('should only expose load() as the public action (no produce/read/exists)', () => {
-            const ds = new DataSet(sampleData())
+            const ds = new DataSet(TEST_NAME, sampleData())
             expect(ds.load).to.be.a('function')
             expect(ds.produce).to.equal(undefined)
             expect(ds.read).to.equal(undefined)
@@ -73,7 +91,7 @@ describe('DataSet', () => {
         it('should populate geometry getters from manifest.json and return samples.bin', async () => {
             const data = sampleData({ symbol: 'binance:fake:usdc', windowSize: 3, samplesCount: 5 })
             const fp = Fingerprint.compute(data)
-            const dir = path.join(DATASETS_ROOT, fp)
+            const dir = path.join(DATASETS_ROOT, TEST_NAME, fp)
             fs.rmSync(dir, { recursive: true, force: true })
             fs.mkdirSync(dir, { recursive: true })
 
@@ -97,7 +115,7 @@ describe('DataSet', () => {
             fs.writeFileSync(path.join(dir, 'samples.bin'), buf)
 
             try {
-                const ds = new DataSet(data)
+                const ds = new DataSet(TEST_NAME, data)
                 const returnedBuf = await ds.load()
 
                 expect(ds.samplesCount).to.equal(data.samplesCount)

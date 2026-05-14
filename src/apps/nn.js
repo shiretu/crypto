@@ -13,7 +13,6 @@ const main = async () => {
         console.error(`  --config    : path to the NN config file (default: ${DEFAULT_CONFIG_PATH})`)
         process.exit(1)
     }
-
     // ── Parse CLI args ───────────────────────────────────────────────
     const rawArgs = process.argv.slice(2)
     let target = null
@@ -55,6 +54,10 @@ const main = async () => {
         console.error('Config must have a "neuralNetworks" array of architecture names.')
         process.exit(1)
     }
+    if (!Array.isArray(config.dataSets)) {
+        console.error('Config must have a "dataSets" array of named dataset recipes.')
+        process.exit(1)
+    }
     if (!Array.isArray(config.personalities)) {
         console.error('Config must have a "personalities" array of personality objects.')
         process.exit(1)
@@ -72,13 +75,35 @@ const main = async () => {
         process.exit(1)
     }
 
+    // Resolve the personality's dataSet reference into the actual recipe.
+    // The dataSet name is stripped before passing it downstream so two
+    // personalities pointing at the same recipe share the same on-disk
+    // fingerprint folder (data/nn/datasets/<fp>/).
+    if (typeof personality.dataSet !== 'string') {
+        console.error(`Personality "${personalityName}" must have a string "dataSet" field referencing a config.dataSets entry.`)
+        process.exit(1)
+    }
+    const dataSetEntry = config.dataSets.find(d => d.name === personality.dataSet)
+    if (!dataSetEntry) {
+        const names = config.dataSets.map(d => d.name).join(', ')
+        console.error(`DataSet "${personality.dataSet}" referenced by personality "${personalityName}" not in config.dataSets: [${names}]`)
+        process.exit(1)
+    }
+    const { name: dataSetName, ...dataRecipe } = dataSetEntry
+    const resolvedPersonality = {
+        name: personality.name,
+        data: dataRecipe,
+        train: personality.train
+    }
+
     // ── Run ──────────────────────────────────────────────────────────
-    const nnConfig = { name: archName, personality }
+    const nnConfig = { name: archName, personality: resolvedPersonality }
 
     console.log(`Architecture: ${archName}`)
-    console.log(`Personality:  ${personality.name}`)
+    console.log(`Personality:  ${resolvedPersonality.name}`)
+    console.log(`DataSet:      ${dataSetName}`)
 
-    const ds = new DataSet(personality.data)
+    const ds = new DataSet(dataSetName, resolvedPersonality.data)
     await ds.load()
 
     let nn

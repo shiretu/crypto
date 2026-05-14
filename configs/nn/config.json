@@ -2,21 +2,25 @@
     "neuralNetworks": [
         "myFirstNn"
     ],
+    "dataSets": [
+        {
+            "name": "someDataSet",
+            "symbol": "binance:eth:usdc",
+            "candleDuration": 300,
+            "windowSize": 60,
+            "tpPercent": 1.5,
+            "slPercent": 1,
+            "randomWindowPosition": true,
+            "startDay": "2023-01-01",
+            "endDay": "2026-05-12",
+            "samplesCount": 0,
+            "normalisationFunction": "percentFromMin"
+        }
+    ],
     "personalities": [
         {
             "name": "littleBoy",
-            "data": {
-                "symbol": "binance:eth:usdc",
-                "candleDuration": 300,
-                "windowSize": 60,
-                "tpPercent": 1.5,
-                "slPercent": 1,
-                "randomWindowPosition": true,
-                "startDay": "2023-01-01",
-                "endDay": "2026-05-12",
-                "samplesCount": 0,
-                "normalisationFunction": "percentFromMin"
-            },
+            "dataSet": "someDataSet",
             "train": {
                 "learningRate": 0.01,
                 "epochs": 10,
