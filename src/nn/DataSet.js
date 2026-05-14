@@ -1,6 +1,14 @@
 import fs from 'fs'
 import path from 'path'
 import Fingerprint from '../utils/Fingerprint.js'
+import Day from '../utils/Day.js'
+import { resolveSymbol } from '../core/resolveSymbol.js'
+import Trades from '../stores/Trades.js'
+import Candles from '../stores/Candles.js'
+import Outcomes from '../stores/Outcomes.js'
+import { fromCandleRef } from '../core/Candle.js'
+import { fromOutcomeRef } from '../core/Outcome.js'
+import Normalisers from './Normalisers.js'
 
 export default class DataSet {
     static #ROOT_DIR = path.resolve('data', 'nn', 'datasets')
@@ -35,22 +43,159 @@ export default class DataSet {
     }
 
     // True if data/nn/datasets/<fingerprint>/ already contains a produced dataset.
-    // TODO: decide on the marker (e.g. presence of recipe.json + samples.bin).
+    // A produced dataset is identified by the presence of manifest.json + samples.bin.
     #exists () {
-        return fs.existsSync(this.#rootPath)
+        return fs.existsSync(path.join(this.#rootPath, 'manifest.json')) &&
+            fs.existsSync(path.join(this.#rootPath, 'samples.bin'))
     }
 
     // Generate the dataset from scratch and persist it under #rootPath.
-    // TODO: load candles for data.symbol over [startDay, endDay], compute outcomes
-    // using tpPercent/slPercent, slice windows of length windowSize (optionally with
-    // randomWindowPosition), draw samplesCount samples, write recipe.json + samples.bin.
+    // Naive v1: load candles for symbol over [startDay, endDay], iterate (sequentially or randomly)
+    // through trigger candles, build a window of windowSize OHLC candles ending at the trigger,
+    // look up outcome at the trigger candle's close trade, emit [features..., longWon, shortWon].
     async #produce () {
-        throw new Error('#produce() not implemented')
+        const {
+            symbol: symbolId,
+            candleDuration,
+            windowSize,
+            tpPercent,
+            slPercent,
+            randomWindowPosition,
+            startDay,
+            endDay,
+            samplesCount: wantedSamplesCount,
+            normalisationFunction
+        } = this.#data
+
+        if (!Object.hasOwn(Normalisers, normalisationFunction) ||
+            typeof Normalisers[normalisationFunction] !== 'function') {
+            throw new Error(`Unknown normalisationFunction: ${normalisationFunction}`)
+        }
+        const normalise = Normalisers[normalisationFunction]
+
+        const symbol = resolveSymbol(symbolId)
+        const startTsUs = Day.fromStr(startDay)
+        const endTsUs = Day.fromStr(endDay)
+
+        const tradesStore = new Trades('data', symbol)
+        await tradesStore.loadAsync(startTsUs, endTsUs)
+        const candlesStore = new Candles('data', symbol, candleDuration, tradesStore)
+        await candlesStore.loadAsync(startTsUs, endTsUs)
+        const outcomesStore = new Outcomes('data', symbol, tpPercent, slPercent)
+        await outcomesStore.loadAsync(startTsUs, endTsUs)
+
+        // Build the candidate trigger pool over the full loaded range, then walk
+        // it (shuffled or sequential) until we've collected `wantedSamplesCount`
+        // good samples. A trigger is rejected — without building the full window
+        // — as soon as we encounter an empty (gap-filler) candle inside it, or
+        // when the outcome lookup falls outside the loaded data. This is much
+        // better than pre-slicing the pool and ending up short on samples.
+        const triggerPool = Array.from(
+            { length: candlesStore.count - windowSize },
+            (_, i) => i + windowSize
+        )
+        if (randomWindowPosition) {
+            for (let i = triggerPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                ;[triggerPool[i], triggerPool[j]] = [triggerPool[j], triggerPool[i]]
+            }
+        }
+
+        const samples = []
+        for (const triggerIdx of triggerPool) {
+            if (samples.length >= wantedSamplesCount) break
+            const windowStart = triggerIdx - windowSize
+
+            // Build the window. Abandon the moment we hit an empty candle:
+            // its prices are null and its baseVolume/tradeCount are 0, both
+            // of which would crash or be refused downstream.
+            const candles = []
+            let aborted = false
+            for (let i = 0; i < windowSize; i++) {
+                const candle = fromCandleRef(candlesStore.get(windowStart + i), candleDuration, tradesStore)
+                if (candle.isEmpty) { aborted = true; break }
+                candles.push(candle)
+            }
+            if (aborted) continue
+
+            // Look up the outcome at the trigger candle's close trade. If it
+            // resolves past the loaded range (TP/SL hits after endDay), drop.
+            const openTrade = candles.at(-1).close
+            let outcome
+            try {
+                const outcomeRef = outcomesStore.getAt(openTrade.tsUs, openTrade.dayIndex)
+                outcome = fromOutcomeRef(outcomeRef, tpPercent, slPercent, tradesStore)
+            } catch {
+                continue
+            }
+            samples.push({ candles, outcome })
+        }
+
+        // ── Normalize and serialize ──────────────────────────────────
+        // The recipe-selected Normalisers.<normalisationFunction> produces
+        // the complete on-disk record for each sample:
+        //     { features: number[], labels: number[] }
+        // DataSet is intentionally agnostic about what those floats mean — it
+        // takes featuresCount/labelsCount from the first successful sample
+        // and writes features-then-labels into samples.bin (little-endian
+        // float32). A normaliser may throw to refuse a sample, in which case
+        // we silently drop it.
+        const FLOAT_SIZE = 4
+        let featuresCount = 0
+        let labelsCount = 0
+        let sampleBytes = 0
+        let buf = null
+        let offset = 0
+        let writtenSamples = 0
+        for (const sample of samples) {
+            let result
+            try {
+                result = normalise(sample)
+            } catch {
+                continue
+            }
+            const { features, labels } = result
+            if (buf === null) {
+                featuresCount = features.length
+                labelsCount = labels.length
+                sampleBytes = (featuresCount + labelsCount) * FLOAT_SIZE
+                // Worst-case alloc; we slice down at the end.
+                buf = Buffer.alloc(sampleBytes * samples.length)
+            }
+            for (let i = 0; i < features.length; i++) {
+                buf.writeFloatLE(features[i], offset); offset += FLOAT_SIZE
+            }
+            for (let i = 0; i < labels.length; i++) {
+                buf.writeFloatLE(labels[i], offset); offset += FLOAT_SIZE
+            }
+            writtenSamples++
+        }
+        const trimmedBuf = buf === null
+            ? Buffer.alloc(0)
+            : buf.subarray(0, writtenSamples * sampleBytes)
+
+        // ── Persist ──────────────────────────────────────────────────
+        fs.mkdirSync(this.#rootPath, { recursive: true })
+        fs.writeFileSync(path.join(this.#rootPath, 'recipe.json'), JSON.stringify(this.#data, null, 2))
+        fs.writeFileSync(path.join(this.#rootPath, 'manifest.json'), JSON.stringify({
+            samplesCount: writtenSamples,
+            featuresCount,
+            featureSize: FLOAT_SIZE,
+            labelsCount,
+            labelSize: FLOAT_SIZE
+        }, null, 2))
+        fs.writeFileSync(path.join(this.#rootPath, 'samples.bin'), trimmedBuf)
     }
 
     // Read a previously produced dataset from #rootPath.
-    // TODO: read recipe.json (sanity-check it matches this.#data), then mmap/stream samples.bin.
+    // Loads manifest.json into geometry getters and returns the samples.bin Buffer.
     async #read () {
-        throw new Error('#read() not implemented')
+        const manifest = JSON.parse(fs.readFileSync(path.join(this.#rootPath, 'manifest.json'), 'utf8'))
+        this.#samplesCount = manifest.samplesCount
+        this.#featuresCount = manifest.featuresCount
+        this.#featureSize = manifest.featureSize
+        this.#labelsCount = manifest.labelsCount
+        this.#labelSize = manifest.labelSize
+        return fs.readFileSync(path.join(this.#rootPath, 'samples.bin'))
     }
 }

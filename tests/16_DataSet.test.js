@@ -69,33 +69,46 @@ describe('DataSet', () => {
         })
     })
 
-    describe('load() stub behaviour', () => {
-        it('should throw "#produce() not implemented" when the dataset folder is missing', async () => {
-            const data = sampleData({ symbol: 'binance:sol:usdc' })
-            const fp = Fingerprint.compute(data)
-            fs.rmSync(path.join(DATASETS_ROOT, fp), { recursive: true, force: true })
-            const ds = new DataSet(data)
-            try {
-                await ds.load()
-                expect.fail('expected load() to throw')
-            } catch (err) {
-                expect(err.message).to.match(/#produce\(\) not implemented/)
-            }
-        })
-
-        it('should throw "#read() not implemented" when the dataset folder already exists', async () => {
-            const data = sampleData({ symbol: 'binance:ada:usdc' })
+    describe('load() against a pre-existing on-disk dataset', () => {
+        it('should populate geometry getters from manifest.json and return samples.bin', async () => {
+            const data = sampleData({ symbol: 'binance:fake:usdc', windowSize: 3, samplesCount: 5 })
             const fp = Fingerprint.compute(data)
             const dir = path.join(DATASETS_ROOT, fp)
+            fs.rmSync(dir, { recursive: true, force: true })
             fs.mkdirSync(dir, { recursive: true })
+
+            // Manually lay out a manifest + samples.bin matching the geometry contract.
+            const featuresCount = data.windowSize * 4 // OHLC per candle
+            const featureSize = 4
+            const labelsCount = 2
+            const labelSize = 4
+            const sampleSize = featuresCount * featureSize + labelsCount * labelSize
+            const buf = Buffer.alloc(sampleSize * data.samplesCount)
+            for (let i = 0; i < buf.length; i += 4) buf.writeFloatLE(i / 4, i)
+
+            fs.writeFileSync(path.join(dir, 'recipe.json'), JSON.stringify(data))
+            fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({
+                samplesCount: data.samplesCount,
+                featuresCount,
+                featureSize,
+                labelsCount,
+                labelSize
+            }))
+            fs.writeFileSync(path.join(dir, 'samples.bin'), buf)
+
             try {
                 const ds = new DataSet(data)
-                try {
-                    await ds.load()
-                    expect.fail('expected load() to throw')
-                } catch (err) {
-                    expect(err.message).to.match(/#read\(\) not implemented/)
-                }
+                const returnedBuf = await ds.load()
+
+                expect(ds.samplesCount).to.equal(data.samplesCount)
+                expect(ds.featuresCount).to.equal(featuresCount)
+                expect(ds.featureSize).to.equal(featureSize)
+                expect(ds.labelsCount).to.equal(labelsCount)
+                expect(ds.labelSize).to.equal(labelSize)
+                expect(Buffer.isBuffer(returnedBuf)).to.equal(true)
+                expect(returnedBuf.length).to.equal(sampleSize * data.samplesCount)
+                expect(returnedBuf.readFloatLE(0)).to.equal(0)
+                expect(returnedBuf.readFloatLE(4)).to.equal(1)
             } finally {
                 fs.rmSync(dir, { recursive: true, force: true })
             }
@@ -103,23 +116,10 @@ describe('DataSet', () => {
     })
 
     describe('fingerprint stability (via folder lookup)', () => {
-        it('should pick the same folder for equal data objects regardless of key order', async () => {
+        it('should pick the same folder for equal data objects regardless of key order', () => {
             const dataA = { a: 1, b: 2, c: { x: 1, y: 2 } }
             const dataB = { c: { y: 2, x: 1 }, b: 2, a: 1 }
-            const fpA = Fingerprint.compute(dataA)
-            const fpB = Fingerprint.compute(dataB)
-            expect(fpA).to.equal(fpB)
-            // Pre-create the folder so load() reaches the #read() stub for both.
-            const dir = path.join(DATASETS_ROOT, fpA)
-            fs.mkdirSync(dir, { recursive: true })
-            try {
-                const dsA = new DataSet(dataA)
-                const dsB = new DataSet(dataB)
-                await dsA.load().catch(e => expect(e.message).to.match(/#read\(\) not implemented/))
-                await dsB.load().catch(e => expect(e.message).to.match(/#read\(\) not implemented/))
-            } finally {
-                fs.rmSync(dir, { recursive: true, force: true })
-            }
+            expect(Fingerprint.compute(dataA)).to.equal(Fingerprint.compute(dataB))
         })
 
         it('should pick different folders for differing data', () => {

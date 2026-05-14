@@ -10,7 +10,7 @@ const CandleDuration = Object.freeze({
     HOUR_4: 14400
 })
 
-const VALID_DURATIONS = new Set(Object.values(CandleDuration))
+const VALID_DURATIONS = new Set(Object.values(CandleDuration).filter(v => typeof v === 'number' && v > 0 && (24 * 3600) % v === 0))
 
 export const isValidDuration = (sec) => VALID_DURATIONS.has(sec)
 

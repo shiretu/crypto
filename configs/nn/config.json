@@ -14,7 +14,8 @@
                 "randomWindowPosition": true,
                 "startDay": "2023-01-01",
                 "endDay": "2023-12-31",
-                "samplesCount": 1000000
+                "samplesCount": 25000,
+                "normalisationFunction": "percentFromMin"
             },
             "train": {
                 "learningRate": 0.01,
