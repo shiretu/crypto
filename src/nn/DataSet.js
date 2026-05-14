@@ -104,79 +104,96 @@ export default class DataSet {
             }
         }
 
-        const samples = []
-        for (const triggerIdx of triggerPool) {
-            if (!takeAll && samples.length >= wantedSamplesCount) break
-            const windowStart = triggerIdx - windowSize
-
-            // Build the window. Abandon the moment we hit an empty candle:
-            // its prices are null and its baseVolume/tradeCount are 0, both
-            // of which would crash or be refused downstream.
-            const candles = []
-            let aborted = false
-            for (let i = 0; i < windowSize; i++) {
-                const candle = fromCandleRef(candlesStore.get(windowStart + i), candleDuration, tradesStore)
-                if (candle.isEmpty) { aborted = true; break }
-                candles.push(candle)
-            }
-            if (aborted) continue
-
-            // Hydrate the outcome at the trigger candle's close trade.
-            // ensureTrades pulls the close-trade days into tradesStore (TP/SL
-            // can resolve past endDay); fromOutcomeRef then does the three
-            // sync lookups. Any throw here is a real integrity bug.
-            const openTrade = candles.at(-1).close
-            const outcomeRef = outcomesStore.getAt(openTrade.tsUs, openTrade.dayIndex)
-            await outcomeRef.ensureTrades(tradesStore)
-            const outcome = fromOutcomeRef(outcomeRef, tpPercent, slPercent, tradesStore)
-            samples.push({ candles, outcome })
-        }
-
-        // ── Normalize and serialize ──────────────────────────────────
-        // The recipe-selected Normalisers.<normalisationFunction> produces
-        // the complete on-disk record for each sample:
-        //     { features: number[], labels: number[] }
-        // DataSet is intentionally agnostic about what those floats mean — it
-        // takes featuresCount/labelsCount from the first successful sample
-        // and writes features-then-labels into samples.bin (little-endian
-        // float32). A normaliser may throw to refuse a sample, in which case
-        // we silently drop it.
+        // ── Stream samples to disk ──────────────────────────────────
+        // We don't accumulate samples in memory — a full-year run is
+        // hundreds of MB of candle objects. Each successful sample is
+        // normalised and its bytes appended to samples.bin.tmp right
+        // away; the tmp file is renamed into place after the loop. The
+        // recipe-selected Normalisers.<normalisationFunction> produces
+        // the on-disk record:  { features: number[], labels: number[] }
+        // DataSet is intentionally agnostic about what those floats
+        // mean — it locks featuresCount/labelsCount from the first
+        // successful sample and writes features-then-labels (little-
+        // endian float32). A normaliser may throw to refuse a sample;
+        // we silently skip it.
         const FLOAT_SIZE = 4
         let featuresCount = 0
         let labelsCount = 0
-        let sampleBytes = 0
-        let buf = null
-        let offset = 0
+        let sampleBuf = null // reusable per-sample buffer
         let writtenSamples = 0
-        for (const sample of samples) {
-            let result
-            try {
-                result = normalise(sample)
-            } catch {
-                continue
-            }
-            const { features, labels } = result
-            if (buf === null) {
-                featuresCount = features.length
-                labelsCount = labels.length
-                sampleBytes = (featuresCount + labelsCount) * FLOAT_SIZE
-                // Worst-case alloc; we slice down at the end.
-                buf = Buffer.alloc(sampleBytes * samples.length)
-            }
-            for (let i = 0; i < features.length; i++) {
-                buf.writeFloatLE(features[i], offset); offset += FLOAT_SIZE
-            }
-            for (let i = 0; i < labels.length; i++) {
-                buf.writeFloatLE(labels[i], offset); offset += FLOAT_SIZE
-            }
-            writtenSamples++
-        }
-        const trimmedBuf = buf === null
-            ? Buffer.alloc(0)
-            : buf.subarray(0, writtenSamples * sampleBytes)
 
-        // ── Persist ──────────────────────────────────────────────────
+        // Upper bound for the progress denominator. In takeAll mode the
+        // theoretical ceiling is the entire trigger pool; with a cap it's
+        // whichever is smaller. Empty-candle aborts and normaliser refusals
+        // can leave the actual count below this.
+        const targetSamples = takeAll
+            ? triggerPool.length
+            : Math.min(wantedSamplesCount, triggerPool.length)
+
         fs.mkdirSync(this.#rootPath, { recursive: true })
+        const finalBinPath = path.join(this.#rootPath, 'samples.bin')
+        const tmpBinPath = finalBinPath + '.tmp'
+        const fd = fs.openSync(tmpBinPath, 'w')
+
+        try {
+            for (const triggerIdx of triggerPool) {
+                if (!takeAll && writtenSamples >= wantedSamplesCount) break
+                const windowStart = triggerIdx - windowSize
+
+                // Build the window. Abandon the moment we hit an empty candle:
+                // its prices are null and its baseVolume/tradeCount are 0, both
+                // of which would crash or be refused downstream.
+                const candles = []
+                let aborted = false
+                for (let i = 0; i < windowSize; i++) {
+                    const candle = fromCandleRef(candlesStore.get(windowStart + i), candleDuration, tradesStore)
+                    if (candle.isEmpty) { aborted = true; break }
+                    candles.push(candle)
+                }
+                if (aborted) continue
+
+                // Hydrate the outcome at the trigger candle's close trade.
+                // ensureTrades pulls the close-trade days into tradesStore (TP/SL
+                // can resolve past endDay); fromOutcomeRef then does the three
+                // sync lookups. Any throw here is a real integrity bug.
+                const openTrade = candles.at(-1).close
+                const outcomeRef = outcomesStore.getAt(openTrade.tsUs, openTrade.dayIndex)
+                await outcomeRef.ensureTrades(tradesStore)
+                const outcome = fromOutcomeRef(outcomeRef, tpPercent, slPercent, tradesStore)
+
+                // Normalise + write. A throw means "refuse this sample" — skip.
+                let result
+                try {
+                    result = normalise({ candles, outcome })
+                } catch {
+                    continue
+                }
+                const { features, labels } = result
+                if (sampleBuf === null) {
+                    featuresCount = features.length
+                    labelsCount = labels.length
+                    sampleBuf = Buffer.alloc((featuresCount + labelsCount) * FLOAT_SIZE)
+                }
+                let offset = 0
+                for (let i = 0; i < features.length; i++) {
+                    sampleBuf.writeFloatLE(features[i], offset); offset += FLOAT_SIZE
+                }
+                for (let i = 0; i < labels.length; i++) {
+                    sampleBuf.writeFloatLE(labels[i], offset); offset += FLOAT_SIZE
+                }
+                fs.writeSync(fd, sampleBuf)
+                writtenSamples++
+
+                if (writtenSamples % 1000 === 0) {
+                    process.stdout.write(`\r  written ${writtenSamples}/${targetSamples} samples...`)
+                }
+            }
+        } finally {
+            fs.closeSync(fd)
+        }
+        if (writtenSamples >= 1000) process.stdout.write('\n')
+
+        // ── Persist manifest + atomically swap tmp into place ───────
         fs.writeFileSync(path.join(this.#rootPath, 'recipe.json'), JSON.stringify(this.#data, null, 2))
         fs.writeFileSync(path.join(this.#rootPath, 'manifest.json'), JSON.stringify({
             samplesCount: writtenSamples,
@@ -185,7 +202,7 @@ export default class DataSet {
             labelsCount,
             labelSize: FLOAT_SIZE
         }, null, 2))
-        fs.writeFileSync(path.join(this.#rootPath, 'samples.bin'), trimmedBuf)
+        fs.renameSync(tmpBinPath, finalBinPath)
     }
 
     // Read a previously produced dataset from #rootPath.
