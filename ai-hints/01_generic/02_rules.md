@@ -30,7 +30,7 @@ When the user asks for a git commit (e.g. "commit", "commit and push", "let's ma
 2. **Update unit tests** under `tests/`:
    - Add tests for new public classes / functions / CLI shapes.
    - Update existing tests whose subject changed (renames, signature changes, new fields).
-   - Preserve dependency ordering (lower-numbered tests must remain passing before higher ones are run). If a new dependency must run before an existing test, **renumber with `git mv`** rather than appending out of order.
+   - **Numbering is dependency order and must be contiguous.** Lower-numbered tests must remain passing before higher ones are run, AND the sequence `NN_*.test.js` must have no gaps (`00_…` through `NN_…` with every number present). When inserting a test in the middle, `git mv` higher-numbered tests up to make room. When removing or merging tests, `git mv` higher-numbered tests down to close the gap. Never leave an unused slot just because higher-numbered tests once occupied it.
 3. **Run `npm test`** and confirm everything passes (and report the count).
 
 Only after these three steps proceed with the commit.

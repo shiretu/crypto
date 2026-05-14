@@ -41,7 +41,7 @@ export default class Store {
     get maxDay () { return this.#maxDay }
     get recordSize () { return this.#recordSize }
 
-    readTsUs (buf, offset) {
+    #readTsUs (buf, offset) {
         return Number(buf.readBigUInt64LE(offset) & 0x7FFFFFFFFFFFFFFFn)
     }
 
@@ -152,19 +152,21 @@ export default class Store {
 
     #reindex () {
         let index = 0
+        let firstEntry = null
+        let lastEntry = null
         for (let day = this.#minDay; day <= this.#maxDay; day += Day.usPerDay) {
             const entry = this.#buffers.get(day)
             if (!entry) continue
             entry.absoluteStartIndex = index
             index += entry.count
+            if (entry.count > 0) {
+                if (firstEntry === null) firstEntry = entry
+                lastEntry = entry
+            }
         }
         this.#count = index
-
-        const minEntry = this.#buffers.get(this.#minDay)
-        this.#firstTsUs = minEntry && minEntry.count > 0 ? this.readTsUs(minEntry.buffer, 0) : null
-
-        const maxEntry = this.#buffers.get(this.#maxDay)
-        this.#lastTsUs = maxEntry && maxEntry.count > 0 ? this.readTsUs(maxEntry.buffer, maxEntry.buffer.length - this.#recordSize) : null
+        this.#firstTsUs = firstEntry ? this.#readTsUs(firstEntry.buffer, 0) : null
+        this.#lastTsUs = lastEntry ? this.#readTsUs(lastEntry.buffer, lastEntry.buffer.length - this.#recordSize) : null
     }
 
     /**
@@ -223,9 +225,9 @@ export default class Store {
         if (!entry) throw new Error(`Day not loaded for tsUs=${tsUs}`)
         if (dayIndex >= entry.count) throw new Error(`dayIndex ${dayIndex} out of bounds (day has ${entry.count} records)`)
         const offset = dayIndex * this.#recordSize
-        const record = this.makeRecord(entry.buffer, offset, dayIndex, entry.absoluteStartIndex + dayIndex)
-        if (record.tsUs !== tsUs) throw new Error(`tsUs mismatch at dayIndex ${dayIndex}: expected ${tsUs}, got ${record.tsUs}`)
-        return record
+        const actualTsUs = this.#readTsUs(entry.buffer, offset)
+        if (actualTsUs !== tsUs) throw new Error(`tsUs mismatch at dayIndex ${dayIndex}: expected ${tsUs}, got ${actualTsUs}`)
+        return this.makeRecord(entry.buffer, offset, dayIndex, entry.absoluteStartIndex + dayIndex)
     }
 
     /**
@@ -248,7 +250,11 @@ export default class Store {
     }
 
     /**
-     * Binary search for a record by timestamp
+     * Binary search for a record by timestamp.
+     * Records with tsUs === 0 are treated as sentinels (e.g. empty candle slots
+     * inserted to keep a fixed cadence). They are skipped during the search:
+     * when the midpoint lands on a sentinel we probe forward for the next real
+     * record to decide which half to recurse into.
      * @param {number} tsUs
      * @returns {object}
      */
@@ -259,8 +265,18 @@ export default class Store {
         let lo = 0
         let hi = entry.count - 1
         while (lo <= hi) {
-            const mid = (lo + hi) >>> 1
-            const midTsUs = this.readTsUs(entry.buffer, mid * this.#recordSize)
+            let mid = (lo + hi) >>> 1
+            let midTsUs = this.#readTsUs(entry.buffer, mid * this.#recordSize)
+            if (midTsUs === 0) {
+                let probe = mid + 1
+                while (probe <= hi && this.#readTsUs(entry.buffer, probe * this.#recordSize) === 0) probe++
+                if (probe > hi) {
+                    hi = mid - 1
+                    continue
+                }
+                mid = probe
+                midTsUs = this.#readTsUs(entry.buffer, mid * this.#recordSize)
+            }
             if (midTsUs === tsUs) return this.makeRecord(entry.buffer, mid * this.#recordSize, mid, entry.absoluteStartIndex + mid)
             if (midTsUs < tsUs) lo = mid + 1
             else hi = mid - 1

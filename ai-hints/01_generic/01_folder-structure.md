@@ -85,6 +85,7 @@ The chosen solution: keep the real folder **outside** the repo (`../crypto_data`
 - **Binary records** are little-endian, fixed-size, accessed via Buffer views (no per-record allocation).
 - **Tests are dependency-ordered**; lower-numbered tests must remain passing before higher ones are run.
 - **Timestamps** are microseconds since Unix epoch (`tsUs`), stored as UInt64LE.
+- **Record layout invariant**: every store's binary record begins with its `tsUs` in the first 8 bytes (UInt64LE). `Store` relies on this to read timestamps generically without depending on the record class shape. The value `0` is reserved as a sentinel for "uninitialized" (e.g. empty candle slots filling cadence gaps); `findByTsUs` skips sentinel slots during binary search.
 - **Symbol IDs** are formatted as `<exchange>:<base>:<quote>` (e.g. `binance:eth:usdc`).
 - **NN runtime artifacts** live in `data/nn/runtimes/...` (outside the repo via the `data` symlink); architectures are in `configs/nn/...`; prepared datasets in `data/nn/datasets/...`.
 - **Fingerprints** (stable short hashes of JSON-serialisable configs) are computed via `src/utils/Fingerprint.js`. Both `NeuralNetwork` (over `{data, train}`) and `DataSet` (over `data`) use it.
