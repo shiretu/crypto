@@ -10,6 +10,15 @@ Uncategorized brain-dump of rules, conventions, and constraints. Drop entries he
 
 - **Use arrow functions, not the `function` keyword.** Top-level helpers become `const foo = (...) => {...}` (or `export const foo = ...`). Class methods stay as methods. Applies to all code outside `old/`.
 
+## Data directory is read-only
+
+**Never delete, rename, or overwrite anything under `data/`** without explicit permission from the user. This applies to **all** subtrees: `data/trades/`, `data/candles/`, `data/outcomes/`, `data/nn/`, and anything added later.
+
+- That folder contains expensive-to-produce assets (downloaded trade history, computed candles, computed outcomes, produced datasets, trained runtimes).
+- Do **not** `rm`, `rm -rf`, `mv` over existing files, `fs.unlink`, `fs.rm`, `fs.writeFileSync` to an existing path, or any other destructive operation against paths under `data/` — not even to clean up after a failed run, not even "obviously empty" or "obviously corrupt" files.
+- If a file there looks wrong (0 bytes, malformed, stale), **report it to the user and stop**. Let them decide whether to keep, regenerate, or remove it.
+- Code under `src/stores/` is allowed to create new files under `data/` as part of its normal compute-on-miss flow — that's append-only behavior, not deletion. The rule above is about agent-initiated cleanup, not about runtime writes performed by the stores themselves.
+
 ## Commits
 
 When the user asks for a git commit (e.g. "commit", "commit and push", "let's make a milestone"), **do these steps first, in order**, before running `git add`/`commit`/`push`:

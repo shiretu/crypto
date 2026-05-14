@@ -34,6 +34,19 @@
                 "<node_internals>/**"
             ],
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "nn",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/apps/nn.js",
+            "args": [
+                "myFirstNn:littleBoy"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal"
+        },
     ]
 }
