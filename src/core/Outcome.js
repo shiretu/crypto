@@ -113,6 +113,20 @@ export class OutcomeRef {
         buf.writeBigUInt64LE(BigInt(outcome.shortOrder.close.tsUs), offset + 32)
         buf.writeBigUInt64LE(BigInt(outcome.shortOrder.close.dayIndex), offset + 40)
     }
+
+    /**
+     * Ensure `tradesStore` has every day that this ref's three trades live on.
+     * Outcomes can resolve past the originally-loaded range (TP/SL fires only
+     * after the open trade), so the close trades may be on days `tradesStore`
+     * hasn't pulled in yet. `loadAsync` is idempotent on already-loaded days,
+     * so this is cheap when nothing new needs to be fetched.
+     * @param {object} tradesStore - must implement `loadAsync(startTsUs, endTsUs)`
+     */
+    async ensureTrades (tradesStore) {
+        const minTsUs = Math.min(this.openTsUs, this.longTsUs, this.shortTsUs)
+        const maxTsUs = Math.max(this.openTsUs, this.longTsUs, this.shortTsUs)
+        await tradesStore.loadAsync(minTsUs, maxTsUs)
+    }
 }
 
 /**

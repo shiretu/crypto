@@ -73,6 +73,11 @@ export default class DataSet {
         }
         const normalise = Normalisers[normalisationFunction]
 
+        // `samplesCount` is treated as "the cap on good samples to collect".
+        // null / undefined / 0 / negative all mean "take everything the
+        // trigger pool yields" — useful for one-shot full-range datasets.
+        const takeAll = wantedSamplesCount == null || wantedSamplesCount <= 0
+
         const symbol = resolveSymbol(symbolId)
         const startTsUs = Day.fromStr(startDay)
         const endTsUs = Day.fromStr(endDay)
@@ -87,9 +92,7 @@ export default class DataSet {
         // Build the candidate trigger pool over the full loaded range, then walk
         // it (shuffled or sequential) until we've collected `wantedSamplesCount`
         // good samples. A trigger is rejected — without building the full window
-        // — as soon as we encounter an empty (gap-filler) candle inside it, or
-        // when the outcome lookup falls outside the loaded data. This is much
-        // better than pre-slicing the pool and ending up short on samples.
+        // — as soon as we encounter an empty (gap-filler) candle inside it.
         const triggerPool = Array.from(
             { length: candlesStore.count - windowSize },
             (_, i) => i + windowSize
@@ -103,7 +106,7 @@ export default class DataSet {
 
         const samples = []
         for (const triggerIdx of triggerPool) {
-            if (samples.length >= wantedSamplesCount) break
+            if (!takeAll && samples.length >= wantedSamplesCount) break
             const windowStart = triggerIdx - windowSize
 
             // Build the window. Abandon the moment we hit an empty candle:
@@ -118,16 +121,14 @@ export default class DataSet {
             }
             if (aborted) continue
 
-            // Look up the outcome at the trigger candle's close trade. If it
-            // resolves past the loaded range (TP/SL hits after endDay), drop.
+            // Hydrate the outcome at the trigger candle's close trade.
+            // ensureTrades pulls the close-trade days into tradesStore (TP/SL
+            // can resolve past endDay); fromOutcomeRef then does the three
+            // sync lookups. Any throw here is a real integrity bug.
             const openTrade = candles.at(-1).close
-            let outcome
-            try {
-                const outcomeRef = outcomesStore.getAt(openTrade.tsUs, openTrade.dayIndex)
-                outcome = fromOutcomeRef(outcomeRef, tpPercent, slPercent, tradesStore)
-            } catch {
-                continue
-            }
+            const outcomeRef = outcomesStore.getAt(openTrade.tsUs, openTrade.dayIndex)
+            await outcomeRef.ensureTrades(tradesStore)
+            const outcome = fromOutcomeRef(outcomeRef, tpPercent, slPercent, tradesStore)
             samples.push({ candles, outcome })
         }
 
