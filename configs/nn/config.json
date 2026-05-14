@@ -13,7 +13,7 @@
                 "slPercent": 1,
                 "randomWindowPosition": true,
                 "startDay": "2023-01-01",
-                "endDay": "2024-12-31",
+                "endDay": "2026-05-12",
                 "samplesCount": 0,
                 "normalisationFunction": "percentFromMin"
             },
