@@ -6,7 +6,7 @@ import NeuralNetwork from '../src/nn/NeuralNetwork.js'
 const TEST_ARCH_NAME = '_test_nn_base'
 const TEST_ARCH_DIR = path.resolve('configs', 'nn', TEST_ARCH_NAME)
 const TEST_ARCH_FILE = path.join(TEST_ARCH_DIR, 'arch.json')
-const TEST_RUNTIME_DIR = path.resolve('data', 'nn', TEST_ARCH_NAME)
+const TEST_RUNTIME_DIR = path.resolve('data', 'nn', 'runtimes', TEST_ARCH_NAME)
 
 const ARCH = {
     layers: [
@@ -77,7 +77,7 @@ describe('NeuralNetwork', () => {
         })
 
         it('should throw if arch.json is missing', () => {
-            expect(() => new NeuralNetwork(baseConfig({ }) /* same name */ )).to.not.throw() // sanity
+            expect(() => new NeuralNetwork(baseConfig({ }) /* same name */)).to.not.throw() // sanity
             const bogus = { ...baseConfig(), name: '_does_not_exist' }
             expect(() => new NeuralNetwork(bogus)).to.throw()
         })
@@ -141,7 +141,7 @@ describe('NeuralNetwork', () => {
             expect(a.trainingRootPath).to.equal(b.trainingRootPath)
         })
 
-        it('should place runtime under data/nn/<name>/<fingerprint>', () => {
+        it('should place runtime under data/nn/runtimes/<name>/<fingerprint>', () => {
             const nn = new NeuralNetwork(baseConfig())
             const expectedPrefix = TEST_RUNTIME_DIR
             expect(nn.trainingRootPath.startsWith(expectedPrefix + path.sep)).to.equal(true)

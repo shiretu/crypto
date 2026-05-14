@@ -1,18 +1,26 @@
 {
-    "name": "myFirstNn",
-    "personality": {
-        "name": "littleBoy",
-        "data": {
-            "symbol": "binance:eth:usdc",
-            "candleDuration": 300,
-            "lookback": 60,
-            "tpPercent": 1.5,
-            "slPercent": 1
-        },
-        "train": {
-            "learningRate": 0.01,
-            "epochs": 10,
-            "batchSize": 32
+    "neuralNetworks": [
+        "myFirstNn"
+    ],
+    "personalities": [
+        {
+            "name": "littleBoy",
+            "data": {
+                "symbol": "binance:eth:usdc",
+                "candleDuration": 300,
+                "windowSize": 60,
+                "tpPercent": 1.5,
+                "slPercent": 1,
+                "randomWindowPosition": true,
+                "startDay": "2023-01-01",
+                "endDay": "2023-12-31",
+                "samplesCount": 1000000
+            },
+            "train": {
+                "learningRate": 0.01,
+                "epochs": 10,
+                "batchSize": 32
+            }
         }
-    }
+    ]
 }

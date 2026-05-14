@@ -7,7 +7,7 @@ import TensorFlowNetwork from '../src/nn/TensorFlowNetwork.js'
 const TEST_ARCH_NAME = '_test_nn_tf'
 const TEST_ARCH_DIR = path.resolve('configs', 'nn', TEST_ARCH_NAME)
 const TEST_ARCH_FILE = path.join(TEST_ARCH_DIR, 'arch.json')
-const TEST_RUNTIME_DIR = path.resolve('data', 'nn', TEST_ARCH_NAME)
+const TEST_RUNTIME_DIR = path.resolve('data', 'nn', 'runtimes', TEST_ARCH_NAME)
 
 const ARCH = {
     layers: [

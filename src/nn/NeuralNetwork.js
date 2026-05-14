@@ -1,32 +1,23 @@
-import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
+import Fingerprint from '../utils/Fingerprint.js'
 
 export default class NeuralNetwork {
     static #ARCH_DIR = path.resolve('configs', 'nn')
-    static #RUNTIME_DIR = path.resolve('data', 'nn')
+    static #RUNTIME_DIR = path.resolve('data', 'nn', 'runtimes')
 
     #arch
     #personality
     #trainingRootPath
 
     constructor (config) {
-        const canonicalize = (obj) => {
-            if (obj === null || typeof obj !== 'object') return obj
-            if (Array.isArray(obj)) return obj.map(canonicalize)
-            return Object.keys(obj).sort().reduce((acc, key) => {
-                acc[key] = canonicalize(obj[key])
-                return acc
-            }, {})
-        }
-
         if (!config.personality) throw new Error('config.personality is required')
         if (!config.personality.data) throw new Error('config.personality.data is required')
         if (!config.personality.train) throw new Error('config.personality.train is required')
         this.#personality = config.personality
         const archPath = path.join(NeuralNetwork.#ARCH_DIR, config.name, 'arch.json')
         this.#arch = JSON.parse(fs.readFileSync(archPath, 'utf8'))
-        const fingerprint = crypto.createHash('sha256').update(JSON.stringify(canonicalize({ data: this.#personality.data, train: this.#personality.train }))).digest('hex').slice(0, 16)
+        const fingerprint = Fingerprint.compute({ data: this.#personality.data, train: this.#personality.train })
         this.#trainingRootPath = path.join(NeuralNetwork.#RUNTIME_DIR, config.name, fingerprint)
         fs.mkdirSync(this.#trainingRootPath, { recursive: true })
         fs.writeFileSync(path.join(this.#trainingRootPath, 'recipe.json'), JSON.stringify(this.#personality, null, 2))
