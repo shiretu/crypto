@@ -1,6 +1,6 @@
 {
     "neuralNetworks": [
-        "myFirstNn"
+        "tideReader"
     ],
     "dataSets": [
         {
