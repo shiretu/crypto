@@ -54,4 +54,34 @@ describe('CandleDuration', () => {
             expect(isValidDuration(undefined)).to.equal(false)
         })
     })
+
+    describe('day-boundary invariant', () => {
+        const SECS_PER_DAY = 86400
+
+        it('every allowed duration should divide a day evenly (so no candle can straddle a day boundary)', () => {
+            for (const [name, sec] of Object.entries(CandleDuration)) {
+                expect(SECS_PER_DAY % sec, `${name}=${sec}s must divide ${SECS_PER_DAY}`).to.equal(0)
+            }
+        })
+
+        it('should reject durations that do not divide a day evenly', () => {
+            // 7s, 11s, 17s, 23s — small primes that don't divide 86400
+            expect(isValidDuration(7)).to.equal(false)
+            expect(isValidDuration(11)).to.equal(false)
+            expect(isValidDuration(17)).to.equal(false)
+            expect(isValidDuration(23)).to.equal(false)
+            // 7m = 420s -> 86400 / 420 = 205.71... not a divisor
+            expect(isValidDuration(420)).to.equal(false)
+            // 11m = 660s -> not a divisor
+            expect(isValidDuration(660)).to.equal(false)
+            // 2h = 7200s — IS a divisor but happens not to be in the allowed set,
+            // covered elsewhere; here we only assert the non-divisor case.
+        })
+
+        it('should reject durations larger than a day even if they are factors-related', () => {
+            // 25h, 2 days etc. — would always span a day.
+            expect(isValidDuration(SECS_PER_DAY + 1)).to.equal(false)
+            expect(isValidDuration(SECS_PER_DAY * 2)).to.equal(false)
+        })
+    })
 })

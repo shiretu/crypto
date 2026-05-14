@@ -142,6 +142,54 @@ describe('Candles', () => {
             expect(ref.lowDayIndex).to.equal(2)
         })
 
+        it('should aggregate volume / trade-count over all trades in the bucket', async () => {
+            // Hand-built scenario where each trade has a known (baseQty, quoteQty, isBuyerMaker)
+            // so the resulting CandleRef volume aggregates are exactly verifiable.
+            const tFirst = day1 + 1_000_000
+            const tMid1 = day1 + 50_000_000
+            const tMid2 = day1 + 100_000_000
+            const tLast = day1 + 200_000_000
+            writeTradesDayFile(tmpDir, day1, [
+                // tsUs, price, baseQty, quoteQty, isBuyerMaker
+                trade(tFirst, 2000, 0.5, 1000, false), // taker-buy
+                trade(tMid1, 2050, 0.25, 512.5, true), // taker-sell
+                trade(tMid2, 1950, 0.10, 195, false), // taker-buy
+                trade(tLast, 2010, 0.20, 402, false) //  taker-buy
+            ])
+            const trades = new Trades(tmpDir, sym)
+            const candles = new Candles(tmpDir, sym, FIVE_MIN_SEC, trades)
+            await candles.loadAsync(day1, day1)
+            expect(candles.count).to.equal(1)
+            const ref = candles.get(0)
+            // baseVolume = 0.5 + 0.25 + 0.10 + 0.20 = 1.05
+            expect(ref.baseVolume).to.be.closeTo(1.05, 1e-12)
+            // quoteVolume = 1000 + 512.5 + 195 + 402 = 2109.5
+            expect(ref.quoteVolume).to.be.closeTo(2109.5, 1e-12)
+            // takerBuyBaseVolume = 0.5 + 0.10 + 0.20 = 0.80 (the taker-sell trade is excluded)
+            expect(ref.takerBuyBaseVolume).to.be.closeTo(0.80, 1e-12)
+            expect(ref.tradeCount).to.equal(4)
+        })
+
+        it('should record zero volumes / zero count for empty-candle gap fillers', async () => {
+            const t1 = day1 + 1_000_000 // bucket B
+            const t2 = day1 + 2 * FIVE_MIN_US + 1_000_000 // bucket B+2 -> B+1 is a gap
+            writeTradesDayFile(tmpDir, day1, [
+                trade(t1, 2000, 0.5, 1000, false),
+                trade(t2, 2100, 0.3, 630, false)
+            ])
+            const trades = new Trades(tmpDir, sym)
+            const candles = new Candles(tmpDir, sym, FIVE_MIN_SEC, trades)
+            await candles.loadAsync(day1, day1)
+            expect(candles.count).to.equal(3)
+            // B+1 is the empty filler
+            const empty = candles.get(1)
+            expect(empty.openTsUs).to.equal(0)
+            expect(empty.baseVolume).to.equal(0)
+            expect(empty.quoteVolume).to.equal(0)
+            expect(empty.takerBuyBaseVolume).to.equal(0)
+            expect(empty.tradeCount).to.equal(0)
+        })
+
         it('should create separate candles for trades in different buckets', async () => {
             const t1 = day1 + 1_000_000 // bucket B
             const t2 = day1 + FIVE_MIN_US + 1_000_000 // bucket B+1

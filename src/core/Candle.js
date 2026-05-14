@@ -9,6 +9,9 @@ export default class Candle {
     #high
     #low
     #trades
+    #baseVolume
+    #quoteVolume
+    #takerBuyBaseVolume
 
     static #EMPTY = Symbol('empty')
 
@@ -28,6 +31,9 @@ export default class Candle {
             this.#close = null
             this.#high = null
             this.#low = null
+            this.#baseVolume = 0
+            this.#quoteVolume = 0
+            this.#takerBuyBaseVolume = 0
             return
         }
         if (!(firstTrade instanceof Trade)) throw new Error('firstTrade must be a Trade')
@@ -36,6 +42,10 @@ export default class Candle {
         this.#close = firstTrade
         this.#high = firstTrade
         this.#low = firstTrade
+        this.#baseVolume = firstTrade.baseQty
+        this.#quoteVolume = firstTrade.quoteQty
+        // taker-buy = buyer was the aggressor = isBuyerMaker is false
+        this.#takerBuyBaseVolume = firstTrade.isBuyerMaker ? 0 : firstTrade.baseQty
     }
 
     get durationSec () { return this.#durationSec }
@@ -44,6 +54,12 @@ export default class Candle {
     get close () { return this.#close }
     get high () { return this.#high }
     get low () { return this.#low }
+    get baseVolume () { return this.#baseVolume }
+    get quoteVolume () { return this.#quoteVolume }
+    get takerBuyBaseVolume () { return this.#takerBuyBaseVolume }
+    // Derived: candle durations are guaranteed to divide 86400 (see CandleDuration),
+    // so no candle spans a day boundary and trade dayIndex values within a candle are contiguous.
+    get tradeCount () { return this.isEmpty ? 0 : this.#close.dayIndex - this.#open.dayIndex + 1 }
     get isEmpty () { return this.#open === null || this.#close === null || this.#high === null || this.#low === null }
 
     update (trade) {
@@ -54,13 +70,19 @@ export default class Candle {
         this.#close = trade
         if (trade.price > this.#high.price) this.#high = trade
         if (trade.price < this.#low.price) this.#low = trade
+        this.#baseVolume += trade.baseQty
+        this.#quoteVolume += trade.quoteQty
+        if (!trade.isBuyerMaker) this.#takerBuyBaseVolume += trade.baseQty
     }
 
-    static fromOHLC (durationSec, open, high, low, close) {
+    static fromOHLC (durationSec, open, high, low, close, baseVolume, quoteVolume, takerBuyBaseVolume) {
         const candle = new Candle(durationSec, open)
         candle.#close = close
         candle.#high = high
         candle.#low = low
+        candle.#baseVolume = baseVolume
+        candle.#quoteVolume = quoteVolume
+        candle.#takerBuyBaseVolume = takerBuyBaseVolume
         return candle
     }
 
@@ -78,18 +100,25 @@ export default class Candle {
 }
 
 /**
- * CandleRef record layout (64 bytes):
- *   [0]  openTsUs      - UInt64LE - open trade timestamp
- *   [8]  openDayIndex  - UInt64LE - open trade day-relative index
- *   [16] closeTsUs     - UInt64LE - close trade timestamp
- *   [24] closeDayIndex - UInt64LE - close trade day-relative index
- *   [32] highTsUs      - UInt64LE - high trade timestamp
- *   [40] highDayIndex  - UInt64LE - high trade day-relative index
- *   [48] lowTsUs       - UInt64LE - low trade timestamp
- *   [56] lowDayIndex   - UInt64LE - low trade day-relative index
+ * CandleRef record layout (88 bytes):
+ *   [0]  openTsUs           - UInt64LE  - open trade timestamp
+ *   [8]  openDayIndex       - UInt64LE  - open trade day-relative index
+ *   [16] closeTsUs          - UInt64LE  - close trade timestamp
+ *   [24] closeDayIndex      - UInt64LE  - close trade day-relative index
+ *   [32] highTsUs           - UInt64LE  - high trade timestamp
+ *   [40] highDayIndex       - UInt64LE  - high trade day-relative index
+ *   [48] lowTsUs            - UInt64LE  - low trade timestamp
+ *   [56] lowDayIndex        - UInt64LE  - low trade day-relative index
+ *   [64] baseVolume         - Float64LE - sum of trade.baseQty over the candle
+ *   [72] quoteVolume        - Float64LE - sum of trade.quoteQty over the candle
+ *   [80] takerBuyBaseVolume - Float64LE - sum of trade.baseQty for taker-buy trades (isBuyerMaker=false)
+ *
+ * tradeCount is *not* stored: with the durations allowed by CandleDuration (all divisors of 86400),
+ * no candle straddles a day, so trade dayIndex values within a candle are contiguous and
+ * `tradeCount = closeDayIndex - openDayIndex + 1` (or 0 if the record is the empty-slot sentinel).
  */
 export class CandleRef {
-    static RECORD_SIZE = 64
+    static RECORD_SIZE = 88
 
     #buf
 
@@ -105,6 +134,11 @@ export class CandleRef {
     get highDayIndex () { return Number(this.#buf.readBigUInt64LE(40)) }
     get lowTsUs () { return Number(this.#buf.readBigUInt64LE(48)) }
     get lowDayIndex () { return Number(this.#buf.readBigUInt64LE(56)) }
+    get baseVolume () { return this.#buf.readDoubleLE(64) }
+    get quoteVolume () { return this.#buf.readDoubleLE(72) }
+    get takerBuyBaseVolume () { return this.#buf.readDoubleLE(80) }
+    // Derived from dayIndex range; 0 for the empty-slot sentinel (openTsUs === 0).
+    get tradeCount () { return this.openTsUs === 0 ? 0 : this.closeDayIndex - this.openDayIndex + 1 }
 
     static writeRecord (buf, offset, candle) {
         if (candle.isEmpty) {
@@ -116,6 +150,9 @@ export class CandleRef {
             buf.writeBigUInt64LE(0n, offset + 40)
             buf.writeBigUInt64LE(0n, offset + 48)
             buf.writeBigUInt64LE(0n, offset + 56)
+            buf.writeDoubleLE(0, offset + 64)
+            buf.writeDoubleLE(0, offset + 72)
+            buf.writeDoubleLE(0, offset + 80)
             return
         }
         buf.writeBigUInt64LE(BigInt(candle.open.tsUs), offset)
@@ -126,6 +163,9 @@ export class CandleRef {
         buf.writeBigUInt64LE(BigInt(candle.high.dayIndex), offset + 40)
         buf.writeBigUInt64LE(BigInt(candle.low.tsUs), offset + 48)
         buf.writeBigUInt64LE(BigInt(candle.low.dayIndex), offset + 56)
+        buf.writeDoubleLE(candle.baseVolume, offset + 64)
+        buf.writeDoubleLE(candle.quoteVolume, offset + 72)
+        buf.writeDoubleLE(candle.takerBuyBaseVolume, offset + 80)
     }
 }
 
@@ -155,5 +195,5 @@ export const fromCandleRef = (ref, durationSec, tradesStore) => {
     const close = tradesStore.getAt(ref.closeTsUs, ref.closeDayIndex)
     const high = tradesStore.getAt(ref.highTsUs, ref.highDayIndex)
     const low = tradesStore.getAt(ref.lowTsUs, ref.lowDayIndex)
-    return Candle.fromOHLC(durationSec, open, high, low, close)
+    return Candle.fromOHLC(durationSec, open, high, low, close, ref.baseVolume, ref.quoteVolume, ref.takerBuyBaseVolume)
 }

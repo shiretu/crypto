@@ -168,13 +168,55 @@ describe('Candle', () => {
         })
     })
 
+    describe('volume aggregates', () => {
+        it('should initialise from the first trade (taker-buy)', () => {
+            // isBuyerMaker=false => taker is the buyer
+            const t = makeTrade(1000, 100, /* baseQty */ 0.5, /* quoteQty */ 50, /* isBuyerMaker */ false)
+            const c = new Candle(60, t)
+            expect(c.baseVolume).to.equal(0.5)
+            expect(c.quoteVolume).to.equal(50)
+            expect(c.takerBuyBaseVolume).to.equal(0.5)
+            expect(c.tradeCount).to.equal(1)
+        })
+
+        it('should initialise from the first trade (taker-sell -> zero taker-buy)', () => {
+            // isBuyerMaker=true => taker is the seller, so taker-buy share is 0
+            const t = makeTrade(1000, 100, 0.5, 50, true)
+            const c = new Candle(60, t)
+            expect(c.baseVolume).to.equal(0.5)
+            expect(c.quoteVolume).to.equal(50)
+            expect(c.takerBuyBaseVolume).to.equal(0)
+            expect(c.tradeCount).to.equal(1)
+        })
+
+        it('should accumulate base/quote volumes and trade count across updates', () => {
+            // dayIndex 0, 1, 2 -> derived tradeCount = closeDayIndex - openDayIndex + 1 = 3
+            const c = new Candle(60, makeTrade(1000, 100, 0.5, 50, false, 0))
+            c.update(makeTrade(2000, 110, 0.25, 27.5, false, 1))
+            c.update(makeTrade(3000, 105, 0.1, 10.5, true, 2)) // taker-sell
+            expect(c.baseVolume).to.be.closeTo(0.85, 1e-12)
+            expect(c.quoteVolume).to.be.closeTo(88, 1e-12)
+            // taker-buy: only first two trades count
+            expect(c.takerBuyBaseVolume).to.be.closeTo(0.75, 1e-12)
+            expect(c.tradeCount).to.equal(3)
+        })
+
+        it('should expose zero aggregates on an empty candle', () => {
+            const c = Candle.empty(60, 42)
+            expect(c.baseVolume).to.equal(0)
+            expect(c.quoteVolume).to.equal(0)
+            expect(c.takerBuyBaseVolume).to.equal(0)
+            expect(c.tradeCount).to.equal(0)
+        })
+    })
+
     describe('fromOHLC', () => {
         it('should construct directly from OHLC trades', () => {
             const open = makeTrade(1000, 100)
             const high = makeTrade(2000, 120)
             const low = makeTrade(3000, 80)
             const close = makeTrade(4000, 110)
-            const c = Candle.fromOHLC(60, open, high, low, close)
+            const c = Candle.fromOHLC(60, open, high, low, close, 0, 0, 0)
             expect(c.open).to.equal(open)
             expect(c.high).to.equal(high)
             expect(c.low).to.equal(low)
@@ -188,7 +230,8 @@ describe('Candle', () => {
                 open,
                 makeTrade(130_000_000, 120),
                 makeTrade(126_000_000, 80),
-                makeTrade(135_000_000, 110))
+                makeTrade(135_000_000, 110),
+                0, 0, 0)
             expect(c.ordinal).to.equal(2)
         })
     })
@@ -233,18 +276,22 @@ describe('Candle', () => {
 
 describe('CandleRef', () => {
     describe('static layout', () => {
-        it('should have RECORD_SIZE of 64', () => {
-            expect(CandleRef.RECORD_SIZE).to.equal(64)
+        it('should have RECORD_SIZE of 88', () => {
+            expect(CandleRef.RECORD_SIZE).to.equal(88)
         })
     })
 
     describe('writeRecord and read', () => {
-        it('should round-trip a non-empty candle', () => {
-            const open = makeTrade(1000, 100, 1, 100, false, 0, 0)
-            const close = makeTrade(4000, 110, 1, 110, false, 3, 3)
-            const high = makeTrade(2000, 120, 1, 120, false, 1, 1)
-            const low = makeTrade(3000, 80, 1, 80, false, 2, 2)
-            const c = Candle.fromOHLC(60, open, high, low, close)
+        it('should round-trip a non-empty candle (incl. volume aggregates)', () => {
+            // Build through normal update path so the volume aggregates are real
+            const open = makeTrade(1000, 100, 0.5, 50, false, 0, 0)
+            const tHigh = makeTrade(2000, 120, 0.25, 30, true, 1, 1)
+            const tLow = makeTrade(3000, 80, 0.1, 8, false, 2, 2)
+            const close = makeTrade(4000, 110, 0.2, 22, false, 3, 3)
+            const c = new Candle(60, open)
+            c.update(tHigh)
+            c.update(tLow)
+            c.update(close)
 
             const buf = toCandleRefBuffer(c)
             expect(buf.length).to.equal(CandleRef.RECORD_SIZE)
@@ -258,9 +305,16 @@ describe('CandleRef', () => {
             expect(ref.highDayIndex).to.equal(1)
             expect(ref.lowTsUs).to.equal(3000)
             expect(ref.lowDayIndex).to.equal(2)
+            // 0.5 + 0.25 + 0.1 + 0.2 = 1.05
+            expect(ref.baseVolume).to.be.closeTo(1.05, 1e-12)
+            // 50 + 30 + 8 + 22 = 110
+            expect(ref.quoteVolume).to.be.closeTo(110, 1e-12)
+            // taker-buy: trades 0, 2, 3 (isBuyerMaker=false) = 0.5 + 0.1 + 0.2 = 0.8
+            expect(ref.takerBuyBaseVolume).to.be.closeTo(0.8, 1e-12)
+            expect(ref.tradeCount).to.equal(4)
         })
 
-        it('should write an empty candle with openTsUs=0 and ordinal in openDayIndex', () => {
+        it('should write an empty candle with openTsUs=0, ordinal in openDayIndex, and zero volumes', () => {
             const c = Candle.empty(60, 42)
             const buf = toCandleRefBuffer(c)
             const ref = new CandleRef(buf)
@@ -269,6 +323,10 @@ describe('CandleRef', () => {
             expect(ref.closeTsUs).to.equal(0)
             expect(ref.highTsUs).to.equal(0)
             expect(ref.lowTsUs).to.equal(0)
+            expect(ref.baseVolume).to.equal(0)
+            expect(ref.quoteVolume).to.equal(0)
+            expect(ref.takerBuyBaseVolume).to.equal(0)
+            expect(ref.tradeCount).to.equal(0)
         })
     })
 
@@ -282,14 +340,17 @@ describe('CandleRef', () => {
             }
         })
 
-        it('should hydrate a non-empty candle', () => {
-            const open = makeTrade(1000, 100, 1, 100, false, 0, 0)
-            const close = makeTrade(4000, 110, 1, 110, false, 3, 3)
-            const high = makeTrade(2000, 120, 1, 120, false, 1, 1)
-            const low = makeTrade(3000, 80, 1, 80, false, 2, 2)
-            const c = Candle.fromOHLC(60, open, high, low, close)
+        it('should hydrate a non-empty candle (including volume aggregates)', () => {
+            const open = makeTrade(1000, 100, 0.5, 50, false, 0, 0)
+            const tHigh = makeTrade(2000, 120, 0.25, 30, true, 1, 1)
+            const tLow = makeTrade(3000, 80, 0.1, 8, false, 2, 2)
+            const close = makeTrade(4000, 110, 0.2, 22, false, 3, 3)
+            const c = new Candle(60, open)
+            c.update(tHigh)
+            c.update(tLow)
+            c.update(close)
             const ref = new CandleRef(toCandleRefBuffer(c))
-            const store = buildStore([open, close, high, low])
+            const store = buildStore([open, close, tHigh, tLow])
 
             const restored = fromCandleRef(ref, 60, store)
             expect(restored.isEmpty).to.equal(false)
@@ -297,6 +358,10 @@ describe('CandleRef', () => {
             expect(restored.close.price).to.equal(110)
             expect(restored.high.price).to.equal(120)
             expect(restored.low.price).to.equal(80)
+            expect(restored.baseVolume).to.be.closeTo(1.05, 1e-12)
+            expect(restored.quoteVolume).to.be.closeTo(110, 1e-12)
+            expect(restored.takerBuyBaseVolume).to.be.closeTo(0.8, 1e-12)
+            expect(restored.tradeCount).to.equal(4)
         })
 
         it('should hydrate an empty candle without touching the store', () => {
@@ -307,6 +372,10 @@ describe('CandleRef', () => {
             const restored = fromCandleRef(ref, 60, store)
             expect(restored.isEmpty).to.equal(true)
             expect(restored.ordinal).to.equal(7)
+            expect(restored.baseVolume).to.equal(0)
+            expect(restored.quoteVolume).to.equal(0)
+            expect(restored.takerBuyBaseVolume).to.equal(0)
+            expect(restored.tradeCount).to.equal(0)
         })
     })
 })
