@@ -6,7 +6,7 @@ All NN inputs should be normalized to a consistent range (typically -1 to +1 or 
 ## Per-feature approach
 
 ### Timestamps
-- Already anchored to 00:00 UTC of first day (see 05-timestamp-normalization.md)
+- Already anchored to 00:00 UTC of first day (see 05_timestamp-normalization.md)
 - Normalize to -1/+1 based on the window's min/max hours
 
 ### Prices (OHLC)

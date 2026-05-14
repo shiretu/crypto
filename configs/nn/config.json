@@ -6,7 +6,7 @@
             "symbol": "binance:eth:usdc",
             "candleDuration": 300,
             "lookback": 60,
-            "tpPercent": 1,
+            "tpPercent": 1.5,
             "slPercent": 1
         },
         "train": {

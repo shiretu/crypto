@@ -123,7 +123,7 @@ export class OutcomeRef {
  * @param {object} tradesStore
  * @returns {Outcome}
  */
-export function fromOutcomeRef (ref, tpPercent, slPercent, tradesStore) {
+export const fromOutcomeRef = (ref, tpPercent, slPercent, tradesStore) => {
     const open = tradesStore.getAt(ref.openTsUs, ref.openDayIndex)
     const long = tradesStore.getAt(ref.longTsUs, ref.longDayIndex)
     const short = tradesStore.getAt(ref.shortTsUs, ref.shortDayIndex)

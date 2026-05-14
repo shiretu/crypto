@@ -134,7 +134,7 @@ export class CandleRef {
  * @param {Candle} candle
  * @returns {Buffer}
  */
-export function toCandleRefBuffer (candle) {
+export const toCandleRefBuffer = (candle) => {
     const buf = Buffer.alloc(CandleRef.RECORD_SIZE)
     CandleRef.writeRecord(buf, 0, candle)
     return buf
@@ -147,7 +147,7 @@ export function toCandleRefBuffer (candle) {
  * @param {object} tradesStore - must support getAt(tsUs, dayIndex)
  * @returns {Candle}
  */
-export function fromCandleRef (ref, durationSec, tradesStore) {
+export const fromCandleRef = (ref, durationSec, tradesStore) => {
     if (ref.openTsUs === 0) {
         return Candle.empty(durationSec, ref.openDayIndex)
     }

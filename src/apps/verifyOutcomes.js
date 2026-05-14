@@ -7,44 +7,36 @@ const TRADE_SIZE = 32 // 8 tsUs + 8 price + 8 baseQty + 8 quoteQty
 const OUTCOME_SIZE = 48 // 6 × UInt64LE fields
 
 // ── Raw binary readers (no library classes) ──────────────────────
-function readTsUs (buf, offset) {
-    return Number(buf.readBigUInt64LE(offset) & 0x7FFFFFFFFFFFFFFFn)
-}
+const readTsUs = (buf, offset) => Number(buf.readBigUInt64LE(offset) & 0x7FFFFFFFFFFFFFFFn)
 
-function readPrice (buf, offset) {
-    return buf.readDoubleLE(offset + 8)
-}
+const readPrice = (buf, offset) => buf.readDoubleLE(offset + 8)
 
-function readOutcome (buf, offset) {
-    return {
-        openTsUs: Number(buf.readBigUInt64LE(offset)),
-        openDayIndex: Number(buf.readBigUInt64LE(offset + 8)),
-        longTsUs: Number(buf.readBigUInt64LE(offset + 16)),
-        longDayIndex: Number(buf.readBigUInt64LE(offset + 24)),
-        shortTsUs: Number(buf.readBigUInt64LE(offset + 32)),
-        shortDayIndex: Number(buf.readBigUInt64LE(offset + 40))
-    }
-}
+const readOutcome = (buf, offset) => ({
+    openTsUs: Number(buf.readBigUInt64LE(offset)),
+    openDayIndex: Number(buf.readBigUInt64LE(offset + 8)),
+    longTsUs: Number(buf.readBigUInt64LE(offset + 16)),
+    longDayIndex: Number(buf.readBigUInt64LE(offset + 24)),
+    shortTsUs: Number(buf.readBigUInt64LE(offset + 32)),
+    shortDayIndex: Number(buf.readBigUInt64LE(offset + 40))
+})
 
 // ── Day arithmetic (inlined, no Day import) ──────────────────────
 const US_PER_DAY = 86_400_000_000
 
-function dayFromTsUs (tsUs) {
-    return Math.floor(tsUs / US_PER_DAY) * US_PER_DAY
-}
+const dayFromTsUs = (tsUs) => Math.floor(tsUs / US_PER_DAY) * US_PER_DAY
 
-function dayToStr (tsUs) {
+const dayToStr = (tsUs) => {
     const d = new Date(Math.floor(tsUs / 1000))
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
-function dayFromStr (str) {
+const dayFromStr = (str) => {
     const [y, m, d] = str.split('-').map(Number)
     return new Date(Date.UTC(y, m - 1, d || 1)).getTime() * 1000
 }
 
 // ── Path helpers ─────────────────────────────────────────────────
-function dayFilePath (base, storeType, sym, dayTsUs, extra = []) {
+const dayFilePath = (base, storeType, sym, dayTsUs, extra = []) => {
     const d = new Date(dayTsUs / 1000)
     return path.join(base, storeType,
         sym.exchange.id, sym.base.id, sym.quote.id,
@@ -55,7 +47,7 @@ function dayFilePath (base, storeType, sym, dayTsUs, extra = []) {
     )
 }
 
-function rawReadDay (base, storeType, sym, dayTsUs, extra = []) {
+const rawReadDay = (base, storeType, sym, dayTsUs, extra = []) => {
     const fp = dayFilePath(base, storeType, sym, dayTsUs, extra)
     try { return fs.readFileSync(fp) } catch (e) { if (e.code === 'ENOENT') return null; throw e }
 }
@@ -107,7 +99,7 @@ console.log()
 
 // ── Trade file cache (raw buffers only) ──────────────────────────
 const tradeCache = new Map()
-function getTradesBuffer (dayTsUs) {
+const getTradesBuffer = (dayTsUs) => {
     if (tradeCache.has(dayTsUs)) return tradeCache.get(dayTsUs)
     const buf = rawReadDay('data', 'trades', sym, dayTsUs)
     tradeCache.set(dayTsUs, buf)
