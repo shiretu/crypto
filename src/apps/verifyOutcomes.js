@@ -2,6 +2,9 @@ import { resolveSymbol } from '../core/resolveSymbol.js'
 import fs from 'fs'
 import path from 'path'
 
+// ── CLI ──────────────────────────────────────────────────────────
+import { Command, InvalidArgumentError } from 'commander'
+
 // ── Binary format constants ──────────────────────────────────────
 const TRADE_SIZE = 32 // 8 tsUs + 8 price + 8 baseQty + 8 quoteQty
 const OUTCOME_SIZE = 48 // 6 × UInt64LE fields
@@ -52,23 +55,25 @@ const rawReadDay = (base, storeType, sym, dayTsUs, extra = []) => {
     try { return fs.readFileSync(fp) } catch (e) { if (e.code === 'ENOENT') return null; throw e }
 }
 
-// ── CLI ──────────────────────────────────────────────────────────
-const usage = () => {
-    console.error('Usage: verifyOutcomes <exchange:base:quote> <tpPercent> <slPercent> [count]')
-    console.error('  count : number of random outcomes to verify (default 100)')
-    process.exit(1)
+const parsePositive = (label, fn) => (value) => {
+    const n = fn(value)
+    if (Number.isNaN(n) || n <= 0) throw new InvalidArgumentError(`${label} must be a positive number, got "${value}"`)
+    return n
 }
 
-const args = process.argv.slice(2)
-if (args.length < 3) usage()
+const opts = new Command()
+    .name('verifyOutcomes')
+    .description('Spot-check stored outcomes by re-walking trades for random samples')
+    .requiredOption('-s, --symbol <exchange:base:quote>', 'symbol (e.g. binance:eth:usdc)')
+    .requiredOption('--tp <percent>', 'take profit percent (e.g. 1.5)', parsePositive('tp', parseFloat))
+    .requiredOption('--sl <percent>', 'stop loss percent (e.g. 1)', parsePositive('sl', parseFloat))
+    .option('-n, --count <n>', 'number of random outcomes to verify', parsePositive('count', (v) => parseInt(v, 10)), 100)
+    .showHelpAfterError()
+    .parse(process.argv)
+    .opts()
 
-const sym = resolveSymbol(args[0])
-const tpPercent = parseFloat(args[1])
-const slPercent = parseFloat(args[2])
-if (isNaN(tpPercent) || tpPercent <= 0) { console.error(`Invalid tpPercent: ${args[1]}`); process.exit(1) }
-if (isNaN(slPercent) || slPercent <= 0) { console.error(`Invalid slPercent: ${args[2]}`); process.exit(1) }
-
-const count = args[3] ? parseInt(args[3], 10) : 100
+const sym = resolveSymbol(opts.symbol)
+const { tp: tpPercent, sl: slPercent, count } = opts
 
 // ── Discover outcome .bin files ──────────────────────────────────
 const outcomesDir = path.join('data', 'outcomes', sym.exchange.id, sym.base.id, sym.quote.id, `${tpPercent}`, `${slPercent}`)

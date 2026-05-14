@@ -1,23 +1,21 @@
+import { Command } from 'commander'
 import Trades from '../stores/Trades.js'
 import Day from '../utils/Day.js'
 import { resolveSymbol } from '../core/resolveSymbol.js'
 
-const usage = () => {
-    console.error('Usage: getTrades <exchange:base:quote> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  symbol : exchange:base:quote (e.g. binance:eth:usdc)')
-    console.error('  start  : optional start date, defaults to last month')
-    console.error('  end    : optional end date, defaults to last month')
-    process.exit(1)
-}
-
-const args = process.argv.slice(2)
-if (args.length < 1) usage()
-
-const sym = resolveSymbol(args[0])
-
 const thisMonth = Day.thisMonth()
-const start = args[1] ? Day.fromStr(args[1]) : Day.offsetByMonths(thisMonth, -1)
-const end = args[2] ? Day.fromStr(args[2]) : Day.prevDay(thisMonth)
+const opts = new Command()
+    .name('getTrades')
+    .description('Download/load raw trades for a symbol over a date range')
+    .requiredOption('-s, --symbol <exchange:base:quote>', 'symbol (e.g. binance:eth:usdc)')
+    .option('--start <YYYY-MM-DD>', 'start date (defaults to first day of last month)', Day.fromStr, Day.offsetByMonths(thisMonth, -1))
+    .option('--end <YYYY-MM-DD>', 'end date (defaults to last day of last month)', Day.fromStr, Day.prevDay(thisMonth))
+    .showHelpAfterError()
+    .parse(process.argv)
+    .opts()
+
+const sym = resolveSymbol(opts.symbol)
+const { start, end } = opts
 
 console.log(`Fetching ${sym.id}`)
 console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)

@@ -1,28 +1,30 @@
+import { Command, InvalidArgumentError } from 'commander'
 import Candles from '../stores/Candles.js'
 import Trades from '../stores/Trades.js'
 import Candle, { fromCandleRef } from '../core/Candle.js'
 import Day from '../utils/Day.js'
 import { resolveSymbol } from '../core/resolveSymbol.js'
 
-const usage = () => {
-    console.error('Usage: getCandles <exchange:base:quote> <duration> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  symbol   : exchange:base:quote (e.g. binance:eth:usdc)')
-    console.error('  duration : candle duration in seconds (60, 300, 900, 1800, 3600, 14400)')
-    console.error('  start    : optional start date, defaults to last month')
-    console.error('  end      : optional end date, defaults to last month')
-    process.exit(1)
+const parseDurationSec = (value) => {
+    const n = parseInt(value, 10)
+    if (Number.isNaN(n) || n <= 0) throw new InvalidArgumentError(`duration must be a positive integer, got "${value}"`)
+    return n
 }
 
-const args = process.argv.slice(2)
-if (args.length < 2) usage()
-
-const sym = resolveSymbol(args[0])
-const duration = parseInt(args[1])
-if (isNaN(duration)) usage()
-
 const thisMonth = Day.thisMonth()
-const start = args[2] ? Day.fromStr(args[2]) : Day.offsetByMonths(thisMonth, -1)
-const end = args[3] ? Day.fromStr(args[3]) : Day.prevDay(thisMonth)
+const opts = new Command()
+    .name('getCandles')
+    .description('Build/load candles for a symbol over a date range')
+    .requiredOption('-s, --symbol <exchange:base:quote>', 'symbol (e.g. binance:eth:usdc)')
+    .requiredOption('-d, --duration <seconds>', 'candle duration in seconds (60, 300, 900, 1800, 3600, 14400)', parseDurationSec)
+    .option('--start <YYYY-MM-DD>', 'start date (defaults to first day of last month)', Day.fromStr, Day.offsetByMonths(thisMonth, -1))
+    .option('--end <YYYY-MM-DD>', 'end date (defaults to last day of last month)', Day.fromStr, Day.prevDay(thisMonth))
+    .showHelpAfterError()
+    .parse(process.argv)
+    .opts()
+
+const sym = resolveSymbol(opts.symbol)
+const { duration, start, end } = opts
 
 console.log(`Candles ${sym.id} @ ${duration}s`)
 console.log(`Range: ${Day.toStr(start)} to ${Day.toStr(end)}`)

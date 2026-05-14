@@ -1,45 +1,32 @@
 import fs from 'fs'
 import path from 'path'
+import { Command } from 'commander'
 import TensorFlowNetwork from '../nn/TensorFlowNetwork.js'
 import DataSet from '../nn/DataSet.js'
 
+const DEFAULT_CONFIG_PATH = path.resolve('configs', 'nn', 'config.json')
+
+const parseCliArgs = (argv) => {
+    const program = new Command()
+        .name('nn')
+        .description('Build, load, or train a neural network described by an arch.json + personality config')
+        .requiredOption('-a, --arch <name>', 'architecture name (must be listed in config.neuralNetworks)')
+        .requiredOption('-p, --personality <name>', 'personality name (must be listed in config.personalities)')
+        .option('-c, --config <path>', 'path to the NN config file', DEFAULT_CONFIG_PATH)
+        .showHelpAfterError()
+        .parse(argv, { from: 'user' })
+
+    const { arch: archName, personality: personalityName, config: configPath } = program.opts()
+
+    return {
+        archName,
+        personalityName,
+        configPath: path.resolve(configPath)
+    }
+}
+
 const main = async () => {
-    const DEFAULT_CONFIG_PATH = path.resolve('configs', 'nn', 'config.json')
-
-    const usage = () => {
-        console.error('Usage: nn <arch>:<personality> [--config <path>]')
-        console.error('  arch        : architecture name (must be listed in config.neuralNetworks)')
-        console.error('  personality : personality name (must be listed in config.personalities)')
-        console.error(`  --config    : path to the NN config file (default: ${DEFAULT_CONFIG_PATH})`)
-        process.exit(1)
-    }
-    // ── Parse CLI args ───────────────────────────────────────────────
-    const rawArgs = process.argv.slice(2)
-    let target = null
-    let configPath = DEFAULT_CONFIG_PATH
-
-    for (let i = 0; i < rawArgs.length; i++) {
-        const a = rawArgs[i]
-        if (a === '--config') {
-            if (i + 1 >= rawArgs.length) { console.error('--config requires a path argument'); usage() }
-            configPath = path.resolve(rawArgs[++i])
-        } else if (a.startsWith('--config=')) {
-            configPath = path.resolve(a.slice('--config='.length))
-        } else if (target === null) {
-            target = a
-        } else {
-            console.error(`Unexpected argument: ${a}`)
-            usage()
-        }
-    }
-
-    if (target === null) usage()
-
-    const [archName, personalityName] = target.split(':', 2)
-    if (!archName || !personalityName) {
-        console.error(`Target must be in the form <arch>:<personality>, got "${target}"`)
-        usage()
-    }
+    const { archName, personalityName, configPath } = parseCliArgs(process.argv.slice(2))
 
     // ── Load config ──────────────────────────────────────────────────
     if (!fs.existsSync(configPath)) {

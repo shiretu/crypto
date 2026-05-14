@@ -1,3 +1,4 @@
+import { Command, InvalidArgumentError } from 'commander'
 import Outcomes from '../stores/Outcomes.js'
 import Trades from '../stores/Trades.js'
 import Candles from '../stores/Candles.js'
@@ -5,28 +6,27 @@ import { fromOutcomeRef } from '../core/Outcome.js'
 import Day from '../utils/Day.js'
 import { resolveSymbol } from '../core/resolveSymbol.js'
 
-const usage = () => {
-    console.error('Usage: getOutcomes <exchange:base:quote> <tpPercent> <slPercent> [YYYY-MM-DD] [YYYY-MM-DD]')
-    console.error('  symbol    : exchange:base:quote (e.g. binance:eth:usdc)')
-    console.error('  tpPercent : take profit percent (e.g. 1.5)')
-    console.error('  slPercent : stop loss percent (e.g. 1)')
-    console.error('  start     : optional start date, defaults to last month')
-    console.error('  end       : optional end date, defaults to last month')
-    process.exit(1)
+const parsePositivePercent = (label) => (value) => {
+    const n = parseFloat(value)
+    if (Number.isNaN(n) || n <= 0) throw new InvalidArgumentError(`${label} must be a positive number, got "${value}"`)
+    return n
 }
 
-const args = process.argv.slice(2)
-if (args.length < 3) usage()
-
-const sym = resolveSymbol(args[0])
-const tpPercent = parseFloat(args[1])
-const slPercent = parseFloat(args[2])
-if (isNaN(tpPercent) || tpPercent <= 0) { console.error(`Invalid tpPercent: ${args[1]}`); process.exit(1) }
-if (isNaN(slPercent) || slPercent <= 0) { console.error(`Invalid slPercent: ${args[2]}`); process.exit(1) }
-
 const thisMonth = Day.thisMonth()
-const start = args[3] ? Day.fromStr(args[3]) : Day.offsetByMonths(thisMonth, -1)
-const end = args[4] ? Day.fromStr(args[4]) : Day.prevDay(thisMonth)
+const opts = new Command()
+    .name('getOutcomes')
+    .description('Compute/load TP/SL outcomes for every trade in a date range')
+    .requiredOption('-s, --symbol <exchange:base:quote>', 'symbol (e.g. binance:eth:usdc)')
+    .requiredOption('--tp <percent>', 'take profit percent (e.g. 1.5)', parsePositivePercent('tp'))
+    .requiredOption('--sl <percent>', 'stop loss percent (e.g. 1)', parsePositivePercent('sl'))
+    .option('--start <YYYY-MM-DD>', 'start date (defaults to first day of last month)', Day.fromStr, Day.offsetByMonths(thisMonth, -1))
+    .option('--end <YYYY-MM-DD>', 'end date (defaults to last day of last month)', Day.fromStr, Day.prevDay(thisMonth))
+    .showHelpAfterError()
+    .parse(process.argv)
+    .opts()
+
+const sym = resolveSymbol(opts.symbol)
+const { tp: tpPercent, sl: slPercent, start, end } = opts
 
 const totalDays = (end - start) / Day.usPerDay + 1
 

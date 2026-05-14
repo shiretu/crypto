@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tensorflow/tfjs-node": "^4.22.0",
+    "commander": "^14.0.3",
     "csv-parse": "^6.2.1",
     "unzipper": "^0.12.3"
   },
