@@ -1,0 +1,53 @@
+# All this is what model.fit(xs, ys, { epochs, batchSize, shuffle, validationSplit }) does internally.
+
+# ── One-time setup ─────────────────────────────────────────────────
+xs, ys        := the whole dataset (320,154 samples each)
+N             := number of samples
+B             := batchSize                                       # 32
+E             := epochs                                          # 10
+trainN        := N * (1 - validationSplit)                       # 256,123
+valN          := N - trainN                                      # 64,031
+
+# Split happens ONCE, deterministically (no reshuffle between epochs):
+trainXs, trainYs := xs[0 : trainN],  ys[0 : trainN]
+valXs,   valYs   := xs[trainN : N],  ys[trainN : N]
+
+batchesPerEpoch := ceil(trainN / B)                              # 8,004
+
+# ── Outer loop: epochs ─────────────────────────────────────────────
+for epoch in 1 .. E:
+
+    # Shuffle the training indices for this epoch. (Validation set is NEVER shuffled.)
+    order := shuffle( [0, 1, 2, ..., trainN - 1] )
+
+    # ── Inner loop: batches within this epoch ─────────────────────
+    # Each iteration consumes B training samples and performs ONE weight update.
+    for b in 0 .. batchesPerEpoch - 1:
+        idx    := order[ b * B : (b + 1) * B ]    # pick this batch's 32 sample indices
+        xBatch := trainXs[idx]                    # gather their inputs (no NN change yet)
+        yBatch := trainYs[idx]                    # gather their labels  (no NN change yet)
+        # ─── single training step: forward → loss → backward → optimiser ───
+        # this is the ONLY place in the inner loop where the NN's weights change.
+        # after this line, the network is slightly different than it was before.
+
+    # ── Validation pass: AFTER all train batches, ONCE per epoch ──
+    # All valN samples flow through the model in inference mode, in chunks of B.
+    # No gradients, no weight updates — purely measurement.
+    for vb in 0 .. ceil(valN / B) - 1:
+        xv := valXs[vb*B : (vb+1)*B]
+        yv := valYs[vb*B : (vb+1)*B]
+        # ... forward only, accumulate val_loss / val_acc ...
+
+    log(epoch, trainLoss, trainAcc, valLoss, valAcc)
+
+# end of fit().
+
+# ── Sample-consumption summary ─────────────────────────────────────
+# Per epoch:
+#   • trainN samples consumed in batchesPerEpoch batches of B → drives 8,004 weight updates
+#   • valN   samples consumed in ceil(valN/B) batches of B    → drives 0 weight updates
+# Over the whole fit:
+#   • each training sample is seen E times (once per epoch, in a different shuffled order)
+#   • each validation sample is seen E times too, but only ever for measurement
+#   • total gradient updates       = E × batchesPerEpoch       # 10 × 8004 = 80,040
+#   • total sample-forward-passes  ≈ E × N                     # 10 × 320,154 ≈ 3.2M
