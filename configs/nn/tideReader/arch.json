@@ -2,22 +2,28 @@
     "layers": [
         {
             "type": "reshape",
-            "inputShape": [420],
-            "targetShape": [60, 7]
+            "inputShape": [360],
+            "targetShape": [60, 6]
         },
         {
             "type": "conv1d",
             "filters": 32,
             "kernelSize": 5,
-            "padding": "causal",
+            "padding": "same",
             "activation": "relu"
+        },
+        {
+            "type": "batchNormalization"
         },
         {
             "type": "conv1d",
             "filters": 32,
             "kernelSize": 5,
-            "padding": "causal",
+            "padding": "same",
             "activation": "relu"
+        },
+        {
+            "type": "batchNormalization"
         },
         {
             "type": "maxPooling1d",
@@ -27,15 +33,21 @@
             "type": "conv1d",
             "filters": 64,
             "kernelSize": 5,
-            "padding": "causal",
+            "padding": "same",
             "activation": "relu"
+        },
+        {
+            "type": "batchNormalization"
         },
         {
             "type": "conv1d",
             "filters": 64,
             "kernelSize": 5,
-            "padding": "causal",
+            "padding": "same",
             "activation": "relu"
+        },
+        {
+            "type": "batchNormalization"
         },
         {
             "type": "globalAveragePooling1d"
@@ -55,7 +67,7 @@
         },
         {
             "type": "dense",
-            "units": 2,
+            "units": 1,
             "activation": "sigmoid"
         }
     ]

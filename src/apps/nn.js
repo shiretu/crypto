@@ -91,7 +91,7 @@ const main = async () => {
     console.log(`DataSet:      ${dataSetName}`)
 
     const ds = new DataSet(dataSetName, resolvedPersonality.data)
-    await ds.load()
+    const samplesBuf = await ds.load()
 
     let nn
     let loaded = false
@@ -103,25 +103,57 @@ const main = async () => {
         nn = await TensorFlowNetwork.create(nnConfig)
     }
 
+    // ── Decode samples.bin into flat Float32Arrays ────────────────────
+    // samples.bin is a tight packing of [feature×F, label×L] per sample,
+    // little-endian float32. We view it as a single Float32Array once and
+    // split rows into separate inputs/labels arrays so tf.tensor2d can take
+    // them with explicit shapes.
+    //
+    // The dataset stores L labels per sample, but the network only consumes
+    // the first LABELS_USED of them. The rest of the labels stay on disk for
+    // future heads / multi-task experiments.
+    //
+    // Likewise, the dataset stores CHANNELS_IN channels per timestep but the
+    // network only consumes CHANNELS_USED of them — we skip channel 0
+    // (`tsFraction`) because it collapses to a constant ramp across all
+    // gap-free samples and carries no learnable signal. The data on disk is
+    // left intact for future experiments / different normalisers.
+    const FLOAT_SIZE = 4
+    const N = ds.samplesCount
+    const F = ds.featuresCount
+    const L = ds.labelsCount
+    const LABELS_USED = 1
+    const TIMESTEPS = resolvedPersonality.data.windowSize
+    const CHANNELS_IN = F / TIMESTEPS
+    const CHANNELS_USED = CHANNELS_IN - 1
+    const F_USED = TIMESTEPS * CHANNELS_USED
+    if (!Number.isInteger(CHANNELS_IN)) {
+        throw new Error(`featuresCount (${F}) is not a multiple of windowSize (${TIMESTEPS})`)
+    }
+    const flat = new Float32Array(samplesBuf.buffer, samplesBuf.byteOffset, samplesBuf.byteLength / FLOAT_SIZE)
+    const inputs = new Float32Array(N * F_USED)
+    const labels = new Float32Array(N * LABELS_USED)
+    for (let i = 0; i < N; i++) {
+        const src = i * (F + L)
+        const dst = i * F_USED
+        // For each timestep, copy channels [1..CHANNELS_IN-1] (skip channel 0).
+        for (let t = 0; t < TIMESTEPS; t++) {
+            const srcChan = src + t * CHANNELS_IN + 1
+            const dstChan = dst + t * CHANNELS_USED
+            inputs.set(flat.subarray(srcChan, srcChan + CHANNELS_USED), dstChan)
+        }
+        labels.set(flat.subarray(src + F, src + F + LABELS_USED), i * LABELS_USED)
+    }
+
+    console.log(`Samples:      ${N} × (${TIMESTEPS}×${CHANNELS_IN} features + ${L} labels, using ${TIMESTEPS}×${CHANNELS_USED} features + ${LABELS_USED} labels)`)
     console.log(`Model:        ${loaded ? 'loaded from disk' : 'newly created'}`)
-    console.log(`Fingerprint:  ${path.basename(nn.trainingRootPath)}`)
     console.log(`Runtime:      ${nn.trainingRootPath}`)
+    console.log(`Training:     epochs=${resolvedPersonality.train.epochs ?? 10} batchSize=${resolvedPersonality.train.batchSize ?? 32} learningRate=${resolvedPersonality.train.learningRate ?? 0.001} validationSplit=${resolvedPersonality.train.validationSplit ?? 0.2}`)
     console.log('')
-    console.log('Architecture:')
-    for (const layer of nn.arch.layers) {
-        const shape = layer.inputShape ? `  input=${JSON.stringify(layer.inputShape)}` : ''
-        console.log(`  - ${layer.type} units=${layer.units} act=${layer.activation}${shape}`)
-    }
-    console.log('')
-    console.log('Recipe (data):')
-    for (const [k, v] of Object.entries(nn.personality.data)) {
-        console.log(`  ${k.padEnd(16)} ${v}`)
-    }
-    console.log('')
-    console.log('Recipe (train):')
-    for (const [k, v] of Object.entries(nn.personality.train)) {
-        console.log(`  ${k.padEnd(16)} ${v}`)
-    }
+
+    await nn.train({ inputs, labels, samplesCount: N, featuresCount: F_USED, labelsCount: LABELS_USED })
+    await nn.save()
+    console.log(`\nSaved trained model to ${nn.trainingRootPath}`)
 }
 
 await main()

@@ -33,23 +33,21 @@ export default class TensorFlowNetwork extends NeuralNetwork {
     }
 
     async train (data) {
-        const { inputs, labels } = data
-        const { epochs = 10, batchSize = 32 } = this.personality.train
-        const xs = tf.tensor2d(inputs)
-        const ys = tf.tensor2d(labels, [labels.length, 1])
+        const { inputs, labels, samplesCount, featuresCount, labelsCount } = data
+        const { epochs = 10, batchSize = 32, validationSplit = 0.2 } = this.personality.train
+
+        const xs = tf.tensor2d(inputs, [samplesCount, featuresCount])
+        const ys = tf.tensor2d(labels, [samplesCount, labelsCount])
 
         try {
-            const result = await this.#model.fit(xs, ys, {
+            const history = await this.#model.fit(xs, ys, {
                 epochs,
                 batchSize,
-                shuffle: true
+                shuffle: true,
+                validationSplit,
+                verbose: 1
             })
-
-            const lastEpoch = result.epoch.length - 1
-            return {
-                loss: result.history.loss[lastEpoch],
-                accuracy: result.history.acc[lastEpoch]
-            }
+            return history.history
         } finally {
             xs.dispose()
             ys.dispose()
