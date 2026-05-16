@@ -112,12 +112,17 @@ class Writer {
     #lastStoredLastUpdateId = null
     #lastStoredEventTime = null
     #writeBuf = null
+    #lastWriteAtMs = 0
+    #savedRecordsCount = 0
 
     constructor ({ symbol, scaleExp, dataDir }) {
         this.#symbol = symbol
         this.#scaleExp = scaleExp
         this.#dataDir = dataDir
     }
+
+    get lastWriteAtMs () { return this.#lastWriteAtMs }
+    get savedRecordsCount () { return this.#savedRecordsCount }
 
     write (data) {
         if (this.#lastStoredLastUpdateId !== null) {
@@ -149,6 +154,8 @@ class Writer {
 
         this.#lastStoredLastUpdateId = data.lastUpdateId
         this.#lastStoredEventTime = data.eventTime
+        this.#lastWriteAtMs = Date.now()
+        this.#savedRecordsCount++
     }
 
     close () {
@@ -266,6 +273,8 @@ export default class BinanceOrderBookCollector {
     get scaleExp () { return this.#scaleExp }
     get snapshotDepth () { return this.#snapshotDepth }
     get snapshotIntervalSec () { return this.#snapshotIntervalMs / 1000 }
+    get lastWriteAtMs () { return this.#writer ? this.#writer.lastWriteAtMs : 0 }
+    get savedRecordsCount () { return this.#writer ? this.#writer.savedRecordsCount : 0 }
 
     /** Start the collector: open WS, kick off bootstrap, start status timer. */
     start () {

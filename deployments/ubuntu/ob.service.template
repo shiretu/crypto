@@ -4,6 +4,9 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+Type=notify
+NotifyAccess=main
+WatchdogSec=60s
 Environment=PATH=node_replace:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=root_replace/deployments/ubuntu/ob.sh symbol_replace
 WorkingDirectory=root_replace

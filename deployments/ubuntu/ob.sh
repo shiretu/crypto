@@ -10,8 +10,6 @@ fi
 
 rootPath=$(realpath "$(dirname "$(realpath "${0}")")"/../..)
 
-(
-    cd "${rootPath}"
-    npm i
-    exec ./scripts/getOrderBook -s "${symbol}" --data-dir /mnt/storage/fast/crypto
-)
+cd "${rootPath}"
+npm i
+exec ./scripts/getOrderBook -s "${symbol}" --data-dir /mnt/storage/fast/crypto --data-watchdog 30

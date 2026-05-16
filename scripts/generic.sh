@@ -5,7 +5,5 @@ cmdName=$(basename "$0")
 
 export UV_THREADPOOL_SIZE=${UV_THREADPOOL_SIZE:-128}
 
-(
-    cd "$root" || exit 1
-    node "$root/src/apps/$cmdName.js" "$@"
-)
+cd "$root" || exit 1
+exec node "$root/src/apps/$cmdName.js" "$@"
