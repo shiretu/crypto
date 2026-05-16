@@ -92,7 +92,8 @@ class BinanceDownloader {
 const pairs = [
     ['btc', 'usdc'], ['btc', 'usdt'],
     ['eth', 'usdc'], ['eth', 'usdt'],
-    ['sol', 'usdc'], ['sol', 'usdt']
+    ['sol', 'usdc'], ['sol', 'usdt'],
+    ['xrp', 'usdc']
 ]
 
 export const binance = new Exchange('binance',
