@@ -30,7 +30,6 @@ console.log(`Symbol:    ${collector.symbol.id}`)
 console.log(`WS URL:    ${collector.wsUrl}`)
 console.log(`REST URL:  ${collector.restUrl}`)
 console.log(`scaleExp=${collector.scaleExp}, snapshotDepth=${collector.snapshotDepth}, snapshotInterval=${collector.snapshotIntervalSec}s`)
-console.log(`Records → ${collector.dayFileTemplate}`)
 console.log('Press Ctrl+C to stop (will flush the current day\'s file).')
 
 const shutdown = async (signal) => {
@@ -40,4 +39,4 @@ const shutdown = async (signal) => {
 process.on('SIGINT', () => shutdown('SIGINT'))
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 
-await collector.start()
+collector.start()

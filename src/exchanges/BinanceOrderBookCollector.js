@@ -1,9 +1,8 @@
 /* global WebSocket */
 import fs from 'fs'
 import path from 'path'
-import { encodeScaled, writeRecord, recordSize } from '../core/OrderBook.js'
-
-const MS_PER_DAY = 86_400_000
+import OrdersBookFormat from '../core/OrdersBookFormat.js'
+import Day from '../utils/Day.js'
 
 class Queue {
     #items = []
@@ -105,21 +104,18 @@ class Writer {
     // ---- config ----
     #symbol
     #scaleExp
-    #snapshotDepth
     #dataDir
 
     // ---- state ----
-    #currentDay = null
+    #currentDayUs = null
     #currentFd = null
-    #currentFileOffset = 0
-    #prevSnapshotOffsetInFile = null
     #lastStoredLastUpdateId = null
     #lastStoredEventTime = null
+    #writeBuf = null
 
-    constructor ({ symbol, scaleExp, snapshotDepth, dataDir }) {
+    constructor ({ symbol, scaleExp, dataDir }) {
         this.#symbol = symbol
         this.#scaleExp = scaleExp
-        this.#snapshotDepth = snapshotDepth
         this.#dataDir = dataDir
     }
 
@@ -133,75 +129,26 @@ class Writer {
             }
         }
 
-        const dayMs = Math.floor(data.eventTime / MS_PER_DAY) * MS_PER_DAY
-        if (dayMs !== this.#currentDay) {
+        const dayUs = Day.fromTsUs(data.eventTime * 1000)
+        if (dayUs !== this.#currentDayUs) {
             if (this.#currentFd !== null) {
                 const localFd = this.#currentFd
                 this.#currentFd = null
                 fs.closeSync(localFd)
             }
-            if (data.isDiff) {
-                throw new Error(`Day rotation requires a snapshot as the first record of the new file, got delta (firstUpdateId=${data.firstUpdateId}). Mid-stream day rollover is not yet supported — the collector must maintain its own in-memory book to synthesise a snapshot at midnight UTC.`)
-            }
-            const d = new Date(dayMs)
-            const y = String(d.getUTCFullYear())
-            const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-            const dd = String(d.getUTCDate()).padStart(2, '0')
-            const filePath = path.join(this.#dataDir, 'orderBooks',
-                this.#symbol.exchange.id, this.#symbol.base.id, this.#symbol.quote.id,
-                y, m, `${dd}.bin`)
+            const filePath = this.#dayFilePath(dayUs)
             fs.mkdirSync(path.dirname(filePath), { recursive: true })
             this.#currentFd = fs.openSync(filePath, 'a')
-            this.#currentDay = dayMs
-            this.#currentFileOffset = fs.fstatSync(this.#currentFd).size
-            this.#prevSnapshotOffsetInFile = null
+            this.#currentDayUs = dayUs
         }
 
-        if (this.#prevSnapshotOffsetInFile === null && data.isDiff) {
-            throw new Error(`First record of day file must be a snapshot, got delta (firstUpdateId=${data.firstUpdateId})`)
-        }
+        const { buf, size } = OrdersBookFormat.encode({ ...data, scaleExp: this.#scaleExp }, this.#writeBuf)
+        this.#writeBuf = buf
 
-        const bids = data.isDiff ? data.bids : data.bids.slice(0, this.#snapshotDepth)
-        const asks = data.isDiff ? data.asks : data.asks.slice(0, this.#snapshotDepth)
+        fs.writeSync(this.#currentFd, buf, 0, size)
 
-        const encodedBids = new Array(bids.length)
-        for (let i = 0; i < bids.length; i++) {
-            const [priceStr, qtyStr] = bids[i]
-            encodedBids[i] = [encodeScaled(priceStr, this.#scaleExp), encodeScaled(qtyStr, this.#scaleExp)]
-        }
-        const encodedAsks = new Array(asks.length)
-        for (let i = 0; i < asks.length; i++) {
-            const [priceStr, qtyStr] = asks[i]
-            encodedAsks[i] = [encodeScaled(priceStr, this.#scaleExp), encodeScaled(qtyStr, this.#scaleExp)]
-        }
-
-        const myOffset = this.#currentFileOffset
-        const prevSnapshotOffset = data.isDiff ? this.#prevSnapshotOffsetInFile : myOffset
-
-        const buf = writeRecord({
-            isDelta: data.isDiff,
-            scaleExp: this.#scaleExp,
-            emitUs: data.eventTime * 1000,
-            prevSnapshotOffset,
-            U: data.firstUpdateId,
-            u: data.lastUpdateId,
-            bids: encodedBids,
-            asks: encodedAsks
-        })
-
-        fs.writeSync(this.#currentFd, buf)
-
-        this.#currentFileOffset += buf.length
-        if (!data.isDiff) {
-            this.#prevSnapshotOffsetInFile = myOffset
-        }
         this.#lastStoredLastUpdateId = data.lastUpdateId
         this.#lastStoredEventTime = data.eventTime
-
-        const expectedSize = recordSize(bids.length, asks.length)
-        if (buf.length !== expectedSize) {
-            throw new Error(`Internal: writeRecord produced ${buf.length} bytes, expected ${expectedSize}`)
-        }
     }
 
     close () {
@@ -210,11 +157,25 @@ class Writer {
             this.#currentFd = null
             try { fs.closeSync(localFd) } catch (_) { /* swallow — best-effort cleanup */ }
         }
-        this.#currentDay = null
-        this.#currentFileOffset = 0
-        this.#prevSnapshotOffsetInFile = null
+        this.#currentDayUs = null
         this.#lastStoredLastUpdateId = null
         this.#lastStoredEventTime = null
+    }
+
+    #dayFilePath (dayTsUs) {
+        const d = new Date(dayTsUs / 1000)
+        const y = String(d.getUTCFullYear())
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+        const dd = String(d.getUTCDate()).padStart(2, '0')
+        return path.join(this.#dataDir,
+            'orderBooks',
+            this.#symbol.exchange.id,
+            this.#symbol.base.id,
+            this.#symbol.quote.id,
+            y,
+            m,
+            `${dd}.bin`
+        )
     }
 }
 
@@ -284,7 +245,7 @@ export default class BinanceOrderBookCollector {
         const upperSym = `${symbol.base.id}${symbol.quote.id}`.toUpperCase()
         const lowerSym = upperSym.toLowerCase()
         this.#wsUrl = `wss://stream.binance.com:9443/ws/${lowerSym}@depth@100ms`
-        this.#restUrl = `https://api.binance.com/api/v3/depth?symbol=${upperSym}&limit=5000`
+        this.#restUrl = `https://api.binance.com/api/v3/depth?symbol=${upperSym}&limit=${snapshotDepth}`
 
         this.#lastRestartTimestamp = 0
         this.#pendingRestartTimer = null
@@ -295,7 +256,6 @@ export default class BinanceOrderBookCollector {
         this.#writer = new Writer({
             symbol: this.#symbol,
             scaleExp: this.#scaleExp,
-            snapshotDepth: this.#snapshotDepth,
             dataDir: this.#dataDir
         })
     }
@@ -306,11 +266,6 @@ export default class BinanceOrderBookCollector {
     get scaleExp () { return this.#scaleExp }
     get snapshotDepth () { return this.#snapshotDepth }
     get snapshotIntervalSec () { return this.#snapshotIntervalMs / 1000 }
-    get dayFileTemplate () {
-        return path.join(this.#dataDir, 'orderBooks',
-            this.#symbol.exchange.id, this.#symbol.base.id, this.#symbol.quote.id,
-            'YYYY', 'MM', 'DD.bin')
-    }
 
     /** Start the collector: open WS, kick off bootstrap, start status timer. */
     start () {
@@ -349,7 +304,6 @@ export default class BinanceOrderBookCollector {
             this.#writer = new Writer({
                 symbol: this.#symbol,
                 scaleExp: this.#scaleExp,
-                snapshotDepth: this.#snapshotDepth,
                 dataDir: this.#dataDir
             })
             local.close()
