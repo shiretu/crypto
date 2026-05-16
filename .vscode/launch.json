@@ -48,5 +48,19 @@
             ],
             "console": "integratedTerminal"
         },
+        {
+            "name": "getOrderBook",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/apps/getOrderBook.js",
+            "args": [
+                "-s",
+                "binance:eth:usdc",
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal"
+        }
     ]
 }
