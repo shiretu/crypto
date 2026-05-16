@@ -1,0 +1,16 @@
+[Unit]
+Description=Crypto Order Book Collector (symbol_replace)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment=PATH=node_replace:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=root_replace/deployments/ubuntu/ob.sh symbol_replace
+WorkingDirectory=root_replace
+Restart=always
+RestartSec=10
+User=user_replace
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
