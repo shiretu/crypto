@@ -49,13 +49,13 @@ process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGUSR1', () => {
     collector.writerControls.pause()
     const s = collector.writerControls.pauseState()
-    console.info(`[${new Date().toISOString()}] SIGUSR1 received; pauseState=${JSON.stringify(s)}`)
+    console.info(`[${new Date().toISOString()}] [${symbol.id}] SIGUSR1 received; pauseState=${JSON.stringify(s)}`)
 })
 process.on('SIGUSR2', () => {
     const before = collector.writerControls.pauseState()
     collector.writerControls.resume()
     const drained = before ? before.accumulatedDataCount : 0
-    console.info(`[${new Date().toISOString()}] SIGUSR2 received; drained ${drained} record(s)`)
+    console.info(`[${new Date().toISOString()}] [${symbol.id}] SIGUSR2 received; drained ${drained} record(s)`)
 })
 
 collector.start()
