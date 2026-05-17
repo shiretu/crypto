@@ -1,190 +1,6 @@
 /* global WebSocket */
-import fs from 'fs'
-import path from 'path'
-import OrdersBookFormat from '../core/OrdersBookFormat.js'
-import Day from '../utils/Day.js'
-
-class Queue {
-    #items = []
-    #expectedNextUpdateId = null
-    #viableSnapshot = null
-
-    enqueueDiff ({
-        a: asks,
-        b: bids,
-        // e: eventType,
-        E: eventTime,
-        // s: symbol,
-        U: firstUpdateId,
-        u: lastUpdateId
-    }, writerCallback) {
-        const getNextExpectedId = () => {
-            if (this.#expectedNextUpdateId !== null) return this.#expectedNextUpdateId
-            if (this.#items.length === 0) return null
-            return this.#items.at(-1).lastUpdateId + 1
-        }
-        const nextExpectedId = getNextExpectedId()
-        if (nextExpectedId !== null) {
-            if (lastUpdateId < nextExpectedId) {
-                // This update is too old; we can ignore it.
-                return
-            }
-            if (firstUpdateId > nextExpectedId) {
-                // We've missed some updates; this is a gap. We should trigger a resync.
-                throw new Error(`Sequence gap detected: expected updateId ${nextExpectedId}, got firstUpdateId ${firstUpdateId}`)
-            }
-        }
-        // at this point, the update is good. We will save it directly if we have a valid #expectedNextUpdateId
-        // or we will buffer it until we get a snapshot that sets #expectedNextUpdateId to a value that allows us
-        // to apply this update.
-        const record = { isDiff: true, eventTime, firstUpdateId, lastUpdateId, bids, asks }
-        if (this.#expectedNextUpdateId === null) {
-            this.#items.push(record)
-            return
-        }
-        if (this.#viableSnapshot) {
-            this.#viableSnapshot.eventTime = Math.min(this.#viableSnapshot.eventTime, eventTime)
-            writerCallback(this.#viableSnapshot)
-            this.#viableSnapshot = null
-        }
-        writerCallback(record)
-        this.#expectedNextUpdateId = lastUpdateId + 1
-    }
-
-    enqueueSnapshot (data, writerCallback) {
-        const now = Date.now()
-        if ((this.#expectedNextUpdateId === null) && (this.#items.length === 0)) {
-            throw new Error('Queue is pristine: cannot enqueue snapshot before any diff has been received (no anchor and no buffered diffs to align against). This indicates a lifecycle bug in the caller — the caller is expected to enqueue at least one diff before requesting the first snapshot.')
-        }
-        if ((this.#expectedNextUpdateId !== null) && (this.#items.length > 0)) {
-            throw new Error('Queue invariant violated: buffer is non-empty while an anchor is set. Items are only buffered during bootstrap; once anchored, diffs must be written or discarded, never queued.')
-        }
-        if (this.#expectedNextUpdateId === null) {
-            this.#processSnapshotInitial({ ...data, eventTime: now }, writerCallback)
-            return
-        }
-        this.#processSnapshotPeriodic({ ...data, eventTime: now }, writerCallback)
-    }
-
-    #processSnapshotInitial ({ lastUpdateId, bids, asks, eventTime }, writerCallback) {
-        const firstBufferedUpdateId = this.#items[0].firstUpdateId
-        const lastBufferedUpdateId = this.#items.at(-1).lastUpdateId
-
-        if ((lastUpdateId + 1) < firstBufferedUpdateId) {
-            throw new Error('Snapshot too old')
-        }
-
-        const record = { isDiff: false, eventTime, firstUpdateId: lastUpdateId, lastUpdateId, bids, asks }
-        if (lastBufferedUpdateId <= lastUpdateId) {
-            this.#items = []
-            this.#expectedNextUpdateId = lastUpdateId + 1
-            this.#viableSnapshot = record
-            return
-        }
-
-        const viableDiffs = this.#items.filter((item) => item.lastUpdateId > lastUpdateId)
-        record.eventTime = Math.min(record.eventTime, viableDiffs[0].eventTime)
-
-        writerCallback(record)
-        for (const diff of viableDiffs) {
-            writerCallback(diff)
-        }
-        this.#expectedNextUpdateId = lastBufferedUpdateId + 1
-        this.#items = []
-    }
-
-    #processSnapshotPeriodic ({ lastUpdateId, bids, asks, eventTime }, writerCallback) {
-        if (lastUpdateId < this.#expectedNextUpdateId) { return }
-        this.#expectedNextUpdateId = lastUpdateId + 1
-        this.#viableSnapshot = { isDiff: false, eventTime, firstUpdateId: lastUpdateId, lastUpdateId, bids, asks }
-    }
-}
-
-class Writer {
-    // ---- config ----
-    #symbol
-    #scaleExp
-    #dataDir
-
-    // ---- state ----
-    #currentDayUs = null
-    #currentFd = null
-    #lastStoredLastUpdateId = null
-    #lastStoredEventTime = null
-    #writeBuf = null
-    #lastWriteAtMs = 0
-    #savedRecordsCount = 0
-
-    constructor ({ symbol, scaleExp, dataDir }) {
-        this.#symbol = symbol
-        this.#scaleExp = scaleExp
-        this.#dataDir = dataDir
-    }
-
-    get lastWriteAtMs () { return this.#lastWriteAtMs }
-    get savedRecordsCount () { return this.#savedRecordsCount }
-
-    write (data) {
-        if (this.#lastStoredLastUpdateId !== null) {
-            if (data.firstUpdateId !== this.#lastStoredLastUpdateId + 1) {
-                throw new Error(`Store sequence not back-to-back: previous lastUpdateId=${this.#lastStoredLastUpdateId}, incoming firstUpdateId=${data.firstUpdateId} (expected ${this.#lastStoredLastUpdateId + 1})`)
-            }
-            if (data.eventTime < this.#lastStoredEventTime) {
-                throw new Error(`Store time regression: previous eventTime=${this.#lastStoredEventTime}, incoming eventTime=${data.eventTime}`)
-            }
-        }
-
-        const dayUs = Day.fromTsUs(data.eventTime * 1000)
-        if (dayUs !== this.#currentDayUs) {
-            if (this.#currentFd !== null) {
-                const localFd = this.#currentFd
-                this.#currentFd = null
-                fs.closeSync(localFd)
-            }
-            const filePath = this.#dayFilePath(dayUs)
-            fs.mkdirSync(path.dirname(filePath), { recursive: true })
-            this.#currentFd = fs.openSync(filePath, 'a')
-            this.#currentDayUs = dayUs
-        }
-
-        const { buf, size } = OrdersBookFormat.encode({ ...data, scaleExp: this.#scaleExp }, this.#writeBuf)
-        this.#writeBuf = buf
-
-        fs.writeSync(this.#currentFd, buf, 0, size)
-
-        this.#lastStoredLastUpdateId = data.lastUpdateId
-        this.#lastStoredEventTime = data.eventTime
-        this.#lastWriteAtMs = Date.now()
-        this.#savedRecordsCount++
-    }
-
-    close () {
-        if (this.#currentFd !== null) {
-            const localFd = this.#currentFd
-            this.#currentFd = null
-            try { fs.closeSync(localFd) } catch (_) { /* swallow — best-effort cleanup */ }
-        }
-        this.#currentDayUs = null
-        this.#lastStoredLastUpdateId = null
-        this.#lastStoredEventTime = null
-    }
-
-    #dayFilePath (dayTsUs) {
-        const d = new Date(dayTsUs / 1000)
-        const y = String(d.getUTCFullYear())
-        const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-        const dd = String(d.getUTCDate()).padStart(2, '0')
-        return path.join(this.#dataDir,
-            'orderBooks',
-            this.#symbol.exchange.id,
-            this.#symbol.base.id,
-            this.#symbol.quote.id,
-            y,
-            m,
-            `${dd}.bin`
-        )
-    }
-}
+import OrderBookQueue from './OrderBookQueue.js'
+import OrderBookWriter from './OrderBookWriter.js'
 
 export default class BinanceOrderBookCollector {
     // ---- config ----
@@ -259,8 +75,8 @@ export default class BinanceOrderBookCollector {
         this.#ws = null
         this.#snapshotPromiseId = null
         this.#periodicSnapshotTimer = null
-        this.#queue = new Queue()
-        this.#writer = new Writer({
+        this.#queue = new OrderBookQueue()
+        this.#writer = new OrderBookWriter({
             symbol: this.#symbol,
             scaleExp: this.#scaleExp,
             dataDir: this.#dataDir
@@ -306,11 +122,11 @@ export default class BinanceOrderBookCollector {
 
         this.#snapshotPromiseId = null
 
-        this.#queue = new Queue()
+        this.#queue = new OrderBookQueue()
 
         if (this.#writer) {
             const local = this.#writer
-            this.#writer = new Writer({
+            this.#writer = new OrderBookWriter({
                 symbol: this.#symbol,
                 scaleExp: this.#scaleExp,
                 dataDir: this.#dataDir

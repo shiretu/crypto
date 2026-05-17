@@ -16,7 +16,7 @@ import { Buffer } from 'buffer'
  *   offset 44..47   reserved                        (u32 LE, zero)
  *   offset 48..     levels: (i64 price, i64 qty) × (bidCount + askCount)
  */
-export default class OrdersBookFormat {
+export default class OrderBookFormat {
     // 7-byte ASCII magic at the start of every record. Lets us scan, recover,
     // and binary-search a torn file without an external index.
     static #MAGIC = Buffer.from('magic07', 'ascii')
@@ -26,7 +26,7 @@ export default class OrdersBookFormat {
     static #PREV_SNAPSHOT_OFFSET_SENTINEL = 0xffffffffffffffffn
 
     static #recordSize (bidCount, askCount) {
-        return OrdersBookFormat.#RECORD_HEADER_SIZE + OrdersBookFormat.#LEVEL_SIZE * (bidCount + askCount)
+        return OrderBookFormat.#RECORD_HEADER_SIZE + OrderBookFormat.#LEVEL_SIZE * (bidCount + askCount)
     }
 
     /**
@@ -75,33 +75,33 @@ export default class OrdersBookFormat {
         if (bids.length > 0xffff || asks.length > 0xffff) {
             throw new Error(`level count overflow: bids=${bids.length} asks=${asks.length}`)
         }
-        const size = OrdersBookFormat.#recordSize(bids.length, asks.length)
+        const size = OrderBookFormat.#recordSize(bids.length, asks.length)
         if (size % 8 !== 0) throw new Error(`record size ${size} not 8-aligned`)
 
         if ((destBuf == null) || (destBuf.length < size)) {
             destBuf = Buffer.allocUnsafe(size)
         }
-        OrdersBookFormat.#MAGIC.copy(destBuf, 0)
+        OrderBookFormat.#MAGIC.copy(destBuf, 0)
         const sf = (scaleExp << 4) | (isDiff ? 0x01 : 0x00)
         destBuf.writeUInt8(sf, 7)
         destBuf.writeBigUInt64LE(BigInt(eventTime) * 1000n, 8)
-        destBuf.writeBigUInt64LE(OrdersBookFormat.#PREV_SNAPSHOT_OFFSET_SENTINEL, 16)
+        destBuf.writeBigUInt64LE(OrderBookFormat.#PREV_SNAPSHOT_OFFSET_SENTINEL, 16)
         destBuf.writeBigUInt64LE(BigInt(firstUpdateId), 24)
         destBuf.writeBigUInt64LE(BigInt(lastUpdateId), 32)
         destBuf.writeUInt16LE(bids.length, 40)
         destBuf.writeUInt16LE(asks.length, 42)
         destBuf.writeUInt32LE(0, 44)
 
-        let off = OrdersBookFormat.#RECORD_HEADER_SIZE
+        let off = OrderBookFormat.#RECORD_HEADER_SIZE
         for (const [priceStr, qtyStr] of bids) {
-            destBuf.writeBigInt64LE(OrdersBookFormat.#encodeScaled(priceStr, scaleExp), off)
-            destBuf.writeBigInt64LE(OrdersBookFormat.#encodeScaled(qtyStr, scaleExp), off + 8)
-            off += OrdersBookFormat.#LEVEL_SIZE
+            destBuf.writeBigInt64LE(OrderBookFormat.#encodeScaled(priceStr, scaleExp), off)
+            destBuf.writeBigInt64LE(OrderBookFormat.#encodeScaled(qtyStr, scaleExp), off + 8)
+            off += OrderBookFormat.#LEVEL_SIZE
         }
         for (const [priceStr, qtyStr] of asks) {
-            destBuf.writeBigInt64LE(OrdersBookFormat.#encodeScaled(priceStr, scaleExp), off)
-            destBuf.writeBigInt64LE(OrdersBookFormat.#encodeScaled(qtyStr, scaleExp), off + 8)
-            off += OrdersBookFormat.#LEVEL_SIZE
+            destBuf.writeBigInt64LE(OrderBookFormat.#encodeScaled(priceStr, scaleExp), off)
+            destBuf.writeBigInt64LE(OrderBookFormat.#encodeScaled(qtyStr, scaleExp), off + 8)
+            off += OrderBookFormat.#LEVEL_SIZE
         }
         return { buf: destBuf, size }
     }
@@ -116,10 +116,10 @@ export default class OrdersBookFormat {
      * @returns {{ rec: Object, size: number }}
      */
     static decode (buf, offset = 0) {
-        if (buf.length - offset < OrdersBookFormat.#RECORD_HEADER_SIZE) {
-            throw new Error(`buffer too small for header at offset ${offset}: have ${buf.length - offset} need ${OrdersBookFormat.#RECORD_HEADER_SIZE}`)
+        if (buf.length - offset < OrderBookFormat.#RECORD_HEADER_SIZE) {
+            throw new Error(`buffer too small for header at offset ${offset}: have ${buf.length - offset} need ${OrderBookFormat.#RECORD_HEADER_SIZE}`)
         }
-        if (buf.compare(OrdersBookFormat.#MAGIC, 0, OrdersBookFormat.#MAGIC_LENGTH, offset, offset + OrdersBookFormat.#MAGIC_LENGTH) !== 0) {
+        if (buf.compare(OrderBookFormat.#MAGIC, 0, OrderBookFormat.#MAGIC_LENGTH, offset, offset + OrderBookFormat.#MAGIC_LENGTH) !== 0) {
             throw new Error(`bad magic at offset ${offset}`)
         }
         const sf = buf.readUInt8(offset + 7)
@@ -132,25 +132,25 @@ export default class OrdersBookFormat {
         const bidCount = buf.readUInt16LE(offset + 40)
         const askCount = buf.readUInt16LE(offset + 42)
 
-        const size = OrdersBookFormat.#recordSize(bidCount, askCount)
+        const size = OrderBookFormat.#recordSize(bidCount, askCount)
         if (buf.length - offset < size) {
             throw new Error(`buffer too small for body at offset ${offset}: have ${buf.length - offset} need ${size}`)
         }
 
         const bids = new Array(bidCount)
-        let off = offset + OrdersBookFormat.#RECORD_HEADER_SIZE
+        let off = offset + OrderBookFormat.#RECORD_HEADER_SIZE
         for (let i = 0; i < bidCount; i++) {
             const p = buf.readBigInt64LE(off)
             const q = buf.readBigInt64LE(off + 8)
-            bids[i] = [OrdersBookFormat.#decodeScaled(p, scaleExp), OrdersBookFormat.#decodeScaled(q, scaleExp)]
-            off += OrdersBookFormat.#LEVEL_SIZE
+            bids[i] = [OrderBookFormat.#decodeScaled(p, scaleExp), OrderBookFormat.#decodeScaled(q, scaleExp)]
+            off += OrderBookFormat.#LEVEL_SIZE
         }
         const asks = new Array(askCount)
         for (let i = 0; i < askCount; i++) {
             const p = buf.readBigInt64LE(off)
             const q = buf.readBigInt64LE(off + 8)
-            asks[i] = [OrdersBookFormat.#decodeScaled(p, scaleExp), OrdersBookFormat.#decodeScaled(q, scaleExp)]
-            off += OrdersBookFormat.#LEVEL_SIZE
+            asks[i] = [OrderBookFormat.#decodeScaled(p, scaleExp), OrderBookFormat.#decodeScaled(q, scaleExp)]
+            off += OrderBookFormat.#LEVEL_SIZE
         }
 
         return {
