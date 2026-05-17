@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Resume the writer of one ob_*.service unit (SIGUSR2 to the main process).
+# Drains the in-memory buffer accumulated while paused and reopens the
+# day file. If pause crossed midnight, the drain naturally lands in the
+# new day's file via the writer's normal day-rollover path.
+# Intended to be run on the host running the services (no ssh wrapping).
+
+set -e
+
+symbol="$1"
+if [ -z "${symbol}" ]; then
+    echo "usage: $0 <exchange:base:quote>  (e.g., binance:btc:usdc)" >&2
+    exit 2
+fi
+
+unit="ob_$(echo "${symbol}" | tr ':' '_').service"
+exec sudo systemctl kill --kill-who=main --signal=SIGUSR2 "${unit}"

@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Pause the writer of one ob_*.service unit (SIGUSR1 to the main process).
+# The collector keeps consuming the WebSocket stream and buffers records in
+# memory; the day file is closed so storage can be swapped. Resume with
+# `scripts/services/resume <symbol>` to drain the buffer and reopen writes.
+# Intended to be run on the host running the services (no ssh wrapping).
+
+set -e
+
+symbol="$1"
+if [ -z "${symbol}" ]; then
+    echo "usage: $0 <exchange:base:quote>  (e.g., binance:btc:usdc)" >&2
+    exit 2
+fi
+
+unit="ob_$(echo "${symbol}" | tr ':' '_').service"
+exec sudo systemctl kill --kill-who=main --signal=SIGUSR1 "${unit}"
