@@ -33,7 +33,7 @@ console.log(`WS URL:    ${collector.wsUrl}`)
 console.log(`REST URL:  ${collector.restUrl}`)
 console.log(`scaleExp=${collector.scaleExp}, snapshotDepth=${collector.snapshotDepth}, snapshotInterval=${collector.snapshotIntervalSec}s`)
 console.log(`dataWatchdog=${opts.dataWatchdog ? opts.dataWatchdog + 's' : 'off'}`)
-console.log('Press Ctrl+C to stop (will flush the current day\'s file).')
+console.log('Signals: SIGINT/SIGTERM=stop, SIGUSR1=pause writer, SIGUSR2=resume writer.')
 
 const shutdown = async (signal) => {
     await collector.stop(signal)
@@ -41,6 +41,22 @@ const shutdown = async (signal) => {
 }
 process.on('SIGINT', () => shutdown('SIGINT'))
 process.on('SIGTERM', () => shutdown('SIGTERM'))
+
+// Operator-driven storage swap: SIGUSR1 pauses the writer (closes fd, buffers
+// records in memory); SIGUSR2 drains the buffer and resumes live writing.
+// While paused the writer still ticks watchdogState on each accepted record,
+// so systemd's WatchdogSec= won't fire during the swap.
+process.on('SIGUSR1', () => {
+    collector.writerControls.pause()
+    const s = collector.writerControls.pauseState()
+    console.info(`[${new Date().toISOString()}] SIGUSR1 received; pauseState=${JSON.stringify(s)}`)
+})
+process.on('SIGUSR2', () => {
+    const before = collector.writerControls.pauseState()
+    collector.writerControls.resume()
+    const drained = before ? before.accumulatedDataCount : 0
+    console.info(`[${new Date().toISOString()}] SIGUSR2 received; drained ${drained} record(s)`)
+})
 
 collector.start()
 

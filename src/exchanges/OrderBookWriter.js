@@ -30,6 +30,11 @@ export default class OrderBookWriter {
     #writeBuf = null
     #watchdogState = new WatchdogState()
 
+    // ---- pause/resume state ----
+    #paused = false
+    #resuming = false
+    #accumulatedData = []
+
     constructor ({ symbol, scaleExp, dataDir }) {
         this.#symbol = symbol
         this.#scaleExp = scaleExp
@@ -37,8 +42,34 @@ export default class OrderBookWriter {
     }
 
     get watchdogState () { return this.#watchdogState }
+    get pauseState () { return { paused: this.#paused, resuming: this.#resuming, accumulatedDataCount: this.#accumulatedData.length } }
+
+    pause () {
+        if (this.#paused) return
+        if (this.#resuming) throw new Error('Cannot pause while resuming')
+        this.#paused = true
+        this.close()
+    }
+
+    resume () {
+        if (!this.#paused) return
+        if (this.#resuming) return
+        this.#paused = false
+        this.#resuming = true
+        for (const data of this.#accumulatedData) {
+            this.write(data)
+        }
+        this.#resuming = false
+        this.#accumulatedData = []
+    }
 
     write (data) {
+        if (this.#paused) {
+            this.#accumulatedData.push(data)
+            this.#watchdogState.update()
+            return
+        }
+
         if (this.#lastStoredLastUpdateId !== null) {
             if (data.firstUpdateId !== this.#lastStoredLastUpdateId + 1) {
                 throw new Error(`Store sequence not back-to-back: previous lastUpdateId=${this.#lastStoredLastUpdateId}, incoming firstUpdateId=${data.firstUpdateId} (expected ${this.#lastStoredLastUpdateId + 1})`)

@@ -90,6 +90,13 @@ export default class BinanceOrderBookCollector {
     get snapshotDepth () { return this.#snapshotDepth }
     get snapshotIntervalSec () { return this.#snapshotIntervalMs / 1000 }
     get watchdogState () { return this.#writer ? this.#writer.watchdogState : null }
+    get writerControls () {
+        return {
+            pause: () => { if (this.#writer) this.#writer.pause() },
+            resume: () => { if (this.#writer) this.#writer.resume() },
+            pauseState: () => { return this.#writer ? this.#writer.pauseState : null }
+        }
+    }
 
     /** Start the collector: open WS, kick off bootstrap, start status timer. */
     start () {
