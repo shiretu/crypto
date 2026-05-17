@@ -3,6 +3,19 @@ import path from 'path'
 import OrderBookFormat from '../core/OrderBookFormat.js'
 import Day from '../utils/Day.js'
 
+class WatchdogState {
+    #lastWriteAtMs = 0
+    #writeCallsCount = 0
+
+    update () {
+        this.#lastWriteAtMs = Date.now()
+        this.#writeCallsCount++
+    }
+
+    get lastWriteAtMs () { return this.#lastWriteAtMs }
+    get writeCallsCount () { return this.#writeCallsCount }
+}
+
 export default class OrderBookWriter {
     // ---- config ----
     #symbol
@@ -15,8 +28,7 @@ export default class OrderBookWriter {
     #lastStoredLastUpdateId = null
     #lastStoredEventTime = null
     #writeBuf = null
-    #lastWriteAtMs = 0
-    #savedRecordsCount = 0
+    #watchdogState = new WatchdogState()
 
     constructor ({ symbol, scaleExp, dataDir }) {
         this.#symbol = symbol
@@ -24,8 +36,7 @@ export default class OrderBookWriter {
         this.#dataDir = dataDir
     }
 
-    get lastWriteAtMs () { return this.#lastWriteAtMs }
-    get savedRecordsCount () { return this.#savedRecordsCount }
+    get watchdogState () { return this.#watchdogState }
 
     write (data) {
         if (this.#lastStoredLastUpdateId !== null) {
@@ -57,8 +68,7 @@ export default class OrderBookWriter {
 
         this.#lastStoredLastUpdateId = data.lastUpdateId
         this.#lastStoredEventTime = data.eventTime
-        this.#lastWriteAtMs = Date.now()
-        this.#savedRecordsCount++
+        this.#watchdogState.update()
     }
 
     close () {

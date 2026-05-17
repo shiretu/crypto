@@ -51,10 +51,10 @@ if (opts.dataWatchdog) {
     const wd = new Watchdog()
     let lastSeenWriteAt = 0
     setInterval(() => {
-        const cur = collector.lastWriteAtMs
-        if (cur > lastSeenWriteAt) {
-            wd.pet(`savedRecordsCount=${collector.savedRecordsCount}`)
-            lastSeenWriteAt = cur
+        const cur = collector.watchdogState
+        if (cur && cur.lastWriteAtMs > lastSeenWriteAt) {
+            wd.pet(`writeCallsCount=${cur.writeCallsCount}`)
+            lastSeenWriteAt = cur.lastWriteAtMs
         }
     }, opts.dataWatchdog * 1000).unref()
 }

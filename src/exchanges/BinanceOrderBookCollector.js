@@ -89,8 +89,7 @@ export default class BinanceOrderBookCollector {
     get scaleExp () { return this.#scaleExp }
     get snapshotDepth () { return this.#snapshotDepth }
     get snapshotIntervalSec () { return this.#snapshotIntervalMs / 1000 }
-    get lastWriteAtMs () { return this.#writer ? this.#writer.lastWriteAtMs : 0 }
-    get savedRecordsCount () { return this.#writer ? this.#writer.savedRecordsCount : 0 }
+    get watchdogState () { return this.#writer ? this.#writer.watchdogState : null }
 
     /** Start the collector: open WS, kick off bootstrap, start status timer. */
     start () {
