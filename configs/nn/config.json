@@ -1,0 +1,31 @@
+{
+    "neuralNetworks": [
+        "tideReader"
+    ],
+    "dataSets": [
+        {
+            "name": "ethUsdc5min60w",
+            "symbol": "binance:eth:usdc",
+            "candleDuration": 300,
+            "windowSize": 60,
+            "tpPercent": 1.5,
+            "slPercent": 1,
+            "randomWindowPosition": false,
+            "startDay": "2023-01-01",
+            "endDay": "2026-05-12",
+            "samplesCount": 0,
+            "normalisationFunction": "percentFromMin"
+        }
+    ],
+    "personalities": [
+        {
+            "name": "littleBoy",
+            "dataSet": "ethUsdc5min60w",
+            "train": {
+                "learningRate": 0.001,
+                "epochs": 10,
+                "batchSize": 32
+            }
+        }
+    ]
+}

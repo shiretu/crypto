@@ -1,0 +1,19 @@
+{
+    "exchangeName": "binance",
+    "symbol": "BTCUSDC",
+    "usePregeneratedSamples": true,
+    "autosaveIntervalSecs": 10,
+    "logTrainEnabled": true,
+    "logPredEnabled": true,
+    "candleDurationMinutes": 1,
+    "nnType": "tf",
+    "candlesPreambleCount": 100,
+    "candlesPerWindow": 120,
+    "normalizeAroundZero": false,
+    "normalizationFactor": 1,
+    "maxHoldingTimeSec": 3600,
+    "stopLossPercent": 0.005,
+    "takeProfitPercent": 0.01,
+    "predStartTimeDays": -180,
+    "predDurationDays": 2
+}

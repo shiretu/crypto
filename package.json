@@ -1,34 +1,29 @@
 {
-  "name": "fancy-strategy",
-  "version": "1.0.0",
-  "description": "Cryptocurrency Trading AI System with Neural Network",
+  "name": "crypto-trader",
+  "version": "3.0.0",
+  "description": "Cryptocurrency Trading AI System",
   "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "mocha tests/**/*.test.js",
     "test:watch": "mocha --watch tests/**/*.test.js",
-    "lint": "eslint src/ --fix --fix-type suggestion,layout",
-    "ai:train": "UV_THREADPOOL_SIZE=16 node src/ai/train.js",
-    "ai:pred": "UV_THREADPOOL_SIZE=16 node src/ai/pred.js",
-    "ai:train:debug": "UV_THREADPOOL_SIZE=16 node src/ai/train.js --debug"
+    "lint": "eslint src/ --fix",
+    "download": "node src/apps/getTrades.js",
+    "outcomes": "node src/apps/getTradeOutcomes.js"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.21.0",
-    "@tensorflow/tfjs-node": "^4.21.0",
-    "ws": "^8.18.0",
-    "unzipper": "^0.12.3",
-    "lzma-native": "^7.0.0",
-    "@clickhouse/client": "^1.12.1",
-    "canvas": "^3.2.0",
-    "enum-plus": "^3.1.1",
-    "cli-progress": "^3.12.0"
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "commander": "^14.0.3",
+    "csv-parse": "^6.2.1",
+    "unzipper": "^0.12.3"
   },
   "devDependencies": {
+    "chai": "^5.1.0",
     "eslint": "^8.0.0",
-    "standard": "^17.0.0",
-    "mocha": "^10.0.0",
-    "chai": "^4.3.0"
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.0.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "mocha": "^11.0.0"
   }
 }

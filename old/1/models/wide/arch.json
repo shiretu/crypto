@@ -1,0 +1,90 @@
+{
+    "name": "Wide & Shallow Network",
+    "description": "Massive width (1024+ filters) with minimal depth (2-3 layers) - learns diverse patterns in parallel",
+    "layers": [
+        {
+            "type": "conv1d",
+            "filters": 1024,
+            "kernelSize": 3,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Massive parallel feature extraction - 1024 different 3-candle patterns"
+        },
+        {
+            "type": "conv1d",
+            "filters": 512,
+            "kernelSize": 3,
+            "strides": 1,
+            "padding": "same",
+            "activation": "relu",
+            "description": "Wide refinement layer - 512 feature combinations"
+        },
+        {
+            "type": "globalAveragePooling1d",
+            "description": "Aggregate across time dimension"
+        },
+        {
+            "type": "dense",
+            "units": 256,
+            "activation": "relu",
+            "description": "Wide decision layer"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.5,
+            "description": "Heavy regularization to prevent overfitting wide layers"
+        },
+        {
+            "type": "dense",
+            "units": 128,
+            "activation": "relu",
+            "description": "Intermediate decision"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.4,
+            "description": "Regularization"
+        },
+        {
+            "type": "dense",
+            "units": 2,
+            "activation": "tanh",
+            "description": "Output: [p_buy, p_sell] in range [-1, 1]"
+        }
+    ],
+    "output": {
+        "transformation": "none",
+        "shape": [
+            2
+        ],
+        "values": [
+            "p_buy",
+            "p_sell"
+        ],
+        "description": "Continuous predictions for buy and sell confidence"
+    },
+    "compilation": {
+        "loss": "meanAbsoluteError",
+        "optimizer": {
+            "type": "adam",
+            "learningRate": 0.0005,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-07
+        },
+        "metrics": [
+            "mae"
+        ]
+    },
+    "training": {
+        "batchSize": 32,
+        "epochs": 120,
+        "validationSplit": 0.2,
+        "earlyStopping": {
+            "monitor": "val_loss",
+            "patience": 10,
+            "restoreBestWeights": true
+        }
+    }
+}

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Stop one ob_*.service unit by its exchange:base:quote symbol.
+# Intended to be run on the host running the services (no ssh wrapping).
+# Explicit single-symbol only — no bulk default. To act on multiple units,
+# write a wrapper that calls this script for each symbol.
+
+set -e
+
+symbol="$1"
+if [ -z "${symbol}" ]; then
+    echo "usage: $0 <exchange:base:quote>  (e.g., binance:btc:usdc)" >&2
+    exit 2
+fi
+
+unit="ob_$(echo "${symbol}" | tr ':' '_').service"
+exec sudo systemctl stop "${unit}"

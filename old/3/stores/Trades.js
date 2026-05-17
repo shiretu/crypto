@@ -1,0 +1,104 @@
+import fs from 'fs'
+import Trade from '../core/Trade.js'
+import CachedFile from '../utils/CachedFile.js'
+import Day from '../utils/Day.js'
+import { getFilePath, saveFile } from '../utils/storage.js'
+
+export default class Trades {
+    #dataDir
+    #symbol
+    #cachedFile
+
+    constructor (dataDir, symbol) {
+        this.#dataDir = dataDir
+        this.#symbol = symbol
+        this.#cachedFile = null
+        if (!symbol.exchange) throw new Error('Symbol must belong to an exchange')
+    }
+
+    #getFilePath (date) {
+        return getFilePath(this.#dataDir, 'trades', this.#symbol, date)
+    }
+
+    async #ensureDayAsync (date) {
+        const file = this.#getFilePath(date)
+        try {
+            await fs.promises.access(file)
+            return
+        } catch {}
+        const chunks = []
+        const ws = new (await import('stream')).Writable({
+            write (chunk, encoding, callback) { chunks.push(chunk); callback() }
+        })
+        const count = await this.#symbol.exchange.downloader.downloadDay(this.#symbol, date.year, date.month, date.day, ws)
+        await new Promise((resolve, reject) => { ws.end((err) => err ? reject(err) : resolve()) })
+        const buf = Buffer.concat(chunks)
+        if (buf.length >= Trade.RECORD_SIZE) {
+            const first = Trade.fromBuffer(this.#symbol, 0, buf, 0)
+            const last = Trade.fromBuffer(this.#symbol, 0, buf, buf.length - Trade.RECORD_SIZE)
+            const firstDay = Day.fromTsUs(first.tsUs)
+            const lastDay = Day.fromTsUs(last.tsUs)
+            if (Day.compare(firstDay, date) !== 0 || Day.compare(lastDay, date) !== 0) {
+                throw new Error(`Trade date mismatch for ${Day.toStr(date)}: first=${Day.toStr(firstDay)}, last=${Day.toStr(lastDay)}`)
+            }
+        }
+        await saveFile(file, buf)
+        console.log(`${Day.toStr(date)}: ${count} trades`)
+    }
+
+    async fetchAsync (start, end) {
+        let cur = start
+        while (Day.compare(cur, end) <= 0) {
+            await this.#ensureDayAsync(cur)
+            cur = Day.nextDay(cur)
+        }
+    }
+
+    async * readAsync (start, end) {
+        let cur = start
+        while (Day.compare(cur, end) <= 0) {
+            await this.#ensureDayAsync(cur)
+            const filePath = this.#getFilePath(cur)
+            this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+            const buf = await this.#cachedFile.readAsync({})
+            if (buf.length >= Trade.RECORD_SIZE) {
+                const count = Math.floor(buf.length / Trade.RECORD_SIZE)
+                for (let i = 0; i < count; i++) {
+                    const offset = i * Trade.RECORD_SIZE
+                    const trade = Trade.fromBuffer(this.#symbol, offset, buf, offset)
+                    yield trade
+                }
+            }
+            cur = Day.nextDay(cur)
+        }
+    }
+
+    async readArrayAsync (start, end) {
+        const result = []
+        for await (const trade of this.readAsync(start, end)) {
+            result.push(trade)
+        }
+        return result
+    }
+
+    #dateForTsUs (tsUs) {
+        const d = new Date(Math.floor(tsUs / 1000))
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
+    }
+
+    async readAtAsync (tsUs, srcId) {
+        if (srcId < 0 || srcId % Trade.RECORD_SIZE !== 0) {
+            throw new Error(`Invalid srcId: ${srcId} (must be non-negative multiple of ${Trade.RECORD_SIZE})`)
+        }
+        const date = this.#dateForTsUs(tsUs)
+        await this.#ensureDayAsync(date)
+        const filePath = this.#getFilePath(date)
+        this.#cachedFile = await CachedFile.createAsync({ existingFile: this.#cachedFile, filePath })
+        const buf = await this.#cachedFile.readAsync({ offset: srcId, length: Trade.RECORD_SIZE })
+        const trade = Trade.fromBuffer(this.#symbol, srcId, buf, 0)
+        if (trade.tsUs !== tsUs) {
+            throw new Error(`Trade at srcId ${srcId} has tsUs=${trade.tsUs}, expected ${tsUs}`)
+        }
+        return trade
+    }
+}

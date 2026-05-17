@@ -1,0 +1,99 @@
+{
+  "name": "Hybrid CNN-LSTM Time Series Classifier",
+  "description": "Combined CNN and LSTM architecture for both local pattern detection and temporal learning",
+  "layers": [
+    {
+      "type": "conv1d",
+      "filters": 64,
+      "kernelSize": 5,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "First convolutional layer - extracts local features from candle patterns"
+    },
+    {
+      "type": "maxPooling1d",
+      "poolSize": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Downsampling to reduce dimensionality before LSTM"
+    },
+    {
+      "type": "conv1d",
+      "filters": 128,
+      "kernelSize": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Second convolutional layer - detects higher-level patterns"
+    },
+    {
+      "type": "maxPooling1d",
+      "poolSize": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Further downsampling"
+    },
+    {
+      "type": "lstm",
+      "units": 64,
+      "returnSequences": false,
+      "activation": "tanh",
+      "recurrentActivation": "sigmoid",
+      "dropout": 0.0,
+      "recurrentDropout": 0.0,
+      "description": "LSTM layer - learns temporal dependencies of extracted CNN features"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.3,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "dense",
+      "units": 32,
+      "activation": "relu",
+      "description": "Fully connected layer for final feature combination"
+    },
+    {
+      "type": "dense",
+      "units": 2,
+      "activation": "tanh",
+      "description": "Output layer - 2 values: [p_buy, p_sell] with tanh for range [-1, 1]"
+    }
+  ],
+  "output": {
+    "transformation": "none",
+    "shape": [
+      2
+    ],
+    "values": [
+      "p_buy",
+      "p_sell"
+    ],
+    "description": "Continuous predictions for buy and sell quality, range [-1, 1]"
+  },
+  "compilation": {
+    "loss": "meanAbsoluteError",
+    "optimizer": {
+      "type": "adam",
+      "learningRate": 0.001,
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "epsilon": 1e-07
+    },
+    "metrics": [
+      "mae"
+    ]
+  },
+  "training": {
+    "batchSize": 32,
+    "epochs": 100,
+    "validationSplit": 0.2,
+    "earlyStopping": {
+      "monitor": "val_loss",
+      "patience": 10,
+      "restoreBestWeights": true
+    }
+  }
+}

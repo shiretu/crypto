@@ -1,0 +1,83 @@
+{
+  "name": "LSTM Time Series Classifier",
+  "description": "LSTM-based architecture for temporal pattern recognition in candlestick data",
+  "layers": [
+    {
+      "type": "lstm",
+      "units": 64,
+      "returnSequences": true,
+      "activation": "tanh",
+      "recurrentActivation": "sigmoid",
+      "dropout": 0.0,
+      "recurrentDropout": 0.0,
+      "description": "First LSTM layer - learns temporal patterns across the sequence"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.3,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "lstm",
+      "units": 32,
+      "returnSequences": false,
+      "activation": "tanh",
+      "recurrentActivation": "sigmoid",
+      "dropout": 0.0,
+      "recurrentDropout": 0.0,
+      "description": "Second LSTM layer - learns higher-level temporal patterns"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.3,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "dense",
+      "units": 16,
+      "activation": "relu",
+      "description": "Fully connected layer for feature combination"
+    },
+    {
+      "type": "dense",
+      "units": 2,
+      "activation": "sigmoid",
+      "description": "Output layer - 2 values: [p_buy, p_sell] independent probabilities"
+    }
+  ],
+  "output": {
+    "transformation": "multiLabel",
+    "shape": [
+      2
+    ],
+    "values": [
+      "p_buy",
+      "p_sell"
+    ],
+    "description": "Multi-label classification: independent probabilities for buy and sell signals"
+  },
+  "compilation": {
+    "loss": "binaryCrossentropy",
+    "optimizer": {
+      "type": "adam",
+      "learningRate": 0.0001,
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "epsilon": 1e-07,
+      "clipNorm": 1.0
+    },
+    "metrics": [
+      "mae"
+    ]
+  },
+  "training": {
+    "batchSize": 32,
+    "epochs": 1,
+    "validationSplit": 0.2,
+    "earlyStopping": {
+      "monitor": "val_loss",
+      "patience": 10,
+      "restoreBestWeights": true
+    }
+  }
+}

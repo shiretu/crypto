@@ -1,0 +1,109 @@
+{
+  "name": "1D CNN Time Series Classifier",
+  "description": "Convolutional architecture for detecting local patterns in candlestick sequences",
+  "layers": [
+    {
+      "type": "conv1d",
+      "filters": 64,
+      "kernelSize": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "First convolutional layer - detects 3-candle patterns"
+    },
+    {
+      "type": "maxPooling1d",
+      "poolSize": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Downsampling to reduce dimensionality"
+    },
+    {
+      "type": "conv1d",
+      "filters": 128,
+      "kernelSize": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Second convolutional layer - detects higher-level patterns"
+    },
+    {
+      "type": "maxPooling1d",
+      "poolSize": 2,
+      "strides": 2,
+      "padding": "valid",
+      "description": "Further downsampling"
+    },
+    {
+      "type": "conv1d",
+      "filters": 256,
+      "kernelSize": 3,
+      "strides": 1,
+      "padding": "same",
+      "activation": "relu",
+      "description": "Third convolutional layer - detects complex patterns"
+    },
+    {
+      "type": "globalAveragePooling1d",
+      "description": "Aggregate features across time dimension"
+    },
+    {
+      "type": "dense",
+      "units": 128,
+      "activation": "relu",
+      "description": "Fully connected layer for feature combination"
+    },
+    {
+      "type": "dropout",
+      "rate": 0.4,
+      "description": "Regularization to prevent overfitting"
+    },
+    {
+      "type": "dense",
+      "units": 64,
+      "activation": "relu",
+      "description": "Second fully connected layer"
+    },
+    {
+      "type": "dense",
+      "units": 2,
+      "activation": "linear",
+      "description": "Output layer - 2 values: [p_buy, p_sell] linear outputs"
+    }
+  ],
+  "output": {
+    "transformation": "none",
+    "shape": [
+      2
+    ],
+    "values": [
+      "p_buy",
+      "p_sell"
+    ],
+    "description": "Continuous predictions for buy and sell quality"
+  },
+  "compilation": {
+    "loss": "meanSquaredError",
+    "optimizer": {
+      "type": "adam",
+      "learningRate": 0.0001,
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "epsilon": 1e-7,
+      "clipNorm": 1
+    },
+    "metrics": [
+      "mae"
+    ]
+  },
+  "training": {
+    "batchSize": 32,
+    "epochs": 1,
+    "validationSplit": 0.2,
+    "earlyStopping": {
+      "monitor": "val_loss",
+      "patience": 10,
+      "restoreBestWeights": true
+    }
+  }
+}

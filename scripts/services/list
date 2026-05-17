@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# List installed ob_*.service units with symbol-translated names, current
+# state, since-when, and the live sd_notify status line (writeCallsCount=N).
+# Intended to be run on the host running the services (no ssh wrapping).
+
+set -e
+
+units=$(systemctl list-unit-files --no-legend --no-pager 'ob_*.service' 2>/dev/null | awk 'NF && $1 ~ /\.service$/ {print $1}' | sort)
+
+if [ -z "${units}" ]; then
+    echo "No ob_*.service units installed." >&2
+    exit 0
+fi
+
+printf '%-24s  %-10s  %-19s  %s\n' 'SYMBOL' 'STATE' 'SINCE' 'STATUS'
+
+for unit in ${units}; do
+    # ob_binance_eth_usdc.service → binance:eth:usdc
+    name=${unit#ob_}
+    name=${name%.service}
+    symbol=$(echo "${name}" | tr '_' ':')
+
+    state=$(systemctl show -p ActiveState --value "${unit}" 2>/dev/null)
+    since_raw=$(systemctl show -p ActiveEnterTimestamp --value "${unit}" 2>/dev/null)
+    status=$(systemctl show -p StatusText --value "${unit}" 2>/dev/null)
+
+    since='-'
+    if [ -n "${since_raw}" ]; then
+        formatted=$(date -d "${since_raw}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)
+        if [ -n "${formatted}" ]; then
+            since="${formatted}"
+        fi
+    fi
+
+    [ -z "${status}" ] && status='-'
+    [ -z "${state}" ] && state='unknown'
+
+    printf '%-24s  %-10s  %-19s  %s\n' "${symbol}" "${state}" "${since}" "${status}"
+done

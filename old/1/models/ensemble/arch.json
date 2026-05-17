@@ -1,0 +1,163 @@
+{
+    "name": "Ensemble Fusion Network",
+    "description": "Multi-branch architecture with specialized sub-networks for diverse feature extraction",
+    "branches": [
+        {
+            "name": "Temporal Branch",
+            "description": "Captures multi-scale temporal patterns",
+            "layers": [
+                {
+                    "type": "conv1d",
+                    "filters": 32,
+                    "kernelSize": 1,
+                    "strides": 1,
+                    "padding": "same",
+                    "activation": "relu",
+                    "description": "Fast patterns (1-candle)"
+                },
+                {
+                    "type": "conv1d",
+                    "filters": 32,
+                    "kernelSize": 3,
+                    "strides": 1,
+                    "padding": "same",
+                    "activation": "relu",
+                    "description": "Short patterns (3-candle)"
+                },
+                {
+                    "type": "conv1d",
+                    "filters": 32,
+                    "kernelSize": 5,
+                    "strides": 1,
+                    "padding": "same",
+                    "activation": "relu",
+                    "description": "Medium patterns (5-candle)"
+                },
+                {
+                    "type": "globalAveragePooling1d",
+                    "description": "Aggregate temporal features"
+                }
+            ]
+        },
+        {
+            "name": "Channel Attention Branch",
+            "description": "Learns which features are most important",
+            "layers": [
+                {
+                    "type": "conv1d",
+                    "filters": 64,
+                    "kernelSize": 3,
+                    "strides": 1,
+                    "padding": "same",
+                    "activation": "relu",
+                    "description": "Initial feature extraction"
+                },
+                {
+                    "type": "squeezeExcitation",
+                    "reduction": 8,
+                    "description": "Channel attention - learns feature importance"
+                },
+                {
+                    "type": "conv1d",
+                    "filters": 64,
+                    "kernelSize": 3,
+                    "strides": 1,
+                    "padding": "same",
+                    "activation": "relu",
+                    "description": "Refined features"
+                },
+                {
+                    "type": "squeezeExcitation",
+                    "reduction": 8,
+                    "description": "Second channel attention"
+                },
+                {
+                    "type": "globalAveragePooling1d",
+                    "description": "Aggregate channel features"
+                }
+            ]
+        },
+        {
+            "name": "Sequential Branch",
+            "description": "Captures long-term dependencies",
+            "layers": [
+                {
+                    "type": "lstm",
+                    "units": 48,
+                    "returnSequences": true,
+                    "activation": "tanh",
+                    "recurrentActivation": "sigmoid",
+                    "description": "Sequential processing"
+                },
+                {
+                    "type": "attention",
+                    "description": "Learn which timesteps matter most"
+                }
+            ]
+        }
+    ],
+    "fusion": [
+        {
+            "type": "dense",
+            "units": 128,
+            "activation": "relu",
+            "description": "Fuse all branch features"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.4,
+            "description": "Regularization"
+        },
+        {
+            "type": "dense",
+            "units": 64,
+            "activation": "relu",
+            "description": "Decision layer"
+        },
+        {
+            "type": "dropout",
+            "rate": 0.3,
+            "description": "Light regularization"
+        },
+        {
+            "type": "dense",
+            "units": 2,
+            "activation": "tanh",
+            "description": "Output: [p_buy, p_sell] in range [-1, 1]"
+        }
+    ],
+    "output": {
+        "transformation": "none",
+        "shape": [
+            2
+        ],
+        "values": [
+            "p_buy",
+            "p_sell"
+        ],
+        "description": "Continuous predictions for buy and sell confidence"
+    },
+    "compilation": {
+        "loss": "meanAbsoluteError",
+        "optimizer": {
+            "type": "adam",
+            "learningRate": 0.0007,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-07
+        },
+        "metrics": [
+            "mae"
+        ]
+    },
+    "training": {
+        "batchSize": 56,
+        "epochs": 120,
+        "validationSplit": 0.2,
+        "earlyStopping": {
+            "monitor": "val_loss",
+            "patience": 10,
+            "restoreBestWeights": true
+        }
+    }
+}
