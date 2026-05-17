@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Dump the most recent journal entries for one ob_*.service unit and exit.
+# Default: last 200 lines. Pass an integer as the second argument to override.
+# Intended to be run on the host running the services (no ssh wrapping).
+# Explicit single-symbol only — no bulk default. To act on multiple units,
+# write a wrapper that calls this script for each symbol.
+
+set -e
+
+symbol="$1"
+lines="${2:-200}"
+if [ -z "${symbol}" ]; then
+    echo "usage: $0 <exchange:base:quote> [lines=200]  (e.g., binance:btc:usdc 500)" >&2
+    exit 2
+fi
+
+unit="ob_$(echo "${symbol}" | tr ':' '_').service"
+exec journalctl -u "${unit}" -n "${lines}" --no-pager

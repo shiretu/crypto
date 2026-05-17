@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Follow the journal for one ob_*.service unit live (Ctrl+C to stop).
+# Default: 50 lines of history shown before tailing. Pass an integer as the
+# second argument to override.
+# Intended to be run on the host running the services (no ssh wrapping).
+# Explicit single-symbol only — no bulk default. To act on multiple units,
+# write a wrapper that calls this script for each symbol.
+
+set -e
+
+symbol="$1"
+lines="${2:-50}"
+if [ -z "${symbol}" ]; then
+    echo "usage: $0 <exchange:base:quote> [lines=50]  (e.g., binance:btc:usdc 100)" >&2
+    exit 2
+fi
+
+unit="ob_$(echo "${symbol}" | tr ':' '_').service"
+exec journalctl -u "${unit}" -n "${lines}" -f --no-pager
